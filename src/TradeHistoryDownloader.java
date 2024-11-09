@@ -30,6 +30,13 @@ public class TradeHistoryDownloader {
     private static final Logger logger = LogManager.getLogger(TradeHistoryDownloader.class);
 
     public static void main(String[] args) {
+        // Initialisiere Proxies, falls nötig
+        String proxyHost = "your_proxy_host";
+        String proxyPort = "your_proxy_port";
+        System.setProperty("http.proxyHost", proxyHost);
+        System.setProperty("http.proxyPort", proxyPort);
+        System.setProperty("https.proxyHost", proxyHost);
+        System.setProperty("https.proxyPort", proxyPort);
         // Überprüfen, ob die Log4j-Konfigurationsdatei vorhanden ist
         File log4jConfigFile = new File("D:\\git\\Monitortool\\workspace_monitortool2019\\MqlAnalyser\\src\\resources\\log4j2.xml");
         if (log4jConfigFile.exists()) {
@@ -125,10 +132,13 @@ public class TradeHistoryDownloader {
         }
 
         Map<String, Object> prefs = new HashMap<>();
-        prefs.put("download.default_directory", downloadFilepath);
+        prefs.put("download.default_directory", additionalDownloadPath);
 
         ChromeOptions options = new ChromeOptions();
         options.setExperimentalOption("prefs", prefs);
+
+        // Setze User-Agent, um den Web-Zugriff realistischer zu machen
+        options.addArguments("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
 
         // WebDriver mit Downloadpfad-Einstellungen initialisieren
         WebDriver driver = new ChromeDriver(options);
@@ -203,7 +213,7 @@ public class TradeHistoryDownloader {
                 logger.info("Überprüfe, ob die URL sich nach dem Login ändert...");
                 wait.until(ExpectedConditions.urlContains("/en"));
                 logger.info("Login erfolgreich: Die URL hat sich geändert.");
-                Thread.sleep(2000); // Verzögerung von 2 Sekunden nach erfolgreichem Login
+                Thread.sleep(getRandomWaitTime()); // Zufällige Wartezeit, um nicht als Bot erkannt zu werden
             } catch (Exception e) {
                 logger.error("Login war nicht erfolgreich oder die URL hat sich nicht geändert. Programm wird beendet.");
                 return;
@@ -214,74 +224,100 @@ public class TradeHistoryDownloader {
             logger.info("Öffne die Root-Seite für die Liste der Signal-Provider...");
             driver.get("https://www.mql5.com/en/signals/mt5/list");
 
-            // Warten, bis die Liste der Signal-Provider geladen ist
-            logger.info("Warte darauf, dass die Liste der Signal-Provider geladen ist...");
-            wait.until(ExpectedConditions.presenceOfElementLocated(By.className("signal")));
-            logger.info("Liste der Signal-Provider geladen.");
+            boolean hasNextPage = true;
+            while (hasNextPage) {
+                // Warten, bis die Liste der Signal-Provider geladen ist
+                logger.info("Warte darauf, dass die Liste der Signal-Provider geladen ist...");
+                wait.until(ExpectedConditions.presenceOfElementLocated(By.className("signal")));
+                logger.info("Liste der Signal-Provider geladen.");
 
-            // Alle Links zu den Signal-Providern sammeln
-            List<WebElement> providerLinks = driver.findElements(By.cssSelector(".signal a[href*='/signals/']"));
-            if (providerLinks == null || providerLinks.isEmpty()) {
-                logger.warn("Keine Signal-Provider gefunden. Programm wird beendet.");
-                return;
-            }
-            logger.info("Anzahl der gefundenen Signal-Provider: " + providerLinks.size());
-
-            for (int i = 0; i < providerLinks.size(); i++) {
-                // StaleElementReferenceException vermeiden, indem das Element erneut gesucht wird
-                providerLinks = driver.findElements(By.cssSelector(".signal a[href*='/signals/']"));
-                WebElement link = providerLinks.get(i);
-
-                // URL und Namen des Signal-Providers extrahieren
-                String providerUrl = link.getAttribute("href");
-                String providerName = link.getText().trim();
-                logger.info("\nVerarbeite Signal-Provider: " + providerName);
-                logger.info("Signal-Provider URL: " + providerUrl);
-
-                // Zum Signal-Provider navigieren
-                driver.get(providerUrl);
-
-                // Auf den "Trade History"-Tab klicken
-                logger.info("Öffne den 'Trade History'-Tab...");
-                WebElement tradeHistoryTab = wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//*[text()='Trading history']")));
-                if (tradeHistoryTab == null) {
-                    logger.error("'Trade History'-Tab konnte nicht gefunden werden.");
-                    continue;
+                // Alle Links zu den Signal-Providern sammeln
+                List<WebElement> providerLinks = driver.findElements(By.cssSelector(".signal a[href*='/signals/']"));
+                if (providerLinks == null || providerLinks.isEmpty()) {
+                    logger.warn("Keine Signal-Provider gefunden. Programm wird beendet.");
+                    return;
                 }
-                ((JavascriptExecutor) driver).executeScript("arguments[0].click();", tradeHistoryTab);
+                logger.info("Anzahl der gefundenen Signal-Provider: " + providerLinks.size());
 
-                // Warten, bis der Downloadlink sichtbar ist
-                logger.info("Warte darauf, dass der 'Export to CSV'-Link sichtbar ist...");
-                List<WebElement> exportLinks = driver.findElements(By.xpath("//*[text()='History']"));
-                if (exportLinks == null || exportLinks.isEmpty()) {
-                    logger.warn("'Export to CSV'-Link konnte nicht gefunden werden. Überspringe diesen Signal-Provider.");
-                    continue;
+                int downloadCounter = 0;
+                for (int i = 0; i < providerLinks.size(); i++) {
+                    // StaleElementReferenceException vermeiden, indem das Element erneut gesucht wird
+                    providerLinks = driver.findElements(By.cssSelector(".signal a[href*='/signals/']"));
+                    if (i >= providerLinks.size()) {
+                        logger.warn("Die Anzahl der Signal-Provider hat sich geändert. Überspringe aktuellen Index.");
+                        continue;
+                    }
+                    WebElement link = providerLinks.get(i);
+
+                    // URL und Namen des Signal-Providers extrahieren
+                    String providerUrl = link.getAttribute("href");
+                    String providerName = link.getText().trim();
+                    logger.info("\nVerarbeite Signal-Provider: " + providerName);
+                    logger.info("Signal-Provider URL: " + providerUrl);
+
+                    // Zum Signal-Provider navigieren
+                    driver.get(providerUrl);
+
+                    // Auf den "Trade History"-Tab klicken
+                    logger.info("Öffne den 'Trade History'-Tab...");
+                    WebElement tradeHistoryTab = wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//*[text()='Trading history']")));
+                    if (tradeHistoryTab == null) {
+                        logger.error("'Trade History'-Tab konnte nicht gefunden werden.");
+                        continue;
+                    }
+                    ((JavascriptExecutor) driver).executeScript("arguments[0].click();", tradeHistoryTab);
+
+                    // Warten, bis der Downloadlink sichtbar ist
+                    logger.info("Warte darauf, dass der 'Export to CSV'-Link sichtbar ist...");
+                    List<WebElement> exportLinks = driver.findElements(By.xpath("//*[text()='History']"));
+                    if (exportLinks == null || exportLinks.isEmpty()) {
+                        logger.warn("'Export to CSV'-Link konnte nicht gefunden werden. Überspringe diesen Signal-Provider.");
+                        continue;
+                    }
+                    WebElement exportLink = exportLinks.get(exportLinks.size() - 1); // Nimm den letzten Link mit dem Text 'History'
+
+                    // Den Downloadlink anklicken
+                    logger.info("Klicke den 'Export to CSV'-Link (komplette URL zum Download)...");
+                    logger.info("Komplette URL zum CSV-Download: " + exportLink.getAttribute("href"));
+                    exportLink.click();
+
+                    // Warten, bis die Datei heruntergeladen wurde (angepasste Wartezeit)
+                    logger.info("Warte darauf, dass die Datei heruntergeladen wird...");
+                    Thread.sleep(getRandomWaitTime()); // Zufällige Wartezeit, um nicht als Bot erkannt zu werden
+
+                    // Prüfen, ob die heruntergeladene Datei vorhanden ist
+                    File downloadedFile = findDownloadedFile(additionalDownloadPath);
+                    if (downloadedFile != null && downloadedFile.exists()) {
+                        // Speichere die Datei mit dem Namen des Signal-Providers
+                        File targetFile = new File(additionalDownloadPath, providerName.replaceAll("[\\/:*?\"<>|]", "_") + ".csv");
+                        Files.move(downloadedFile.toPath(), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                        downloadCounter++;
+                        logger.info("Datei für " + providerName + " heruntergeladen und gespeichert in: " + targetFile.getAbsolutePath());
+                        logger.info("Anzahl der bisher heruntergeladenen Dateien: " + downloadCounter);
+                    } else {
+                        logger.warn("Die Datei wurde nicht gefunden, eventuell ist der Download fehlgeschlagen.");
+                    }
+
+                    // Zurück zur Root-Seite, um den nächsten Signal-Provider zu verarbeiten
+                    logger.info("Zurück zur Root-Seite, um den nächsten Signal-Provider zu verarbeiten...");
+                    driver.get("https://www.mql5.com/en/signals/mt5/list");
                 }
-                WebElement exportLink = exportLinks.get(exportLinks.size() - 1); // Nimm den letzten Link mit dem Text 'History'
 
-                // Den Downloadlink anklicken
-                logger.info("Klicke den 'Export to CSV'-Link (komplette URL zum Download)...");
-                logger.info("Komplette URL zum CSV-Download: " + exportLink.getAttribute("href"));
-                exportLink.click();
-
-                // Warten, bis die Datei heruntergeladen wurde (angepasste Wartezeit)
-                logger.info("Warte darauf, dass die Datei heruntergeladen wird...");
-                Thread.sleep(5000); // Diese Wartezeit anpassen, falls nötig
-
-                // Prüfen, ob die heruntergeladene Datei vorhanden ist
-                File downloadedFile = findDownloadedFile(downloadFilepath);
-                if (downloadedFile != null && downloadedFile.exists()) {
-                    // Speichere die Datei mit dem Namen des Signal-Providers
-                    File targetFile = new File(downloadFilepath, providerName.replaceAll("[\\\\/:*?\"<>|]", "_") + ".csv");
-                    Files.move(downloadedFile.toPath(), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                    logger.info("Datei für " + providerName + " heruntergeladen und gespeichert in: " + targetFile.getAbsolutePath());
-                } else {
-                    logger.warn("Die Datei wurde nicht gefunden, eventuell ist der Download fehlgeschlagen.");
+                // Zur nächsten Seite wechseln, falls vorhanden
+                try {
+                    WebElement nextPageButton = driver.findElement(By.xpath("//a[contains(@class, 'paginator-next')]"));
+                    if (nextPageButton != null) {
+                        logger.info("Zur nächsten Seite der Signal-Provider wechseln...");
+                        nextPageButton.click();
+                        Thread.sleep(getRandomWaitTime()); // Zufällige Wartezeit, um sicherzustellen, dass die nächste Seite geladen wird
+                    } else {
+                        hasNextPage = false;
+                        logger.info("Keine weitere Seite der Signal-Provider vorhanden.");
+                    }
+                } catch (Exception e) {
+                    hasNextPage = false;
+                    logger.info("Keine weitere Seite der Signal-Provider gefunden oder Fehler beim Wechseln der Seite.");
                 }
-
-                // Zurück zur Root-Seite, um den nächsten Signal-Provider zu verarbeiten
-                logger.info("Zurück zur Root-Seite, um den nächsten Signal-Provider zu verarbeiten...");
-                driver.get("https://www.mql5.com/en/signals/mt5/list");
             }
         } catch (InterruptedException | IOException e) {
             logger.error("Fehler während der Verarbeitung", e);
@@ -299,6 +335,10 @@ public class TradeHistoryDownloader {
                 driver.quit();
             }
         }
+    }
+
+    private static int getRandomWaitTime() {
+        return (int) (Math.random() * (30000 - 10000)) + 10000; // Zufällige Wartezeit zwischen 10 und 30 Sekunden
     }
 
     private static void configureDefaultLogger() {
