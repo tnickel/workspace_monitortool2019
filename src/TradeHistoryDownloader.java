@@ -221,11 +221,14 @@ public class TradeHistoryDownloader {
 
             // Weiter mit dem nächsten Schritt: Root-Seite öffnen und Signal-Provider verarbeiten
             logger.info("\n--- Verarbeitung der Signal-Provider startet ---");
-            logger.info("Öffne die Root-Seite für die Liste der Signal-Provider...");
-            driver.get("https://www.mql5.com/en/signals/mt5/list");
-
+            int currentPage = 1;
             boolean hasNextPage = true;
             while (hasNextPage) {
+                // Öffne die Seite der aktuellen Signal-Provider-Liste
+                String pageUrl = "https://www.mql5.com/en/signals/mt5/list/page" + currentPage;
+                logger.info("Öffne die Seite: " + pageUrl);
+                driver.get(pageUrl);
+
                 // Warten, bis die Liste der Signal-Provider geladen ist
                 logger.info("Warte darauf, dass die Liste der Signal-Provider geladen ist...");
                 wait.until(ExpectedConditions.presenceOfElementLocated(By.className("signal")));
@@ -235,7 +238,8 @@ public class TradeHistoryDownloader {
                 List<WebElement> providerLinks = driver.findElements(By.cssSelector(".signal a[href*='/signals/']"));
                 if (providerLinks == null || providerLinks.isEmpty()) {
                     logger.warn("Keine Signal-Provider gefunden. Programm wird beendet.");
-                    return;
+                    hasNextPage = false;
+                    break;
                 }
                 logger.info("Anzahl der gefundenen Signal-Provider: " + providerLinks.size());
 
@@ -299,25 +303,13 @@ public class TradeHistoryDownloader {
                     }
 
                     // Zurück zur Root-Seite, um den nächsten Signal-Provider zu verarbeiten
-                    logger.info("Zurück zur Root-Seite, um den nächsten Signal-Provider zu verarbeiten...");
-                    driver.get("https://www.mql5.com/en/signals/mt5/list");
+                    logger.info("Zurück zur Seite der Signal-Provider...");
+                    driver.get(pageUrl);
                 }
 
-                // Zur nächsten Seite wechseln, falls vorhanden
-                try {
-                    WebElement nextPageButton = driver.findElement(By.xpath("//a[contains(@class, 'paginator-next')]"));
-                    if (nextPageButton != null) {
-                        logger.info("Zur nächsten Seite der Signal-Provider wechseln...");
-                        nextPageButton.click();
-                        Thread.sleep(getRandomWaitTime()); // Zufällige Wartezeit, um sicherzustellen, dass die nächste Seite geladen wird
-                    } else {
-                        hasNextPage = false;
-                        logger.info("Keine weitere Seite der Signal-Provider vorhanden.");
-                    }
-                } catch (Exception e) {
-                    hasNextPage = false;
-                    logger.info("Keine weitere Seite der Signal-Provider gefunden oder Fehler beim Wechseln der Seite.");
-                }
+                // Zur nächsten Seite wechseln
+                currentPage++;
+                logger.info("Wechsel zur nächsten Seite: " + currentPage);
             }
         } catch (InterruptedException | IOException e) {
             logger.error("Fehler während der Verarbeitung", e);
