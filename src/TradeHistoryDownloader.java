@@ -10,6 +10,12 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Scanner;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.core.config.Configurator;
+import org.apache.logging.log4j.core.config.builder.api.ConfigurationBuilderFactory;
+import org.apache.logging.log4j.core.config.builder.api.ConfigurationBuilder;
+import org.apache.logging.log4j.core.config.builder.impl.BuiltConfiguration;
 import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
@@ -21,16 +27,54 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 
 public class TradeHistoryDownloader {
 
+    private static final Logger logger = LogManager.getLogger(TradeHistoryDownloader.class);
+
     public static void main(String[] args) {
+        // Überprüfen, ob die Log4j-Konfigurationsdatei vorhanden ist
+        File log4jConfigFile = new File("D:\\git\\Monitortool\\workspace_monitortool2019\\MqlAnalyser\\src\\resources\\log4j2.xml");
+        if (log4jConfigFile.exists()) {
+            try {
+                System.out.println("Versuche, die Log4j-Konfigurationsdatei zu laden...");
+                Configurator.initialize(null, log4jConfigFile.getAbsolutePath());
+                logger.info("Log4j-Konfigurationsdatei erfolgreich geladen.");
+            } catch (Exception e) {
+                System.err.println("Log4j2 Konfigurationsdatei konnte nicht geladen werden, verwende Standardkonfiguration.");
+                e.printStackTrace();
+                configureDefaultLogger();
+            }
+        } else {
+            System.err.println("Log4j2 Konfigurationsdatei nicht gefunden, verwende Standardkonfiguration.");
+            configureDefaultLogger();
+        }
+
+        logger.info("Logger erfolgreich initialisiert.");
+
+        // Überprüfen, ob die Log-Ausgabe in Konsole und Datei funktioniert
+        logger.info("Test-Log: Dies ist eine Testmeldung, um sicherzustellen, dass der Logger funktioniert.");
+        logger.warn("Warnung: Überprüfen Sie, ob diese Warnmeldung im Logfile und in der Konsole erscheint.");
+        logger.error("Fehler: Überprüfen Sie, ob diese Fehlermeldung im Logfile und in der Konsole erscheint.");
+
         // Root-Verzeichnis und Konfigurationsverzeichnis festlegen
         String rootDirPath = "C:\\tmp\\mql5";
         String configDirPath = rootDirPath + "\\conf";
         String configFilePath = configDirPath + "\\conf.txt";
+        String logDirPath = rootDirPath + "\\logs";
 
-        // Erstelle das Konfigurationsverzeichnis, falls es nicht existiert
+        // Erstelle das Konfigurations- und Log-Verzeichnis, falls es nicht existiert
         File configDir = new File(configDirPath);
         if (!configDir.exists()) {
             configDir.mkdirs();
+        }
+        File logDir = new File(logDirPath);
+        if (!logDir.exists()) {
+            boolean logDirCreated = logDir.mkdirs();
+            if (logDirCreated) {
+                logger.info("Log-Verzeichnis erstellt: " + logDirPath);
+            } else {
+                logger.error("Log-Verzeichnis konnte nicht erstellt werden: " + logDirPath);
+            }
+        } else {
+            logger.info("Log-Verzeichnis existiert bereits: " + logDirPath);
         }
 
         // Login-Daten aus der Konfigurationsdatei lesen oder abfragen
@@ -45,7 +89,7 @@ public class TradeHistoryDownloader {
                 username = props.getProperty("username");
                 password = props.getProperty("password");
             } catch (IOException e) {
-                e.printStackTrace();
+                logger.error("Fehler beim Laden der Konfigurationsdatei", e);
                 return;
             }
         } else {
@@ -62,7 +106,7 @@ public class TradeHistoryDownloader {
                 try (FileWriter writer = new FileWriter(configFile)) {
                     props.store(writer, "Login-Konfiguration");
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    logger.error("Fehler beim Speichern der Konfigurationsdatei", e);
                     return;
                 }
             }
@@ -90,80 +134,98 @@ public class TradeHistoryDownloader {
         WebDriver driver = new ChromeDriver(options);
 
         try {
+            // Überprüfen, ob der WebDriver initialisiert wurde
+            if (driver == null) {
+                logger.error("WebDriver konnte nicht initialisiert werden.");
+                return;
+            }
+
             // Login auf der Webseite durchführen
-            System.out.println("\n--- Login-Prozess startet ---");
-            System.out.println("Öffne Login-Seite...");
+            logger.info("\n--- Login-Prozess startet ---");
+            logger.info("Öffne Login-Seite...");
             driver.get("https://www.mql5.com/en/auth_login");
 
             // Wartezeit erhöhen, um sicherzustellen, dass die Login-Seite vollständig geladen ist
             WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(60));
 
             // Benutzername und Passwort eingeben
-            System.out.println("Warte darauf, dass das Benutzername-Feld sichtbar wird...");
+            logger.info("Warte darauf, dass das Benutzername-Feld sichtbar wird...");
             WebElement usernameField = wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("Login")));
+            if (usernameField == null) {
+                logger.error("Benutzername-Feld konnte nicht gefunden werden.");
+                return;
+            }
             WebElement passwordField = driver.findElement(By.id("Password"));
+            if (passwordField == null) {
+                logger.error("Passwort-Feld konnte nicht gefunden werden.");
+                return;
+            }
 
             // Login-Daten eingeben
-            System.out.println("Gebe Benutzername und Passwort ein...");
+            logger.info("Gebe Benutzername und Passwort ein...");
             usernameField.sendKeys(username);
             passwordField.sendKeys(password);
 
             // Versuche, den Login-Button zu finden und zu klicken
             WebElement loginButton = null;
 
-            System.out.println("Versuche, den Login-Button zu finden...");
+            logger.info("Versuche, den Login-Button zu finden...");
             try {
                 // Versuche den Login-Button über die ID zu finden
                 loginButton = driver.findElement(By.id("loginSubmit"));
-                System.out.println("Login-Button mit ID 'loginSubmit' gefunden.");
+                logger.info("Login-Button mit ID 'loginSubmit' gefunden.");
             } catch (Exception e) {
-                System.out.println("Button mit ID 'loginSubmit' nicht gefunden, versuche anderen Selektor.");
+                logger.info("Button mit ID 'loginSubmit' nicht gefunden, versuche anderen Selektor.");
             }
 
             if (loginButton == null) {
                 try {
                     // Fallback: Versuche den Login-Button über die Klasse zu finden
                     loginButton = driver.findElement(By.cssSelector("input.button.button_yellow.qa-submit"));
-                    System.out.println("Login-Button mit CSS-Selektor 'input.button.button_yellow.qa-submit' gefunden.");
+                    logger.info("Login-Button mit CSS-Selektor 'input.button.button_yellow.qa-submit' gefunden.");
                 } catch (Exception e) {
-                    System.out.println("Button mit CSS-Selektor 'input.button.button_yellow.qa-submit' nicht gefunden, konnte nicht einloggen.");
+                    logger.error("Button mit CSS-Selektor 'input.button.button_yellow.qa-submit' nicht gefunden, konnte nicht einloggen.");
                     return; // Wenn alle Locator-Strategien fehlschlagen, wird das Programm beendet
                 }
             }
 
             // Login-Button durch JavaScript klicken, falls er gefunden wurde
             if (loginButton != null) {
-                System.out.println("Klicke den Login-Button...");
+                logger.info("Klicke den Login-Button...");
                 ((JavascriptExecutor) driver).executeScript("arguments[0].click();", loginButton);
             } else {
-                System.out.println("Login-Button konnte nicht gefunden werden.");
+                logger.error("Login-Button konnte nicht gefunden werden.");
                 return;
             }
 
             // Sicherstellen, dass der Login erfolgreich war
             try {
-                System.out.println("Überprüfe, ob die URL sich nach dem Login ändert...");
+                logger.info("Überprüfe, ob die URL sich nach dem Login ändert...");
                 wait.until(ExpectedConditions.urlContains("/en"));
-                System.out.println("Login erfolgreich: Die URL hat sich geändert.");
+                logger.info("Login erfolgreich: Die URL hat sich geändert.");
                 Thread.sleep(2000); // Verzögerung von 2 Sekunden nach erfolgreichem Login
             } catch (Exception e) {
-                System.out.println("Login war nicht erfolgreich oder die URL hat sich nicht geändert. Programm wird beendet.");
+                logger.error("Login war nicht erfolgreich oder die URL hat sich nicht geändert. Programm wird beendet.");
                 return;
             }
 
             // Weiter mit dem nächsten Schritt: Root-Seite öffnen und Signal-Provider verarbeiten
-            System.out.println("\n--- Verarbeitung der Signal-Provider startet ---");
-            System.out.println("Öffne die Root-Seite für die Liste der Signal-Provider...");
+            logger.info("\n--- Verarbeitung der Signal-Provider startet ---");
+            logger.info("Öffne die Root-Seite für die Liste der Signal-Provider...");
             driver.get("https://www.mql5.com/en/signals/mt5/list");
 
             // Warten, bis die Liste der Signal-Provider geladen ist
-            System.out.println("Warte darauf, dass die Liste der Signal-Provider geladen ist...");
+            logger.info("Warte darauf, dass die Liste der Signal-Provider geladen ist...");
             wait.until(ExpectedConditions.presenceOfElementLocated(By.className("signal")));
-            System.out.println("Liste der Signal-Provider geladen.");
+            logger.info("Liste der Signal-Provider geladen.");
 
             // Alle Links zu den Signal-Providern sammeln
             List<WebElement> providerLinks = driver.findElements(By.cssSelector(".signal a[href*='/signals/']"));
-            System.out.println("Anzahl der gefundenen Signal-Provider: " + providerLinks.size());
+            if (providerLinks == null || providerLinks.isEmpty()) {
+                logger.warn("Keine Signal-Provider gefunden. Programm wird beendet.");
+                return;
+            }
+            logger.info("Anzahl der gefundenen Signal-Provider: " + providerLinks.size());
 
             for (int i = 0; i < providerLinks.size(); i++) {
                 // StaleElementReferenceException vermeiden, indem das Element erneut gesucht wird
@@ -173,65 +235,102 @@ public class TradeHistoryDownloader {
                 // URL und Namen des Signal-Providers extrahieren
                 String providerUrl = link.getAttribute("href");
                 String providerName = link.getText().trim();
-                System.out.println("\nVerarbeite Signal-Provider: " + providerName);
+                logger.info("\nVerarbeite Signal-Provider: " + providerName);
+                logger.info("Signal-Provider URL: " + providerUrl);
 
                 // Zum Signal-Provider navigieren
                 driver.get(providerUrl);
 
                 // Auf den "Trade History"-Tab klicken
-                System.out.println("Öffne den 'Trade History'-Tab...");
+                logger.info("Öffne den 'Trade History'-Tab...");
                 WebElement tradeHistoryTab = wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//*[text()='Trading history']")));
+                if (tradeHistoryTab == null) {
+                    logger.error("'Trade History'-Tab konnte nicht gefunden werden.");
+                    continue;
+                }
                 ((JavascriptExecutor) driver).executeScript("arguments[0].click();", tradeHistoryTab);
 
                 // Warten, bis der Downloadlink sichtbar ist
-                System.out.println("Warte darauf, dass der 'Export to CSV'-Link sichtbar ist...");
+                logger.info("Warte darauf, dass der 'Export to CSV'-Link sichtbar ist...");
                 List<WebElement> exportLinks = driver.findElements(By.xpath("//*[text()='History']"));
+                if (exportLinks == null || exportLinks.isEmpty()) {
+                    logger.warn("'Export to CSV'-Link konnte nicht gefunden werden. Überspringe diesen Signal-Provider.");
+                    continue;
+                }
                 WebElement exportLink = exportLinks.get(exportLinks.size() - 1); // Nimm den letzten Link mit dem Text 'History'
 
                 // Den Downloadlink anklicken
-                System.out.println("Klicke den 'Export to CSV'-Link...");
+                logger.info("Klicke den 'Export to CSV'-Link (komplette URL zum Download)...");
+                logger.info("Komplette URL zum CSV-Download: " + exportLink.getAttribute("href"));
                 exportLink.click();
 
                 // Warten, bis die Datei heruntergeladen wurde (angepasste Wartezeit)
-                System.out.println("Warte darauf, dass die Datei heruntergeladen wird...");
+                logger.info("Warte darauf, dass die Datei heruntergeladen wird...");
                 Thread.sleep(5000); // Diese Wartezeit anpassen, falls nötig
 
-                // Datei vom Download-Ordner ins Zielverzeichnis verschieben und umbenennen
-                File[] downloadedFiles = new File(downloadFilepath).listFiles((dir, name) -> name.endsWith(".csv"));
-                if (downloadedFiles != null && downloadedFiles.length > 0) {
-                    for (File downloadedFile : downloadedFiles) {
-                        // Speichere die Originaldatei im Unterverzeichnis "download" mit dem Namen des Signal-Providers
-                        File originalFile = new File(additionalDownloadPath, providerName.replaceAll("[\\\\/:*?\"<>|]", "_") + ".csv");
-                        Files.copy(downloadedFile.toPath(), originalFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-
-                        // Zieldatei mit dem Namen des Signal-Providers speichern
-                        File targetFile = new File(downloadFilepath, providerName.replaceAll("[\\\\/:*?\"<>|]", "_") + ".csv");
-                        Files.move(downloadedFile.toPath(), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                        System.out.println("Datei für " + providerName + " heruntergeladen und gespeichert in: " + targetFile.getAbsolutePath());
-                    }
+                // Prüfen, ob die heruntergeladene Datei vorhanden ist
+                File downloadedFile = findDownloadedFile(downloadFilepath);
+                if (downloadedFile != null && downloadedFile.exists()) {
+                    // Speichere die Datei mit dem Namen des Signal-Providers
+                    File targetFile = new File(downloadFilepath, providerName.replaceAll("[\\\\/:*?\"<>|]", "_") + ".csv");
+                    Files.move(downloadedFile.toPath(), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                    logger.info("Datei für " + providerName + " heruntergeladen und gespeichert in: " + targetFile.getAbsolutePath());
                 } else {
-                    System.out.println("Die Datei wurde nicht gefunden, eventuell ist der Download fehlgeschlagen.");
+                    logger.warn("Die Datei wurde nicht gefunden, eventuell ist der Download fehlgeschlagen.");
                 }
 
                 // Zurück zur Root-Seite, um den nächsten Signal-Provider zu verarbeiten
-                System.out.println("Zurück zur Root-Seite, um den nächsten Signal-Provider zu verarbeiten...");
+                logger.info("Zurück zur Root-Seite, um den nächsten Signal-Provider zu verarbeiten...");
                 driver.get("https://www.mql5.com/en/signals/mt5/list");
             }
         } catch (InterruptedException | IOException e) {
-            e.printStackTrace();
+            logger.error("Fehler während der Verarbeitung", e);
         } finally {
             // Browser schließen, aber Dateien nicht löschen
-            System.out.println("\n--- Abschluss ---");
-            System.out.println("Schließe den Browser...");
+            logger.info("\n--- Abschluss ---");
+            logger.info("Schließe den Browser...");
             if (driver != null) {
                 try {
                     // Wartezeit, damit der Downloadprozess vollständig abgeschlossen wird
                     Thread.sleep(2000);
                 } catch (InterruptedException e) {
-                    e.printStackTrace();
+                    logger.error("Fehler beim Warten vor dem Schließen des Browsers", e);
                 }
                 driver.quit();
             }
         }
+    }
+
+    private static void configureDefaultLogger() {
+        ConfigurationBuilder<BuiltConfiguration> builder = ConfigurationBuilderFactory.newConfigurationBuilder();
+        builder.setStatusLevel(org.apache.logging.log4j.Level.ERROR);
+        builder.setConfigurationName("DefaultConfig");
+
+        // Console Appender erstellen
+        builder.add(builder.newAppender("Console", "CONSOLE")
+                .add(builder.newLayout("PatternLayout")
+                        .addAttribute("pattern", "%d{yyyy-MM-dd HH:mm:ss} [%t] %-5level %logger{36} - %msg%n")));
+
+        // File Appender erstellen
+        builder.add(builder.newAppender("LogToFile", "File")
+                .addAttribute("fileName", "logs/application.log")
+                .add(builder.newLayout("PatternLayout")
+                        .addAttribute("pattern", "%d{yyyy-MM-dd HH:mm:ss} [%t] %-5level %logger{36} - %msg%n")));
+
+        // Root Logger konfigurieren
+        builder.add(builder.newRootLogger(org.apache.logging.log4j.Level.INFO)
+                .add(builder.newAppenderRef("Console"))
+                .add(builder.newAppenderRef("LogToFile")));
+
+        Configurator.initialize(builder.build());
+    }
+
+    private static File findDownloadedFile(String downloadDirectory) {
+        File dir = new File(downloadDirectory);
+        File[] files = dir.listFiles((d, name) -> name.endsWith(".csv"));
+        if (files != null && files.length > 0) {
+            return files[0];
+        }
+        return null;
     }
 }
