@@ -4,10 +4,12 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Iterator;
 import java.util.stream.Stream;
 
 public class SignalProviderTable {
@@ -24,7 +26,9 @@ public class SignalProviderTable {
                 for (File file : files) {
                     if (file.isFile()) {
                         try (Stream<String> lines = Files.lines(Path.of(file.getPath()))) {
-                            lines.forEach(line -> {
+                            Iterator<String> iterator = lines.iterator();
+                            if (iterator.hasNext()) iterator.next(); // Skip the header line
+                            iterator.forEachRemaining(line -> {
                                 if (line.trim().isEmpty() || line.startsWith("Time")) return; // Skip header line or empty line
                                 String[] data = line.split(";", -1); // Adjust delimiter if necessary
                                 String signalProviderName = file.getName(); // Use filename as the signal provider name
@@ -60,12 +64,13 @@ public class SignalProviderTable {
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setSize(800, 400);
 
-        String[] columnNames = {"Nr.", "Signal Provider Name", "Anzahl der Trades", "Startdatum", "Enddatum"};
+        String[] columnNames = {"Nr.", "Signal Provider Name", "Anzahl der Trades", "Startdatum", "Enddatum", "Tage zwischen Start und Ende"};
         DefaultTableModel model = new DefaultTableModel(columnNames, 0);
         int index = 1;
         for (Map.Entry<String, ProviderStats> entry : signalProviderStats.entrySet()) {
             ProviderStats stats = entry.getValue();
-            model.addRow(new Object[]{index++, entry.getKey(), stats.getTradeCount(), stats.getStartDate(), stats.getEndDate()});
+            long daysBetween = stats.getDaysBetween();
+            model.addRow(new Object[]{index++, entry.getKey(), stats.getTradeCount(), stats.getStartDate(), stats.getEndDate(), daysBetween});
         }
 
         JTable table = new JTable(model);
@@ -104,5 +109,12 @@ class ProviderStats {
 
     public String getEndDate() {
         return endDate != null ? endDate.format(DateTimeFormatter.ofPattern("yyyy.MM.dd HH:mm:ss")) : "";
+    }
+
+    public long getDaysBetween() {
+        if (startDate != null && endDate != null) {
+            return Duration.between(startDate, endDate).toDays();
+        }
+        return 0;
     }
 }
