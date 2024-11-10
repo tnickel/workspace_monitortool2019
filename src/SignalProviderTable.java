@@ -1,5 +1,6 @@
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableRowSorter;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -65,15 +66,33 @@ public class SignalProviderTable {
         frame.setSize(800, 400);
 
         String[] columnNames = {"Nr.", "Signal Provider Name", "Anzahl der Trades", "Startdatum", "Enddatum", "Tage zwischen Start und Ende"};
-        DefaultTableModel model = new DefaultTableModel(columnNames, 0);
+        DefaultTableModel model = new DefaultTableModel(columnNames, 0) {
+            @Override
+            public Class<?> getColumnClass(int columnIndex) {
+                switch (columnIndex) {
+                    case 0:
+                    case 2:
+                    case 5:
+                        return Integer.class;
+                    case 3:
+                    case 4:
+                        return LocalDateTime.class;
+                    default:
+                        return String.class;
+                }
+            }
+        };
+
         int index = 1;
         for (Map.Entry<String, ProviderStats> entry : signalProviderStats.entrySet()) {
             ProviderStats stats = entry.getValue();
             long daysBetween = stats.getDaysBetween();
-            model.addRow(new Object[]{index++, entry.getKey(), stats.getTradeCount(), stats.getStartDate(), stats.getEndDate(), daysBetween});
+            model.addRow(new Object[]{index++, entry.getKey(), stats.getTradeCount(), stats.getStartDate(), stats.getEndDate(), (int) daysBetween});
         }
 
         JTable table = new JTable(model);
+        TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(model);
+        table.setRowSorter(sorter);
         JScrollPane scrollPane = new JScrollPane(table);
         frame.add(scrollPane);
 
@@ -103,12 +122,12 @@ class ProviderStats {
         }
     }
 
-    public String getStartDate() {
-        return startDate != null ? startDate.format(DateTimeFormatter.ofPattern("yyyy.MM.dd HH:mm:ss")) : "";
+    public LocalDateTime getStartDate() {
+        return startDate;
     }
 
-    public String getEndDate() {
-        return endDate != null ? endDate.format(DateTimeFormatter.ofPattern("yyyy.MM.dd HH:mm:ss")) : "";
+    public LocalDateTime getEndDate() {
+        return endDate;
     }
 
     public long getDaysBetween() {
