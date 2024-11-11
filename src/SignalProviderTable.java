@@ -1,20 +1,49 @@
-import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
-import javax.swing.table.TableRowSorter;
-import java.awt.*;
+import java.awt.BasicStroke;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.GridLayout;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.io.*;
-import java.nio.file.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.text.DecimalFormat;
-import java.time.*;
-import java.time.format.*;
-import java.util.*;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.List;
-import org.jfree.chart.*;
-import org.jfree.chart.plot.*;
-import org.jfree.data.xy.*;
-import org.jfree.data.category.*;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import javax.swing.BorderFactory;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTable;
+import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableRowSorter;
+
+import org.jfree.chart.ChartFactory;
+import org.jfree.chart.ChartPanel;
+import org.jfree.chart.JFreeChart;
+import org.jfree.chart.axis.NumberAxis;
+import org.jfree.chart.plot.CategoryPlot;
+import org.jfree.chart.plot.Plot;
+import org.jfree.chart.plot.PlotOrientation;
+import org.jfree.chart.plot.XYPlot;
+import org.jfree.chart.renderer.category.BarRenderer;
+import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
+import org.jfree.data.category.DefaultCategoryDataset;
+import org.jfree.data.xy.XYSeries;
+import org.jfree.data.xy.XYSeriesCollection;
 
 public class SignalProviderTable {
     public static void main(String[] args) {
@@ -81,6 +110,26 @@ public class SignalProviderTable {
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setSize(1200, 600);
 
+        // Main panel with BorderLayout
+        JPanel mainPanel = new JPanel(new BorderLayout());
+
+        // Table panel
+        JPanel tablePanel = createTablePanel(signalProviderStats);
+        mainPanel.add(tablePanel, BorderLayout.CENTER);
+
+        // Button panel on the right
+        JPanel buttonPanel = new JPanel(new FlowLayout());
+        JButton compareButton = new JButton("Compare Equity Curves");
+        compareButton.addActionListener(e -> showEquityCurvesComparison(signalProviderStats));
+        buttonPanel.add(compareButton);
+        mainPanel.add(buttonPanel, BorderLayout.EAST);
+
+        frame.add(mainPanel);
+        frame.setLocationRelativeTo(null);
+        frame.setVisible(true);
+    }
+
+    private static JPanel createTablePanel(Map<String, ProviderStats> signalProviderStats) {
         String[] columnNames = {
             "No.", "Signal Provider", "Trades", "Win Rate %", "Total Profit", 
             "Avg Profit/Trade", "Max Drawdown %", "Profit Factor", "Start Date", "End Date"
@@ -133,20 +182,62 @@ public class SignalProviderTable {
         });
 
         JScrollPane scrollPane = new JScrollPane(table);
-        frame.add(scrollPane);
-        frame.setLocationRelativeTo(null);
-        frame.setVisible(true);
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.add(scrollPane, BorderLayout.CENTER);
+        return panel;
     }
 
+    private static void showEquityCurvesComparison(Map<String, ProviderStats> signalProviderStats) {
+        JFrame comparisonFrame = new JFrame("Equity Curves Comparison");
+        comparisonFrame.setSize(1200, 800);
+        
+        // Sort providers by total profit
+        List<Map.Entry<String, ProviderStats>> sortedProviders = signalProviderStats.entrySet()
+            .stream()
+            .sorted((e1, e2) -> Double.compare(e2.getValue().getTotalProfit(), e1.getValue().getTotalProfit()))
+            .collect(Collectors.toList());
+
+        // Panel for all curves
+        JPanel curvesPanel = new JPanel();
+        curvesPanel.setLayout(new BoxLayout(curvesPanel, BoxLayout.Y_AXIS));
+
+        // Create equity curve for each provider
+        for (Map.Entry<String, ProviderStats> entry : sortedProviders) {
+            String providerName = entry.getKey();
+            ProviderStats stats = entry.getValue();
+            
+            // Create panel for single curve with label
+            JPanel curvePanel = new JPanel(new BorderLayout());
+            curvePanel.setBorder(BorderFactory.createTitledBorder(
+                String.format("%s (Profit: %.2f)", providerName, stats.getTotalProfit())
+            ));
+            
+            ChartPanel chartPanel = createEquityCurveChart(stats);
+            chartPanel.setPreferredSize(new Dimension(1100, 300));
+            curvePanel.add(chartPanel, BorderLayout.CENTER);
+            
+            curvesPanel.add(curvePanel);
+        }
+
+        // Scrollpane for all curves
+        JScrollPane scrollPane = new JScrollPane(curvesPanel);
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        comparisonFrame.add(scrollPane);
+
+        comparisonFrame.setLocationRelativeTo(null);
+        comparisonFrame.setVisible(true);
+    }
     private static void showDetailedAnalysis(String providerName, ProviderStats stats) {
         JFrame detailFrame = new JFrame("Detailed Performance Analysis: " + providerName);
         detailFrame.setSize(1000, 800);
         
         JPanel mainPanel = new JPanel(new BorderLayout());
         
+        // Stats Panel
         JPanel statsPanel = createStatsPanel(stats);
         mainPanel.add(statsPanel, BorderLayout.NORTH);
         
+        // Charts
         JPanel chartsPanel = new JPanel(new GridLayout(2, 1));
         chartsPanel.add(createEquityCurveChart(stats));
         chartsPanel.add(createMonthlyProfitChart(stats));
@@ -203,7 +294,21 @@ public class SignalProviderTable {
             false
         );
         
-        customizeChart(chart);
+        // Enhanced chart formatting
+        XYPlot plot = (XYPlot) chart.getPlot();
+        XYLineAndShapeRenderer renderer = new XYLineAndShapeRenderer();
+        renderer.setSeriesPaint(0, Color.RED);
+        renderer.setSeriesStroke(0, new BasicStroke(2.0f));
+        plot.setRenderer(renderer);
+        plot.setBackgroundPaint(Color.WHITE);
+        plot.setRangeGridlinePaint(Color.GRAY);
+        plot.setDomainGridlinePaint(Color.GRAY);
+
+        // Axis formatting
+        NumberAxis rangeAxis = (NumberAxis) plot.getRangeAxis();
+        rangeAxis.setAutoRangeIncludesZero(false);
+        rangeAxis.setNumberFormatOverride(new DecimalFormat("#,##0.00"));
+        
         return new ChartPanel(chart);
     }
 
@@ -220,7 +325,15 @@ public class SignalProviderTable {
             false
         );
         
-        customizeChart(chart);
+        // Customize the chart
+        CategoryPlot plot = chart.getCategoryPlot();
+        plot.setBackgroundPaint(Color.WHITE);
+        plot.setRangeGridlinePaint(Color.GRAY);
+        
+        // Customize the bars
+        BarRenderer renderer = (BarRenderer) plot.getRenderer();
+        renderer.setSeriesPaint(0, Color.RED);
+        
         return new ChartPanel(chart);
     }
 
