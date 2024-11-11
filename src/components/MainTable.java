@@ -1,21 +1,24 @@
 package components;
 
-
-
 import models.HighlightTableModel;
+import models.FilterCriteria;
 import renderers.HighlightRenderer;
 import data.DataManager;
 import data.ProviderStats;
 import ui.DetailFrame;
+import utils.LoggerUtil;
 import javax.swing.*;
 import javax.swing.table.TableRowSorter;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 public class MainTable extends JTable {
     private final HighlightTableModel model;
     private final HighlightRenderer renderer;
     private final DataManager dataManager;
+    private FilterCriteria currentFilter;
     
     public MainTable(DataManager dataManager) {
         this.dataManager = dataManager;
@@ -34,15 +37,13 @@ public class MainTable extends JTable {
             getColumnModel().getColumn(i).setCellRenderer(renderer);
         }
         
-        // Debug output
-        System.out.println("Loading data into table...");
-        System.out.println("Number of providers: " + dataManager.getStats().size());
+        LoggerUtil.debug("Loading data into table...");
+        LoggerUtil.debug("Number of providers: " + dataManager.getStats().size());
         
         // Populate data
         model.populateData(dataManager.getStats());
         
-        // More debug
-        System.out.println("Table rows after population: " + model.getRowCount());
+        LoggerUtil.debug("Table rows after population: " + model.getRowCount());
     }
     
     private void setupMouseListener() {
@@ -87,5 +88,36 @@ public class MainTable extends JTable {
             }
         }
         return false;
+    }
+    
+    // Neue Methoden für die Filterung
+    public void applyFilter(FilterCriteria criteria) {
+        LoggerUtil.info("Applying filter: " + criteria);
+        this.currentFilter = criteria;
+        refreshTableData();
+    }
+    
+    public void clearFilter() {
+        LoggerUtil.info("Clearing filter");
+        this.currentFilter = null;
+        refreshTableData();
+    }
+    
+    private void refreshTableData() {
+        if (currentFilter == null) {
+            LoggerUtil.debug("No filter active, showing all data");
+            model.populateData(dataManager.getStats());
+        } else {
+            LoggerUtil.debug("Filtering data with criteria");
+            Map<String, ProviderStats> filteredStats = dataManager.getStats().entrySet().stream()
+                .filter(entry -> currentFilter.matches(entry.getValue()))
+                .collect(Collectors.toMap(
+                    Map.Entry::getKey,
+                    Map.Entry::getValue
+                ));
+            model.populateData(filteredStats);
+            LoggerUtil.info(String.format("Filter applied: %d of %d providers match criteria",
+                filteredStats.size(), dataManager.getStats().size()));
+        }
     }
 }
