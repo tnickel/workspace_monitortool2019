@@ -1,25 +1,9 @@
 package ui;
 
-
-
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
-
-import javax.swing.JButton;
-import javax.swing.JFrame;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-
-import components.MainTable;
-import components.SearchPanel;
-import data.DataManager;
-
-
-
-import java.awt.BorderLayout;
-import java.awt.FlowLayout;
-import java.awt.GridLayout;
+import java.awt.Toolkit;
 import java.awt.event.KeyEvent;
 import javax.swing.*;
 
@@ -27,7 +11,6 @@ import components.MainTable;
 import components.SearchPanel;
 import data.DataManager;
 import utils.LoggerUtil;
-import java.awt.Toolkit;
 
 public class MainFrame extends JFrame {
     private final DataManager dataManager;
@@ -36,6 +19,7 @@ public class MainFrame extends JFrame {
     private final JButton compareButton;
     private final JButton filterButton;
     private final JMenuBar menuBar;
+    private JLabel statusLabel;
     
     public MainFrame(DataManager dataManager) {
         super("Signal Providers Performance Analysis");
@@ -113,7 +97,6 @@ public class MainFrame extends JFrame {
         JPanel topPanel = new JPanel(new BorderLayout(5, 0));
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         
-        // Add Filter and Compare buttons
         filterButton.addActionListener(e -> showFilterDialog());
         buttonPanel.add(filterButton);
         
@@ -139,13 +122,19 @@ public class MainFrame extends JFrame {
         // Status bar
         JPanel statusBar = new JPanel(new FlowLayout(FlowLayout.LEFT));
         statusBar.setBorder(BorderFactory.createEtchedBorder());
-        JLabel statusLabel = new JLabel(String.format("Loaded %d providers", 
-            dataManager.getStats().size()));
+        statusLabel = new JLabel();
         statusBar.add(statusLabel);
         mainPanel.add(statusBar, BorderLayout.SOUTH);
         
+        // Setze den Callback in der MainTable
+        mainTable.setStatusUpdateCallback(this::updateStatus);
+        
         add(mainPanel);
         setLocationRelativeTo(null);
+    }
+    
+    private void updateStatus(String status) {
+        statusLabel.setText(status);
     }
     
     private void showFilterDialog() {
@@ -155,7 +144,8 @@ public class MainFrame extends JFrame {
     
     private void showEquityCurvesComparison() {
         try {
-            EquityCurvesFrame comparisonFrame = new EquityCurvesFrame(dataManager.getStats());
+            // Hier die gefilterten Daten übergeben
+            EquityCurvesFrame comparisonFrame = new EquityCurvesFrame(mainTable.getCurrentProviderStats());
             comparisonFrame.setVisible(true);
         } catch (Exception e) {
             LoggerUtil.error("Error showing equity curves", e);

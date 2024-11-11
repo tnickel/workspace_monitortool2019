@@ -1,10 +1,9 @@
 package models;
 
-
-
 import data.ProviderStats;
 import javax.swing.table.DefaultTableModel;
 import java.time.LocalDate;
+import java.text.DecimalFormat;
 import java.util.Map;
 
 public class HighlightTableModel extends DefaultTableModel {
@@ -13,10 +12,11 @@ public class HighlightTableModel extends DefaultTableModel {
         "Avg Profit/Trade", "Max Drawdown %", "Profit Factor", "Start Date", "End Date"
     };
     
+    private final DecimalFormat df = new DecimalFormat("#,##0.00");
+    
     public HighlightTableModel() {
         super(COLUMN_NAMES, 0);
     }
-
     
     @Override
     public Class<?> getColumnClass(int columnIndex) {
@@ -43,11 +43,19 @@ public class HighlightTableModel extends DefaultTableModel {
         return false;
     }
     
+    @Override
+    public Object getValueAt(int row, int column) {
+        Object value = super.getValueAt(row, column);
+        if (value instanceof Double) {
+            // Formatiere nur für die Anzeige, behalte den Original-Wert
+            return ((Double) value).doubleValue();
+        }
+        return value;
+    }
+    
     public void populateData(Map<String, ProviderStats> signalProviderStats) {
         setRowCount(0);  // Clear existing data
         int index = 1;
-        
-        System.out.println("Populating table model with " + signalProviderStats.size() + " providers");
         
         for (Map.Entry<String, ProviderStats> entry : signalProviderStats.entrySet()) {
             ProviderStats stats = entry.getValue();
@@ -55,16 +63,18 @@ public class HighlightTableModel extends DefaultTableModel {
                 index++,
                 entry.getKey(),
                 stats.getTradeCount(),
-                stats.getWinRate(),
-                stats.getTotalProfit(),
-                stats.getAverageProfit(),
-                stats.getMaxDrawdown(),
-                stats.getProfitFactor(),
+                roundToTwoDecimals(stats.getWinRate()),
+                roundToTwoDecimals(stats.getTotalProfit()),
+                roundToTwoDecimals(stats.getAverageProfit()),
+                roundToTwoDecimals(stats.getMaxDrawdown()),
+                roundToTwoDecimals(stats.getProfitFactor()),
                 stats.getStartDate(),
                 stats.getEndDate()
             });
         }
-        
-        System.out.println("Added " + getRowCount() + " rows to table model");
+    }
+    
+    private double roundToTwoDecimals(double value) {
+        return Math.round(value * 100.0) / 100.0;
     }
 }
