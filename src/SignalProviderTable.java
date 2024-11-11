@@ -1,6 +1,7 @@
 import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
@@ -28,6 +29,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableRowSorter;
 
@@ -36,7 +38,6 @@ import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.NumberAxis;
 import org.jfree.chart.plot.CategoryPlot;
-import org.jfree.chart.plot.Plot;
 import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.category.BarRenderer;
@@ -186,27 +187,22 @@ public class SignalProviderTable {
         panel.add(scrollPane, BorderLayout.CENTER);
         return panel;
     }
-
     private static void showEquityCurvesComparison(Map<String, ProviderStats> signalProviderStats) {
         JFrame comparisonFrame = new JFrame("Equity Curves Comparison");
         comparisonFrame.setSize(1200, 800);
-        
-        // Sort providers by total profit
+
         List<Map.Entry<String, ProviderStats>> sortedProviders = signalProviderStats.entrySet()
             .stream()
             .sorted((e1, e2) -> Double.compare(e2.getValue().getTotalProfit(), e1.getValue().getTotalProfit()))
             .collect(Collectors.toList());
 
-        // Panel for all curves
         JPanel curvesPanel = new JPanel();
         curvesPanel.setLayout(new BoxLayout(curvesPanel, BoxLayout.Y_AXIS));
 
-        // Create equity curve for each provider
         for (Map.Entry<String, ProviderStats> entry : sortedProviders) {
             String providerName = entry.getKey();
             ProviderStats stats = entry.getValue();
             
-            // Create panel for single curve with label
             JPanel curvePanel = new JPanel(new BorderLayout());
             curvePanel.setBorder(BorderFactory.createTitledBorder(
                 String.format("%s (Profit: %.2f)", providerName, stats.getTotalProfit())
@@ -219,7 +215,6 @@ public class SignalProviderTable {
             curvesPanel.add(curvePanel);
         }
 
-        // Scrollpane for all curves
         JScrollPane scrollPane = new JScrollPane(curvesPanel);
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
         comparisonFrame.add(scrollPane);
@@ -227,15 +222,32 @@ public class SignalProviderTable {
         comparisonFrame.setLocationRelativeTo(null);
         comparisonFrame.setVisible(true);
     }
+    
+   
+
+   
+
+   
+    
     private static void showDetailedAnalysis(String providerName, ProviderStats stats) {
         JFrame detailFrame = new JFrame("Detailed Performance Analysis: " + providerName);
         detailFrame.setSize(1000, 800);
         
         JPanel mainPanel = new JPanel(new BorderLayout());
         
-        // Stats Panel
+        // Stats Panel with button
+        JPanel topPanel = new JPanel(new BorderLayout());
         JPanel statsPanel = createStatsPanel(stats);
-        mainPanel.add(statsPanel, BorderLayout.NORTH);
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        
+        JButton showTradesButton = new JButton("Show Trade List");
+        showTradesButton.addActionListener(e -> showTradeList(providerName, stats));
+        buttonPanel.add(showTradesButton);
+        
+        topPanel.add(statsPanel, BorderLayout.CENTER);
+        topPanel.add(buttonPanel, BorderLayout.EAST);
+        
+        mainPanel.add(topPanel, BorderLayout.NORTH);
         
         // Charts
         JPanel chartsPanel = new JPanel(new GridLayout(2, 1));
@@ -246,6 +258,87 @@ public class SignalProviderTable {
         detailFrame.add(mainPanel);
         detailFrame.setLocationRelativeTo(null);
         detailFrame.setVisible(true);
+    }
+
+    private static void showTradeList(String providerName, ProviderStats stats) {
+        JFrame tradeListFrame = new JFrame("Trade List: " + providerName);
+        tradeListFrame.setSize(800, 600);
+
+        String[] columnNames = {
+            "No.", "Date", "Profit/Loss", "Running Balance"
+        };
+        
+        DefaultTableModel model = new DefaultTableModel(columnNames, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+            
+            @Override
+            public Class<?> getColumnClass(int columnIndex) {
+                switch (columnIndex) {
+                    case 0: return Integer.class;
+                    case 2: 
+                    case 3: return Double.class;
+                    default: return Object.class;
+                }
+            }
+        };
+
+        double runningBalance = stats.getInitialBalance();
+        List<Double> profits = stats.getProfits();
+        List<LocalDate> dates = stats.getTradeDates();
+        
+        for (int i = 0; i < profits.size(); i++) {
+            runningBalance += profits.get(i);
+            model.addRow(new Object[]{
+                i + 1,
+                dates.get(i),
+                profits.get(i),
+                runningBalance
+            });
+        }
+
+        JTable table = new JTable(model);
+        TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(model);
+        table.setRowSorter(sorter);
+
+        // Custom cell renderer for profit/loss coloring
+        table.getColumnModel().getColumn(2).setCellRenderer(new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value,
+                    boolean isSelected, boolean hasFocus, int row, int column) {
+                Component c = super.getTableCellRendererComponent(table, value,
+                        isSelected, hasFocus, row, column);
+                if (value instanceof Double) {
+                    double profit = (Double) value;
+                    if (!isSelected) {
+                        c.setForeground(profit >= 0 ? new Color(0, 150, 0) : Color.RED);
+                    }
+                    setText(String.format("%,.2f", profit));
+                }
+                return c;
+            }
+        });
+
+        // Format running balance column
+        table.getColumnModel().getColumn(3).setCellRenderer(new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value,
+                    boolean isSelected, boolean hasFocus, int row, int column) {
+                Component c = super.getTableCellRendererComponent(table, value,
+                        isSelected, hasFocus, row, column);
+                if (value instanceof Double) {
+                    setText(String.format("%,.2f", (Double) value));
+                }
+                return c;
+            }
+        });
+
+        JScrollPane scrollPane = new JScrollPane(table);
+        tradeListFrame.add(scrollPane);
+        tradeListFrame.setLocationRelativeTo(null);
+        tradeListFrame.setVisible(true);
     }
 
     private static JPanel createStatsPanel(ProviderStats stats) {
@@ -266,7 +359,6 @@ public class SignalProviderTable {
         
         return panel;
     }
-
     private static void addStatRow(JPanel panel, String label, String value) {
         panel.add(new JLabel(label, SwingConstants.RIGHT));
         panel.add(new JLabel(value, SwingConstants.LEFT));
@@ -294,7 +386,6 @@ public class SignalProviderTable {
             false
         );
         
-        // Enhanced chart formatting
         XYPlot plot = (XYPlot) chart.getPlot();
         XYLineAndShapeRenderer renderer = new XYLineAndShapeRenderer();
         renderer.setSeriesPaint(0, Color.RED);
@@ -304,7 +395,6 @@ public class SignalProviderTable {
         plot.setRangeGridlinePaint(Color.GRAY);
         plot.setDomainGridlinePaint(Color.GRAY);
 
-        // Axis formatting
         NumberAxis rangeAxis = (NumberAxis) plot.getRangeAxis();
         rangeAxis.setAutoRangeIncludesZero(false);
         rangeAxis.setNumberFormatOverride(new DecimalFormat("#,##0.00"));
@@ -325,23 +415,14 @@ public class SignalProviderTable {
             false
         );
         
-        // Customize the chart
         CategoryPlot plot = chart.getCategoryPlot();
         plot.setBackgroundPaint(Color.WHITE);
         plot.setRangeGridlinePaint(Color.GRAY);
         
-        // Customize the bars
         BarRenderer renderer = (BarRenderer) plot.getRenderer();
         renderer.setSeriesPaint(0, Color.RED);
         
         return new ChartPanel(chart);
-    }
-
-    private static void customizeChart(JFreeChart chart) {
-        chart.setBackgroundPaint(Color.WHITE);
-        Plot plot = chart.getPlot();
-        plot.setBackgroundPaint(Color.WHITE);
-        plot.setOutlinePaint(Color.BLACK);
     }
 
     private static void populateTableModel(DefaultTableModel model, 
@@ -364,3 +445,5 @@ public class SignalProviderTable {
         }
     }
 }
+
+

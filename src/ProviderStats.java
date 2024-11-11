@@ -1,32 +1,15 @@
-
-import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
-import javax.swing.table.TableRowSorter;
-import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.io.*;
-import java.nio.file.*;
-import java.text.DecimalFormat;
 import java.time.*;
 import java.time.format.*;
+import java.text.DecimalFormat;
 import java.util.*;
-import java.util.List;
-import org.jfree.chart.*;
-import org.jfree.chart.plot.*;
-import org.jfree.data.xy.*;
-import org.jfree.data.category.*;
-import java.time.temporal.ChronoUnit;
-import java.util.stream.Collectors;
-import org.jfree.chart.axis.*;
-import org.jfree.chart.renderer.category.BarRenderer;
-import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
+import org.jfree.data.category.DefaultCategoryDataset;
 
 class ProviderStats {
     private int tradeCount;
     private LocalDate startDate;
     private LocalDate endDate;
     private final List<Double> profits;
+    private final List<LocalDate> tradeDates;
     private double initialBalance;
     private double totalProfit;
     private int winningTrades;
@@ -40,6 +23,7 @@ class ProviderStats {
 
     public ProviderStats() {
         this.profits = new ArrayList<>();
+        this.tradeDates = new ArrayList<>();
         this.monthlyProfits = new TreeMap<>();
         this.maxProfit = Double.MIN_VALUE;
         this.maxLoss = Double.MAX_VALUE;
@@ -60,6 +44,7 @@ class ProviderStats {
 
     public void addTrade(double profit, LocalDate date) {
         profits.add(profit);
+        tradeDates.add(date);
         tradeCount++;
         totalProfit += profit;
 
@@ -87,6 +72,7 @@ class ProviderStats {
         monthlyProfits.merge(yearMonth, profit, Double::sum);
     }
 
+    // Getter methods
     public double getCurrentBalance() { 
         return initialBalance + totalProfit; 
     }
@@ -103,6 +89,10 @@ class ProviderStats {
         return profits; 
     }
     
+    public List<LocalDate> getTradeDates() { 
+        return tradeDates; 
+    }
+    
     public int getTradeCount() { 
         return tradeCount; 
     }
@@ -114,7 +104,7 @@ class ProviderStats {
     public LocalDate getEndDate() { 
         return endDate; 
     }
-
+    
     public double getWinRate() { 
         return tradeCount > 0 ? (winningTrades * 100.0) / tradeCount : 0; 
     }
