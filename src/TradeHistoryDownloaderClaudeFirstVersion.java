@@ -24,9 +24,9 @@ import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
-public class TradeHistoryDownloader {
+public class TradeHistoryDownloaderClaudeFirstVersion {
 
-    private static final Logger logger = LogManager.getLogger(TradeHistoryDownloader.class);
+    private static final Logger logger = LogManager.getLogger(TradeHistoryDownloaderClaudeFirstVersion.class);
 
     public static void main(String[] args) {
         // Initialisiere Proxies, falls nötig
