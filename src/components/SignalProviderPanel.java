@@ -2,13 +2,27 @@ package components;
 
 
 
-import javax.swing.*;
-import java.awt.*;
-import java.awt.event.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Cursor;
+import java.awt.Desktop;
+import java.awt.FlowLayout;
+import java.awt.GridLayout;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.net.URI;
-import org.jfree.chart.ChartPanel;
-import data.ProviderStats;
 import java.text.DecimalFormat;
+
+import javax.swing.BorderFactory;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+
+import org.jfree.chart.ChartPanel;
+
+import data.ProviderStats;
+import ui.TradeListFrame;
 
 public class SignalProviderPanel extends JPanel {
     private final String providerId;
@@ -63,23 +77,37 @@ public class SignalProviderPanel extends JPanel {
     }
     
     private JPanel createStatsPanel() {
-        JPanel statsPanel = new JPanel(new GridLayout(2, 4, 10, 5));
-        statsPanel.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
+        JPanel mainStatsPanel = new JPanel(new BorderLayout());
         
+        // Statistik-Grid wie bisher
+        JPanel statsGrid = new JPanel(new GridLayout(2, 4, 10, 5));
+        statsGrid.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
+
         // Zeile 1
-        addStatField(statsPanel, "Total Trades:", String.format("%d", stats.getTradeCount()));
-        addStatField(statsPanel, "Win Rate:", pf.format(stats.getWinRate()));
-        addStatField(statsPanel, "Avg Profit:", df.format(stats.getAverageProfit()));
-        addStatField(statsPanel, "Max Drawdown:", pf.format(stats.getMaxDrawdown()));
-        
+        addStatField(statsGrid, "Total Trades:", String.format("%d", stats.getTradeCount()));
+        addStatField(statsGrid, "Win Rate:", pf.format(stats.getWinRate()));
+        addStatField(statsGrid, "Avg Profit:", df.format(stats.getAverageProfit()));
+        addStatField(statsGrid, "Max Drawdown:", pf.format(stats.getMaxDrawdown()));
+
         // Zeile 2
-        addStatField(statsPanel, "Profit Factor:", df.format(stats.getProfitFactor()));
-        addStatField(statsPanel, "Total Profit:", df.format(stats.getTotalProfit()));
-        addStatField(statsPanel, "Max Profit:", df.format(stats.getMaxProfit()));
-        addStatField(statsPanel, "Max Loss:", df.format(stats.getMaxLoss()));
-        
-        return statsPanel;
+        addStatField(statsGrid, "Profit Factor:", df.format(stats.getProfitFactor()));
+        addStatField(statsGrid, "Total Profit:", df.format(stats.getTotalProfit()));
+        addStatField(statsGrid, "Max Profit:", df.format(stats.getMaxProfit()));
+        addStatField(statsGrid, "Max Loss:", df.format(stats.getMaxLoss()));
+
+        mainStatsPanel.add(statsGrid, BorderLayout.CENTER);
+
+        // Button Panel
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        JButton showTradesButton = new JButton("Show Trades");
+        showTradesButton.addActionListener(e -> showTradeList());
+        buttonPanel.add(showTradesButton);
+
+        mainStatsPanel.add(buttonPanel, BorderLayout.EAST);
+
+        return mainStatsPanel;
     }
+
     
     private void addStatField(JPanel panel, String label, String value) {
         JPanel fieldPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
@@ -88,5 +116,9 @@ public class SignalProviderPanel extends JPanel {
         valueLabel.setForeground(new Color(0, 100, 0));  // Dunkelgrün
         fieldPanel.add(valueLabel);
         panel.add(fieldPanel);
+    }
+    private void showTradeList() {
+        TradeListFrame tradeListFrame = new TradeListFrame(providerId, stats);
+        tradeListFrame.setVisible(true);
     }
 }
