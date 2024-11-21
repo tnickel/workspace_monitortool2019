@@ -64,8 +64,10 @@ public class MainTable extends JTable {
                     if (row != -1) {
                         row = convertRowIndexToModel(row);
                         String providerName = (String) model.getValueAt(row, 1);
-                        new DetailFrame(providerName, 
-                            dataManager.getStats().get(providerName)).setVisible(true);
+                        String providerId = providerName.substring(providerName.lastIndexOf("_") + 1).replace(".csv", "");
+                        new DetailFrame(providerName,
+                            dataManager.getStats().get(providerName),
+                            providerId).setVisible(true);
                     }
                 }
             }

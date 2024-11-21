@@ -1,48 +1,131 @@
 package ui;
 
-
-
 import data.ProviderStats;
-import components.StatsPanel;
-import components.ChartsPanel;
+import utils.ChartFactory;
+import org.jfree.chart.ChartPanel;
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.awt.event.*;
+import java.net.URI;
+import java.text.DecimalFormat;
 
 public class DetailFrame extends JFrame {
     private final ProviderStats stats;
-    private final StatsPanel statsPanel;
-    private final ChartsPanel chartsPanel;
-    private final JButton showTradesButton;
-    
-    public DetailFrame(String providerName, ProviderStats stats) {
+    private final String providerId;
+    private final DecimalFormat df = new DecimalFormat("#,##0.00");
+    private final DecimalFormat pf = new DecimalFormat("#,##0.00'%'");
+    private final ChartFactory chartFactory;
+
+    public DetailFrame(String providerName, ProviderStats stats, String providerId) {
         super("Detailed Performance Analysis: " + providerName);
         this.stats = stats;
-        this.statsPanel = new StatsPanel(stats);
-        this.chartsPanel = new ChartsPanel(stats);
-        this.showTradesButton = new JButton("Show Trade List");
+        this.providerId = providerId;
+        this.chartFactory = new ChartFactory();
         
         initializeUI();
-    }
-    
-    private void initializeUI() {
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setSize(1000, 800);
+        setLocationRelativeTo(null);
+
+        // ESC zum Schließen
+        KeyStroke escapeKeyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0, false);
+        Action escapeAction = new AbstractAction() {
+            public void actionPerformed(ActionEvent e) {
+                dispose();
+            }
+        };
+        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
+                    .put(escapeKeyStroke, "ESCAPE");
+        getRootPane().getActionMap().put("ESCAPE", escapeAction);
+    }
+
+    private void initializeUI() {
+        JPanel mainPanel = new JPanel();
+        mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
         
-        JPanel mainPanel = new JPanel(new BorderLayout());
+        // Stats Panel oben
+        JPanel statsPanel = createStatsPanel();
+        mainPanel.add(statsPanel);
         
-        // Stats Panel with button
-        JPanel topPanel = new JPanel(new BorderLayout());
+        // Charts
+        ChartPanel equityChart = chartFactory.createEquityCurveChart(stats);
+        equityChart.setPreferredSize(new Dimension(950, 300));
+        mainPanel.add(equityChart);
+        
+        ChartPanel monthlyChart = chartFactory.createMonthlyProfitChart(stats);
+        monthlyChart.setPreferredSize(new Dimension(950, 300));
+        mainPanel.add(monthlyChart);
+        
+        JScrollPane scrollPane = new JScrollPane(mainPanel);
+        add(scrollPane);
+    }
+
+    private JPanel createStatsPanel() {
+        JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
+        mainPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
+
+        // Stats Grid
+        JPanel statsPanel = new JPanel(new GridLayout(4, 4, 10, 5));
+        
+        // Linke Statistiken
+        addStatField(statsPanel, "Total Trades:", String.format("%d", stats.getTradeCount()));
+        addStatField(statsPanel, "Total Profit:", df.format(stats.getTotalProfit()));
+        addStatField(statsPanel, "Avg Profit/Trade:", df.format(stats.getAverageProfit()));
+        addStatField(statsPanel, "Largest Win:", df.format(stats.getMaxProfit()));
+
+        // Rechte Statistiken
+        addStatField(statsPanel, "Win Rate:", pf.format(stats.getWinRate()));
+        addStatField(statsPanel, "Profit Factor:", df.format(stats.getProfitFactor()));
+        addStatField(statsPanel, "Max Drawdown:", pf.format(stats.getMaxDrawdown()));
+        addStatField(statsPanel, "Largest Loss:", df.format(stats.getMaxLoss()));
+
+        // Button Panel für Show Trade List
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        
-        showTradesButton.addActionListener(e -> new TradeListFrame(getTitle(), stats).setVisible(true));
+        JButton showTradesButton = new JButton("Show Trade List");
+        showTradesButton.addActionListener(e -> {
+            TradeListFrame tradeListFrame = new TradeListFrame(getTitle(), stats);
+            tradeListFrame.setVisible(true);
+        });
         buttonPanel.add(showTradesButton);
+
+        // Link Panel
+        JPanel linkPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        JLabel urlLabel = new JLabel("<html><u>https://www.mql5.com/de/signals/" + 
+            providerId + "?source=Site+Signals+Subscriptions#!tab=account</u></html>");
+        urlLabel.setForeground(Color.BLUE);
+        urlLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         
+        urlLabel.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                try {
+                    Desktop.getDesktop().browse(new URI("https://www.mql5.com/de/signals/" + 
+                        providerId + "?source=Site+Signals+Subscriptions#!tab=account"));
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+            }
+        });
+        linkPanel.add(urlLabel);
+
+        // Layout zusammenbauen
+        JPanel topPanel = new JPanel(new BorderLayout());
         topPanel.add(statsPanel, BorderLayout.CENTER);
         topPanel.add(buttonPanel, BorderLayout.EAST);
         
         mainPanel.add(topPanel, BorderLayout.NORTH);
-        mainPanel.add(chartsPanel, BorderLayout.CENTER);
-        
-        add(mainPanel);
-        setLocationRelativeTo(null);
+        mainPanel.add(linkPanel, BorderLayout.CENTER);
+
+        return mainPanel;
+    }
+
+    private void addStatField(JPanel panel, String label, String value) {
+        JPanel fieldPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
+        fieldPanel.add(new JLabel(label));
+        JLabel valueLabel = new JLabel(value);
+        valueLabel.setForeground(new Color(0, 100, 0));  // Dunkelgrün
+        fieldPanel.add(valueLabel);
+        panel.add(fieldPanel);
     }
 }
