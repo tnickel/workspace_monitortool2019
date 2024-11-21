@@ -56,10 +56,11 @@ public class EquityCurvesFrame extends JFrame {
             ChartPanel chartPanel = chartFactory.createEquityCurveChart(stats);
             chartPanel.setPreferredSize(new Dimension(1100, 300));
             
-            // Extract signal provider ID from filename (assuming format ProviderName_ID.csv)
-            String providerId = providerName.substring(providerName.lastIndexOf("_") + 1);
-            SignalProviderPanel signalPanel = new SignalProviderPanel(chartPanel, providerName + ".csv");
+         // Extract signal provider ID from filename (assuming format ProviderName_ID.csv)
+            //String providerId = providerName.substring(providerName.lastIndexOf("_") + 1);
+            SignalProviderPanel signalPanel = new SignalProviderPanel(chartPanel, providerName + ".csv", stats);
             curvePanel.add(signalPanel, BorderLayout.CENTER);
+
 
             curvesPanel.add(curvePanel);
         }
