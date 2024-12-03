@@ -45,10 +45,10 @@ public class ProviderStats {
        this.initialBalance = balance;
    }
 
-   public void addTrade(double profit, LocalDateTime openTime, LocalDateTime closeTime) {
+   public void addTrade(LocalDateTime openTime, LocalDateTime closeTime, double lots, double profit) {
        profits.add(profit);
        tradeDates.add(closeTime.toLocalDate());
-       trades.add(new Trade(openTime, closeTime));
+       trades.add(new Trade(openTime, closeTime, lots));
        tradeCount++;
        totalProfit += profit;
 
@@ -79,8 +79,7 @@ public class ProviderStats {
            }
        }
 
-       // Füge den Trade zum TradeTracker hinzu
-       tradeTracker.addTrade(new Trade(openTime, closeTime));
+       tradeTracker.addTrade(new Trade(openTime, closeTime, lots));
 
        YearMonth yearMonth = YearMonth.from(date);
        monthlyProfits.merge(yearMonth, profit, Double::sum);

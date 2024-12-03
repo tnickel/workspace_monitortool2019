@@ -61,9 +61,10 @@ public class DataManager {
                     // Format: OpenTime;Type;Lots;Symbol;OpenPrice;Lots;CloseTime;ClosePrice;...;Profit
                     LocalDateTime openTime = LocalDateTime.parse(data[0], DATE_TIME_FORMATTER);
                     LocalDateTime closeTime = LocalDateTime.parse(data[6], DATE_TIME_FORMATTER);
+                    double lots = Double.parseDouble(data[2]);
                     double profit = Double.parseDouble(data[data.length - 1]);
                     
-                    stats.addTrade(profit, openTime, closeTime);
+                    stats.addTrade(openTime, closeTime, lots, profit); 
                     tradeCounts++;
                 } catch (Exception e) {
                     LOGGER.warning("Error processing line " + lineCount + " in file " + file.getName() + ": " + line);
