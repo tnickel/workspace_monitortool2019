@@ -2,169 +2,171 @@ package ui;
 
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
-import java.awt.GridLayout;
-import java.awt.Toolkit;
+import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
-import javax.swing.*;
+import java.util.logging.Logger;
+
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextField;
+import javax.swing.JToolBar;
+import javax.swing.SwingUtilities;
+import javax.swing.border.EmptyBorder;
 
 import components.MainTable;
-import components.SearchPanel;
 import data.DataManager;
-import utils.LoggerUtil;
+import models.FilterCriteria;
 
 public class MainFrame extends JFrame {
-    private final DataManager dataManager;
+    private static final Logger LOGGER = Logger.getLogger(MainFrame.class.getName());
     private final MainTable mainTable;
-    private final SearchPanel searchPanel;
-    private final JButton compareButton;
-    private final JButton filterButton;
-    private final JMenuBar menuBar;
-    private JLabel statusLabel;
-    
+    private final JLabel statusLabel;
+    private final JTextField searchField;
+    private final DataManager dataManager;
+    private int[] currentSearchIndex = new int[]{-1};
+
     public MainFrame(DataManager dataManager) {
         super("Signal Providers Performance Analysis");
         this.dataManager = dataManager;
-        this.mainTable = new MainTable(dataManager);
-        this.searchPanel = new SearchPanel(mainTable);
-        this.compareButton = createCompareButton();
-        this.filterButton = createFilterButton();
-        this.menuBar = createMenuBar();
         
-        initializeUI();
-        LoggerUtil.info("MainFrame initialized");
+        // Create components
+        mainTable = new MainTable(dataManager);
+        statusLabel = new JLabel(" ");
+        searchField = new JTextField(20);
+        
+        setupUI();
+        setupSearch();
+        setupStatusBar();
     }
     
-    private JButton createCompareButton() {
-        JButton button = new JButton("Compare Equity Curves");
-        button.setMnemonic(KeyEvent.VK_C);
-        button.setToolTipText("Compare equity curves of all providers");
-        return button;
-    }
-    
-    private JButton createFilterButton() {
-        JButton button = new JButton("Filter");
-        button.setMnemonic(KeyEvent.VK_F);
-        button.setToolTipText("Filter strategies by criteria");
-        button.addActionListener(e -> showFilterDialog());
-        return button;
-    }
-    
-    private JMenuBar createMenuBar() {
-        JMenuBar menuBar = new JMenuBar();
-        
-        // File Menu
-        JMenu fileMenu = new JMenu("File");
-        fileMenu.setMnemonic(KeyEvent.VK_F);
-        
-        JMenuItem exportItem = new JMenuItem("Export Data...", KeyEvent.VK_E);
-        exportItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_E, 
-            Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
-        exportItem.addActionListener(e -> exportData());
-        
-        JMenuItem exitItem = new JMenuItem("Exit", KeyEvent.VK_X);
-        exitItem.addActionListener(e -> dispose());
-        
-        fileMenu.add(exportItem);
-        fileMenu.addSeparator();
-        fileMenu.add(exitItem);
-        
-        // View Menu
-        JMenu viewMenu = new JMenu("View");
-        viewMenu.setMnemonic(KeyEvent.VK_V);
-        
-        JMenuItem compareItem = new JMenuItem("Compare Equity Curves", KeyEvent.VK_C);
-        compareItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_C, 
-            Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
-        compareItem.addActionListener(e -> showEquityCurvesComparison());
-        
-        viewMenu.add(compareItem);
-        
-        menuBar.add(fileMenu);
-        menuBar.add(viewMenu);
-        
-        return menuBar;
-    }
-    
-    private void initializeUI() {
+    private void setupUI() {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(1200, 600);
-        setJMenuBar(menuBar);
         
-        JPanel mainPanel = new JPanel(new BorderLayout(5, 5));
-        mainPanel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
+        // Main layout
+        JPanel contentPane = new JPanel(new BorderLayout(5, 5));
+        contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
+        setContentPane(contentPane);
         
-        // Top panel for search and buttons
-        JPanel topPanel = new JPanel(new BorderLayout(5, 0));
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        // Toolbar
+        createToolBar();
         
-        filterButton.addActionListener(e -> showFilterDialog());
-        buttonPanel.add(filterButton);
-        
-        compareButton.addActionListener(e -> showEquityCurvesComparison());
-        buttonPanel.add(compareButton);
-        
-        // Right panel with search and buttons
-        JPanel rightPanel = new JPanel(new GridLayout(1, 2, 5, 0));
-        rightPanel.add(searchPanel);
-        rightPanel.add(buttonPanel);
-        
-        topPanel.add(rightPanel, BorderLayout.EAST);
-        
-        // Table with scrollpane
+        // Main table
         JScrollPane scrollPane = new JScrollPane(mainTable);
-        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
-        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
-        
-        // Add components to main panel
-        mainPanel.add(topPanel, BorderLayout.NORTH);
-        mainPanel.add(scrollPane, BorderLayout.CENTER);
+        contentPane.add(scrollPane, BorderLayout.CENTER);
         
         // Status bar
         JPanel statusBar = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        statusBar.setBorder(BorderFactory.createEtchedBorder());
-        statusLabel = new JLabel();
         statusBar.add(statusLabel);
-        mainPanel.add(statusBar, BorderLayout.SOUTH);
+        contentPane.add(statusBar, BorderLayout.SOUTH);
         
-        // Setze den Callback in der MainTable
-        mainTable.setStatusUpdateCallback(this::updateStatus);
+        // Set table's status update callback
+        mainTable.setStatusUpdateCallback(status -> statusLabel.setText(status));
         
-        add(mainPanel);
+        // Set initial size
+        setSize(1200, 800);
         setLocationRelativeTo(null);
     }
     
-    private void updateStatus(String status) {
-        statusLabel.setText(status);
+    private void createToolBar() {
+        JToolBar toolBar = new JToolBar();
+        toolBar.setFloatable(false);
+        
+        // Search panel
+        JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        searchPanel.add(new JLabel("Search:"));
+        searchPanel.add(searchField);
+        
+        JButton searchButton = new JButton("Search");
+        searchButton.addActionListener(e -> performSearch());
+        searchPanel.add(searchButton);
+        
+        toolBar.add(searchPanel);
+        toolBar.addSeparator();
+        
+        // Filter button
+        JButton filterButton = new JButton("Filter");
+        filterButton.addActionListener(e -> showFilterDialog());
+        toolBar.add(filterButton);
+        
+        // Compare Equity Curves button
+        JButton compareButton = new JButton("Compare Equity Curves");
+        compareButton.addActionListener(e -> showCompareDialog());
+        toolBar.add(compareButton);
+        
+        // Compare Open Trades button
+        JButton compareOpenTradesButton = new JButton("Compare Open Trades");
+        compareOpenTradesButton.addActionListener(e -> {
+            OpenTradesDialog dialog = new OpenTradesDialog(this, mainTable.getCurrentProviderStats());
+            dialog.setVisible(true);
+        });
+        toolBar.add(compareOpenTradesButton);
+        
+        add(toolBar, BorderLayout.NORTH);
     }
     
-    private void showFilterDialog() {
-        FilterDialog dialog = new FilterDialog(this, mainTable);
-        dialog.setVisible(true);
+    private void setupSearch() {
+        searchField.addActionListener(e -> performSearch());
+        
+        // Add key listener for Escape key to clear search
+        searchField.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
+                    searchField.setText("");
+                    mainTable.clearHighlight();
+                    currentSearchIndex[0] = -1;
+                }
+            }
+        });
     }
     
-    private void showEquityCurvesComparison() {
-        try {
-            // Hier die gefilterten Daten übergeben
-            EquityCurvesFrame comparisonFrame = new EquityCurvesFrame(mainTable.getCurrentProviderStats());
-            comparisonFrame.setVisible(true);
-        } catch (Exception e) {
-            LoggerUtil.error("Error showing equity curves", e);
-            JOptionPane.showMessageDialog(this,
-                "Error showing equity curves: " + e.getMessage(),
-                "Error",
-                JOptionPane.ERROR_MESSAGE);
+    private void setupStatusBar() {
+        statusLabel.setBorder(new EmptyBorder(2, 5, 2, 5));
+    }
+    
+    private void performSearch() {
+        String searchText = searchField.getText().toLowerCase().trim();
+        if (searchText.isEmpty()) {
+            mainTable.clearHighlight();
+            currentSearchIndex[0] = -1;
+            return;
+        }
+        
+        mainTable.highlightSearchText(searchText);
+        
+        if (!mainTable.findAndSelectNext(searchText, currentSearchIndex)) {
+            currentSearchIndex[0] = -1; // Reset search
+            if (!mainTable.findAndSelectNext(searchText, currentSearchIndex)) {
+                JOptionPane.showMessageDialog(this,
+                    "No matches found for: " + searchText,
+                    "Search Result",
+                    JOptionPane.INFORMATION_MESSAGE);
+            }
         }
     }
     
-    private void exportData() {
-        // TODO: Implement export functionality
-        JOptionPane.showMessageDialog(this,
-            "Export functionality coming soon!",
-            "Not Implemented",
-            JOptionPane.INFORMATION_MESSAGE);
+    private void showFilterDialog() {
+        FilterDialog dialog = new FilterDialog(this);
+        FilterCriteria criteria = dialog.showDialog();
+        if (criteria != null) {
+            mainTable.applyFilter(criteria);
+        }
+    }
+    
+    private void showCompareDialog() {
+        CompareDialog dialog = new CompareDialog(this, mainTable.getCurrentProviderStats());
+        dialog.setVisible(true);
     }
     
     public void display() {
-        setVisible(true);
+        SwingUtilities.invokeLater(() -> {
+            setVisible(true);
+            mainTable.updateStatus();
+        });
     }
+    
 }

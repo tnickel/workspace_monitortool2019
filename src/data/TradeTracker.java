@@ -3,19 +3,6 @@ package data;
 import java.time.LocalDateTime;
 import java.util.*;
 
-class Trade {
-    private final LocalDateTime openTime;
-    private final LocalDateTime closeTime;
-    
-    public Trade(LocalDateTime openTime, LocalDateTime closeTime) {
-        this.openTime = openTime;
-        this.closeTime = closeTime;
-    }
-    
-    public LocalDateTime getOpenTime() { return openTime; }
-    public LocalDateTime getCloseTime() { return closeTime; }
-}
-
 public class TradeTracker {
     private final List<Trade> trades;
     private int maxConcurrentTrades;

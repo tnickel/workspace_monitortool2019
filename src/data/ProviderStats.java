@@ -12,6 +12,7 @@ public class ProviderStats {
    private LocalDate endDate;
    private final List<Double> profits;
    private final List<LocalDate> tradeDates;
+   private final List<Trade> trades;
    private double initialBalance;
    private double totalProfit;
    private int winningTrades;
@@ -26,6 +27,7 @@ public class ProviderStats {
    public ProviderStats() {
        this.profits = new ArrayList<>();
        this.tradeDates = new ArrayList<>();
+       this.trades = new ArrayList<>();
        this.monthlyProfits = new TreeMap<>();
        this.maxProfit = Double.MIN_VALUE;
        this.maxLoss = Double.MAX_VALUE;
@@ -46,6 +48,7 @@ public class ProviderStats {
    public void addTrade(double profit, LocalDateTime openTime, LocalDateTime closeTime) {
        profits.add(profit);
        tradeDates.add(closeTime.toLocalDate());
+       trades.add(new Trade(openTime, closeTime));
        tradeCount++;
        totalProfit += profit;
 
@@ -101,6 +104,10 @@ public class ProviderStats {
    
    public List<LocalDate> getTradeDates() { 
        return tradeDates; 
+   }
+   
+   public List<Trade> getTrades() {
+       return Collections.unmodifiableList(trades);
    }
    
    public int getTradeCount() { 
