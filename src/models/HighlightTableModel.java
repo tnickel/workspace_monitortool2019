@@ -1,41 +1,18 @@
 package models;
 
-import data.ProviderStats;
 import javax.swing.table.DefaultTableModel;
-import java.time.LocalDate;
-import java.text.DecimalFormat;
 import java.util.Map;
+import data.ProviderStats;
 
 public class HighlightTableModel extends DefaultTableModel {
     private static final String[] COLUMN_NAMES = {
         "No.", "Signal Provider", "Trades", "Win Rate %", "Total Profit", 
-        "Avg Profit/Trade", "Max Drawdown %", "Profit Factor", "Start Date", "End Date"
+        "Avg Profit/Trade", "Max Drawdown %", "Profit Factor", 
+        "Max Concurrent Trades", "Start Date", "End Date"
     };
-    
-    private final DecimalFormat df = new DecimalFormat("#,##0.00");
     
     public HighlightTableModel() {
         super(COLUMN_NAMES, 0);
-    }
-    
-    @Override
-    public Class<?> getColumnClass(int columnIndex) {
-        switch (columnIndex) {
-            case 0:
-            case 2:
-                return Integer.class;
-            case 3:
-            case 4:
-            case 5:
-            case 6:
-            case 7:
-                return Double.class;
-            case 8:
-            case 9:
-                return LocalDate.class;
-            default:
-                return String.class;
-        }
     }
     
     @Override
@@ -44,37 +21,40 @@ public class HighlightTableModel extends DefaultTableModel {
     }
     
     @Override
-    public Object getValueAt(int row, int column) {
-        Object value = super.getValueAt(row, column);
-        if (value instanceof Double) {
-            // Formatiere nur für die Anzeige, behalte den Original-Wert
-            return ((Double) value).doubleValue();
-        }
-        return value;
+    public Class<?> getColumnClass(int columnIndex) {
+        if (columnIndex == 0) return Integer.class;
+        if (columnIndex == 2) return Integer.class;
+        if (columnIndex == 8) return Integer.class;  // Max Concurrent Trades
+        return String.class;
     }
     
-    public void populateData(Map<String, ProviderStats> signalProviderStats) {
-        setRowCount(0);  // Clear existing data
-        int index = 1;
+    public void populateData(Map<String, ProviderStats> stats) {
+        setRowCount(0);
+        int rowNum = 1;
         
-        for (Map.Entry<String, ProviderStats> entry : signalProviderStats.entrySet()) {
-            ProviderStats stats = entry.getValue();
+        for (Map.Entry<String, ProviderStats> entry : stats.entrySet()) {
+            ProviderStats stat = entry.getValue();
             addRow(new Object[]{
-                index++,
+                rowNum++,
                 entry.getKey(),
-                stats.getTradeCount(),
-                roundToTwoDecimals(stats.getWinRate()),
-                roundToTwoDecimals(stats.getTotalProfit()),
-                roundToTwoDecimals(stats.getAverageProfit()),
-                roundToTwoDecimals(stats.getMaxDrawdown()),
-                roundToTwoDecimals(stats.getProfitFactor()),
-                stats.getStartDate(),
-                stats.getEndDate()
+                stat.getTradeCount(),
+                String.format("%.2f", stat.getWinRate()),
+                String.format("%.2f", stat.getTotalProfit()),
+                String.format("%.2f", stat.getAverageProfit()),
+                String.format("%.2f", stat.getMaxDrawdown()),
+                String.format("%.2f", stat.getProfitFactor()),
+                stat.getMaxConcurrentTrades(),  // Neue Spalte
+                stat.getStartDate(),
+                stat.getEndDate()
             });
         }
+        
+        fireTableDataChanged();
     }
     
-    private double roundToTwoDecimals(double value) {
-        return Math.round(value * 100.0) / 100.0;
+    @Override
+    public void setValueAt(Object value, int row, int column) {
+        super.setValueAt(value, row, column);
+        fireTableCellUpdated(row, column);
     }
 }

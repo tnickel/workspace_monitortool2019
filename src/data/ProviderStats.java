@@ -21,6 +21,7 @@ public class ProviderStats {
    private double maxProfit;
    private double maxLoss;
    private final Map<YearMonth, Double> monthlyProfits;
+   private final TradeTracker tradeTracker;
 
    public ProviderStats() {
        this.profits = new ArrayList<>();
@@ -35,15 +36,16 @@ public class ProviderStats {
        this.totalWinAmount = 0.0;
        this.totalLossAmount = 0.0;
        this.maxDrawdown = 0.0;
+       this.tradeTracker = new TradeTracker();
    }
 
    public void setInitialBalance(double balance) {
        this.initialBalance = balance;
    }
 
-   public void addTrade(double profit, LocalDate date) {
+   public void addTrade(double profit, LocalDateTime openTime, LocalDateTime closeTime) {
        profits.add(profit);
-       tradeDates.add(date);
+       tradeDates.add(closeTime.toLocalDate());
        tradeCount++;
        totalProfit += profit;
 
@@ -56,10 +58,11 @@ public class ProviderStats {
            maxLoss = Math.min(maxLoss, profit);
        }
 
+       LocalDate date = closeTime.toLocalDate();
        if (startDate == null || date.isBefore(startDate)) startDate = date;
        if (endDate == null || date.isAfter(endDate)) endDate = date;
 
-       // Verbesserte Drawdown-Berechnung
+       // Drawdown Berechnung
        double currentBalance = initialBalance;
        double peakBalance = initialBalance;
        
@@ -67,11 +70,14 @@ public class ProviderStats {
            currentBalance += p;
            peakBalance = Math.max(peakBalance, currentBalance);
            
-           if (peakBalance > 0) {  // Verhindere Division durch 0
+           if (peakBalance > 0) {
                double drawdown = (peakBalance - currentBalance) / peakBalance * 100;
                maxDrawdown = Math.max(maxDrawdown, drawdown);
            }
        }
+
+       // Füge den Trade zum TradeTracker hinzu
+       tradeTracker.addTrade(new Trade(openTime, closeTime));
 
        YearMonth yearMonth = YearMonth.from(date);
        monthlyProfits.merge(yearMonth, profit, Double::sum);
@@ -132,6 +138,10 @@ public class ProviderStats {
    public double getMaxLoss() { 
        return maxLoss != Double.MAX_VALUE ? maxLoss : 0; 
    }
+   
+   public int getMaxConcurrentTrades() {
+       return tradeTracker.getMaxConcurrentTrades();
+   }
 
    public long getDaysBetween() {
        if (startDate != null && endDate != null) {
@@ -165,6 +175,7 @@ public class ProviderStats {
        report.append(String.format("Total Winning Amount: %s%n", df.format(totalWinAmount)));
        report.append(String.format("Total Losing Amount: %s%n", df.format(totalLossAmount)));
        report.append(String.format("Trading Period: %d days%n", getDaysBetween()));
+       report.append(String.format("Maximum Concurrent Trades: %d%n", getMaxConcurrentTrades()));
        
        report.append("\nMonthly Performance:\n");
        monthlyProfits.forEach((month, profit) -> 
