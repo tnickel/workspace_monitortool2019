@@ -191,4 +191,22 @@ public class ProviderStats {
        
        return report.toString();
    }
+   public double getMaxConcurrentLots() {
+       TreeMap<LocalDateTime, Double> changes = new TreeMap<>();
+       
+       for (Trade trade : trades) {
+           changes.merge(trade.getOpenTime(), trade.getLots(), Double::sum);
+           changes.merge(trade.getCloseTime(), -trade.getLots(), Double::sum);
+       }
+       
+       double maxLots = 0.0;
+       double currentLots = 0.0;
+       
+       for (Double change : changes.values()) {
+           currentLots += change;
+           maxLots = Math.max(maxLots, currentLots);
+       }
+       
+       return maxLots;
+   }
 }

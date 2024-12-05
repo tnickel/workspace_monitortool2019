@@ -1,18 +1,7 @@
 package ui;
 
-import java.awt.BorderLayout;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Insets;
-
-import javax.swing.JButton;
-import javax.swing.JDialog;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JTextField;
-
+import javax.swing.*;
+import java.awt.*;
 import models.FilterCriteria;
 
 public class FilterDialog extends JDialog {
@@ -22,6 +11,9 @@ public class FilterDialog extends JDialog {
     private final JTextField minProfitFactorField = new JTextField(10);
     private final JTextField minWinRateField = new JTextField(10);
     private final JTextField maxDrawdownField = new JTextField(10);
+    private final JTextField minTotalProfitField = new JTextField(10);
+    private final JTextField minMaxConcurrentTradesField = new JTextField(10);
+    private final JTextField minMaxConcurrentLotsField = new JTextField(10);
     
     public FilterDialog(JFrame parent) {
         super(parent, "Filter Signal Providers", true);
@@ -44,23 +36,41 @@ public class FilterDialog extends JDialog {
         gbc.gridx = 1;
         filterPanel.add(minProfitField, gbc);
         
-        // Zeile 3: Minimum Profit Factor
+        // Zeile 3: Minimum Total Profit
         gbc.gridx = 0; gbc.gridy = 2;
+        filterPanel.add(new JLabel("Min. Total Profit:"), gbc);
+        gbc.gridx = 1;
+        filterPanel.add(minTotalProfitField, gbc);
+        
+        // Zeile 4: Minimum Profit Factor
+        gbc.gridx = 0; gbc.gridy = 3;
         filterPanel.add(new JLabel("Min. Profit Factor:"), gbc);
         gbc.gridx = 1;
         filterPanel.add(minProfitFactorField, gbc);
         
-        // Zeile 4: Minimum Win Rate
-        gbc.gridx = 0; gbc.gridy = 3;
+        // Zeile 5: Minimum Win Rate
+        gbc.gridx = 0; gbc.gridy = 4;
         filterPanel.add(new JLabel("Min. Win Rate (%):"), gbc);
         gbc.gridx = 1;
         filterPanel.add(minWinRateField, gbc);
         
-        // Zeile 5: Maximum Drawdown
-        gbc.gridx = 0; gbc.gridy = 4;
+        // Zeile 6: Maximum Drawdown
+        gbc.gridx = 0; gbc.gridy = 5;
         filterPanel.add(new JLabel("Max. Drawdown (%):"), gbc);
         gbc.gridx = 1;
         filterPanel.add(maxDrawdownField, gbc);
+        
+        // Zeile 7: Min Max Concurrent Trades
+        gbc.gridx = 0; gbc.gridy = 6;
+        filterPanel.add(new JLabel("Min. Max Concurrent Trades:"), gbc);
+        gbc.gridx = 1;
+        filterPanel.add(minMaxConcurrentTradesField, gbc);
+        
+        // Zeile 8: Min Max Concurrent Lots
+        gbc.gridx = 0; gbc.gridy = 7;
+        filterPanel.add(new JLabel("Min. Max Concurrent Lots:"), gbc);
+        gbc.gridx = 1;
+        filterPanel.add(minMaxConcurrentLotsField, gbc);
         
         // Button Panel
         JPanel buttonPanel = new JPanel();
@@ -102,6 +112,10 @@ public class FilterDialog extends JDialog {
                 criteria.setMinProfit(Double.parseDouble(minProfitField.getText().trim()));
             }
             
+            if (!minTotalProfitField.getText().isEmpty()) {
+                criteria.setMinTotalProfit(Double.parseDouble(minTotalProfitField.getText().trim()));
+            }
+            
             if (!minProfitFactorField.getText().isEmpty()) {
                 criteria.setMinProfitFactor(Double.parseDouble(minProfitFactorField.getText().trim()));
             }
@@ -112,6 +126,14 @@ public class FilterDialog extends JDialog {
             
             if (!maxDrawdownField.getText().isEmpty()) {
                 criteria.setMaxDrawdown(Double.parseDouble(maxDrawdownField.getText().trim()));
+            }
+            
+            if (!minMaxConcurrentTradesField.getText().isEmpty()) {
+                criteria.setMinMaxConcurrentTrades(Integer.parseInt(minMaxConcurrentTradesField.getText().trim()));
+            }
+            
+            if (!minMaxConcurrentLotsField.getText().isEmpty()) {
+                criteria.setMinMaxConcurrentLots(Double.parseDouble(minMaxConcurrentLotsField.getText().trim()));
             }
             
             result = criteria;

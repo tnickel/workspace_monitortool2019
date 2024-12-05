@@ -1,12 +1,8 @@
 package components;
 
-
-
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.util.ArrayList;
-import java.util.List;           // Diese Zeile fehlt
-import java.util.Map;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -19,14 +15,13 @@ import models.FilterCriteria;
 import models.HighlightTableModel;
 import renderers.HighlightRenderer;
 import ui.DetailFrame;
-import utils.LoggerUtil;
 
 public class MainTable extends JTable {
-	 private final HighlightTableModel model;
-	    private final HighlightRenderer renderer;
-	    private final DataManager dataManager;
-	    private FilterCriteria currentFilter;
-	    private Consumer<String> statusUpdateCallback;
+    private final HighlightTableModel model;
+    private final HighlightRenderer renderer;
+    private final DataManager dataManager;
+    private FilterCriteria currentFilter;
+    private Consumer<String> statusUpdateCallback;
     
     public MainTable(DataManager dataManager) {
         this.dataManager = dataManager;
@@ -46,13 +41,8 @@ public class MainTable extends JTable {
             getColumnModel().getColumn(i).setCellRenderer(renderer);
         }
         
-        LoggerUtil.debug("Loading data into table...");
-        LoggerUtil.debug("Number of providers: " + dataManager.getStats().size());
-        
         // Populate data
         model.populateData(dataManager.getStats());
-        
-        LoggerUtil.debug("Table rows after population: " + model.getRowCount());
     }
     
     private void setupMouseListener() {
@@ -82,7 +72,49 @@ public class MainTable extends JTable {
         this.statusUpdateCallback = callback;
     }
     
-   
+    public void updateStatus() {
+        if (statusUpdateCallback != null) {
+            int totalProviders = dataManager.getStats().size();
+            int visibleProviders = model.getRowCount();
+            
+            StringBuilder status = new StringBuilder()
+                .append(String.format("Loaded %d providers (showing %d)", totalProviders, visibleProviders));
+            
+            if (currentFilter != null) {
+                status.append(" | Filter: ");
+                List<String> activeFilters = new ArrayList<>();
+                
+                if (currentFilter.getMinTradeDays() > 0) {
+                    activeFilters.add(String.format("Min Days: %d", currentFilter.getMinTradeDays()));
+                }
+                if (currentFilter.getMinProfit() > 0) {
+                    activeFilters.add(String.format("Min Profit: %.2f", currentFilter.getMinProfit()));
+                }
+                if (currentFilter.getMinProfitFactor() > 0) {
+                    activeFilters.add(String.format("Min PF: %.2f", currentFilter.getMinProfitFactor()));
+                }
+                if (currentFilter.getMinWinRate() > 0) {
+                    activeFilters.add(String.format("Min WinRate: %.1f%%", currentFilter.getMinWinRate()));
+                }
+                if (currentFilter.getMaxDrawdown() < 100) {
+                    activeFilters.add(String.format("Max DD: %.1f%%", currentFilter.getMaxDrawdown()));
+                }
+                if (currentFilter.getMinTotalProfit() > 0) {
+                    activeFilters.add(String.format("Min Total Profit: %.2f", currentFilter.getMinTotalProfit()));
+                }
+                if (currentFilter.getMinMaxConcurrentTrades() > 0) {
+                    activeFilters.add(String.format("Min Max Concurrent Trades: %d", currentFilter.getMinMaxConcurrentTrades()));
+                }
+                if (currentFilter.getMinMaxConcurrentLots() > 0) {
+                    activeFilters.add(String.format("Min Max Concurrent Lots: %.2f", currentFilter.getMinMaxConcurrentLots()));
+                }
+                
+                status.append(String.join(", ", activeFilters));
+            }
+            
+            statusUpdateCallback.accept(status.toString());
+        }
+    }
     
     public void highlightSearchText(String text) {
         renderer.setSearchText(text);
@@ -112,23 +144,19 @@ public class MainTable extends JTable {
     }
     
     public void applyFilter(FilterCriteria criteria) {
-        LoggerUtil.info("Applying filter: " + criteria);
         this.currentFilter = criteria;
         refreshTableData();
     }
     
     public void clearFilter() {
-        LoggerUtil.info("Clearing filter");
         this.currentFilter = null;
         refreshTableData();
     }
     
     private void refreshTableData() {
         if (currentFilter == null) {
-            LoggerUtil.debug("No filter active, showing all data");
             model.populateData(dataManager.getStats());
         } else {
-            LoggerUtil.debug("Filtering data with criteria");
             Map<String, ProviderStats> filteredStats = dataManager.getStats().entrySet().stream()
                 .filter(entry -> currentFilter.matches(entry.getValue()))
                 .collect(Collectors.toMap(
@@ -136,11 +164,10 @@ public class MainTable extends JTable {
                     Map.Entry::getValue
                 ));
             model.populateData(filteredStats);
-            LoggerUtil.info(String.format("Filter applied: %d of %d providers match criteria",
-                filteredStats.size(), dataManager.getStats().size()));
         }
         updateStatus();
     }
+    
     public Map<String, ProviderStats> getCurrentProviderStats() {
         if (currentFilter == null) {
             return dataManager.getStats();
@@ -151,42 +178,5 @@ public class MainTable extends JTable {
                 Map.Entry::getKey,
                 Map.Entry::getValue
             ));
-    }
-// In MainTable.java hinzufügen:
-    
-    public void updateStatus() {
-        if (statusUpdateCallback != null) {
-            int totalProviders = dataManager.getStats().size();
-            int visibleProviders = model.getRowCount();
-            
-            StringBuilder status = new StringBuilder()
-                .append(String.format("Loaded %d providers (showing %d)", totalProviders, visibleProviders));
-            
-            // Wenn Filter aktiv ist, füge die Filterkriterien hinzu
-            if (currentFilter != null) {
-                status.append(" | Filter: ");
-                List<String> activeFilters = new ArrayList<>();
-                
-                if (currentFilter.getMinTradeDays() > 0) {
-                    activeFilters.add(String.format("Min Days: %d", currentFilter.getMinTradeDays()));
-                }
-                if (currentFilter.getMinProfit() > 0) {
-                    activeFilters.add(String.format("Min Profit: %.2f", currentFilter.getMinProfit()));
-                }
-                if (currentFilter.getMinProfitFactor() > 0) {
-                    activeFilters.add(String.format("Min PF: %.2f", currentFilter.getMinProfitFactor()));
-                }
-                if (currentFilter.getMinWinRate() > 0) {
-                    activeFilters.add(String.format("Min WinRate: %.1f%%", currentFilter.getMinWinRate()));
-                }
-                if (currentFilter.getMaxDrawdown() < 100) {
-                    activeFilters.add(String.format("Max DD: %.1f%%", currentFilter.getMaxDrawdown()));
-                }
-                
-                status.append(String.join(", ", activeFilters));
-            }
-            
-            statusUpdateCallback.accept(status.toString());
-        }
     }
 }

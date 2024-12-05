@@ -8,7 +8,7 @@ public class HighlightTableModel extends DefaultTableModel {
     private static final String[] COLUMN_NAMES = {
         "No.", "Signal Provider", "Trades", "Win Rate %", "Total Profit", 
         "Avg Profit/Trade", "Max Drawdown %", "Profit Factor", 
-        "Max Concurrent Trades", "Start Date", "End Date"
+        "Max Concurrent Trades", "Max Concurrent Lots", "Start Date", "End Date"
     };
     
     public HighlightTableModel() {
@@ -24,7 +24,7 @@ public class HighlightTableModel extends DefaultTableModel {
     public Class<?> getColumnClass(int columnIndex) {
         if (columnIndex == 0) return Integer.class;
         if (columnIndex == 2) return Integer.class;
-        if (columnIndex == 8) return Integer.class;  // Max Concurrent Trades
+        if (columnIndex == 8) return Integer.class;
         return String.class;
     }
     
@@ -43,7 +43,8 @@ public class HighlightTableModel extends DefaultTableModel {
                 String.format("%.2f", stat.getAverageProfit()),
                 String.format("%.2f", stat.getMaxDrawdown()),
                 String.format("%.2f", stat.getProfitFactor()),
-                stat.getMaxConcurrentTrades(),  // Neue Spalte
+                stat.getMaxConcurrentTrades(),
+                String.format("%.2f", stat.getMaxConcurrentLots()),
                 stat.getStartDate(),
                 stat.getEndDate()
             });
@@ -51,7 +52,7 @@ public class HighlightTableModel extends DefaultTableModel {
         
         fireTableDataChanged();
     }
-    
+
     @Override
     public void setValueAt(Object value, int row, int column) {
         super.setValueAt(value, row, column);
