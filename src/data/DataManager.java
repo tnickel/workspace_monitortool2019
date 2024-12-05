@@ -1,17 +1,24 @@
 
 package data;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
 
 public class DataManager {
     private static final Logger LOGGER = Logger.getLogger(DataManager.class.getName());
-    private static final DateTimeFormatter DATE_TIME_FORMATTER = 
-        DateTimeFormatter.ofPattern("yyyy.MM.dd HH:mm:ss");
-    private static final int EXPECTED_MIN_FIELDS = 11; // Minimale Anzahl erwarteter Felder
+    private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy.MM.dd HH:mm:ss");
+    private static final int EXPECTED_MIN_FIELDS = 11;
     
     private final Map<String, ProviderStats> signalProviderStats;
     
@@ -37,7 +44,10 @@ public class DataManager {
     private void processFile(File file) {
         LOGGER.info("Starting to process file: " + file.getName());
         List<String> skippedLines = new ArrayList<>();
-        try (BufferedReader reader = new BufferedReader(new FileReader(file, java.nio.charset.StandardCharsets.UTF_8))) {
+        
+        try (BufferedReader reader = new BufferedReader(
+                new FileReader(file, StandardCharsets.UTF_8), 32768)) {
+                
             String line;
             boolean isHeader = true;
             ProviderStats stats = new ProviderStats();
@@ -46,6 +56,7 @@ public class DataManager {
             double initialBalance = 0.0;
             boolean foundFirstBalance = false;
 
+            String[] data;
             while ((line = reader.readLine()) != null) {
                 lineCount++;
                 if (isHeader) {
@@ -56,9 +67,8 @@ public class DataManager {
                 line = line.trim();
                 if (line.isEmpty()) continue;
 
-                String[] data = line.split(";");
+                data = line.split(";", -1);
 
-                // Überprüfe minimale Feldanzahl
                 if (data.length < EXPECTED_MIN_FIELDS) {
                     LOGGER.warning(String.format("Line %d in %s has insufficient fields (%d < %d): %s",
                             lineCount, file.getName(), data.length, EXPECTED_MIN_FIELDS, line));
@@ -66,7 +76,6 @@ public class DataManager {
                     continue;
                 }
 
-                // Prüfe auf Balance-Eintrag (nur den ersten Balance-Eintrag verwenden)
                 if (data.length >= 2 && "Balance".equalsIgnoreCase(data[1])) {
                     if (!foundFirstBalance) {
                         try {
@@ -89,12 +98,16 @@ public class DataManager {
                 }
 
                 try {
-                    // Validierung: Pflichtfelder sicherstellen
-                    if (Arrays.stream(new int[]{0,1,2,3,4,6,7}).anyMatch(i -> i >= data.length || data[i].trim().isEmpty())) {
-                        LOGGER.warning("Missing or empty required fields in line " + lineCount + ": " + line);
-                        skippedLines.add(line);
-                        continue;
-                    }
+                	if (data[0].trim().isEmpty() || data[1].trim().isEmpty() || 
+                		    data[2].trim().isEmpty() || data[3].trim().isEmpty() || 
+                		    data[4].trim().isEmpty() || data[6].trim().isEmpty() || 
+                		    data[7].trim().isEmpty()) {
+                		    
+                		    LOGGER.warning("Missing or empty required fields in line " + lineCount + ": " + line);
+                		    skippedLines.add(line);
+                		    continue;
+                		}
+                    
 
                     LocalDateTime openTime = LocalDateTime.parse(data[0].trim(), DATE_TIME_FORMATTER);
                     String type = data[1].trim();
@@ -104,7 +117,6 @@ public class DataManager {
                     LocalDateTime closeTime = LocalDateTime.parse(data[6].trim(), DATE_TIME_FORMATTER);
                     double closePrice = Double.parseDouble(data[7].trim());
 
-                    // Commission, Swap und Profit optional behandeln
                     double commission = 0.0;
                     double swap = 0.0;
                     double profit = 0.0;

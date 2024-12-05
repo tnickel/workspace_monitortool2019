@@ -14,7 +14,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.net.URI;
 import java.text.DecimalFormat;
-
+import utils.ChartFactoryUtil;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.BoxLayout;
@@ -27,10 +27,11 @@ import javax.swing.JScrollPane;
 import javax.swing.KeyStroke;
 import javax.swing.border.EmptyBorder;
 
+import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 
+import charts.TradeStackingChart;
 import data.ProviderStats;
-import utils.ChartFactoryUtil;
 
 public class DetailFrame extends JFrame {
     private final ProviderStats stats;
@@ -50,15 +51,13 @@ public class DetailFrame extends JFrame {
         setSize(1000, 800);
         setLocationRelativeTo(null);
 
-        // ESC zum Schließen
         KeyStroke escapeKeyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0, false);
         Action escapeAction = new AbstractAction() {
             public void actionPerformed(ActionEvent e) {
                 dispose();
             }
         };
-        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
-                    .put(escapeKeyStroke, "ESCAPE");
+        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(escapeKeyStroke, "ESCAPE");
         getRootPane().getActionMap().put("ESCAPE", escapeAction);
     }
 
@@ -79,6 +78,11 @@ public class DetailFrame extends JFrame {
         monthlyChart.setPreferredSize(new Dimension(950, 300));
         mainPanel.add(monthlyChart);
         
+        // Trade Stacking Chart
+        TradeStackingChart stackingChart = new TradeStackingChart(stats.getTrades());
+        stackingChart.setPreferredSize(new Dimension(950, 300));
+        mainPanel.add(stackingChart);
+        
         JScrollPane scrollPane = new JScrollPane(mainPanel);
         add(scrollPane);
     }
@@ -96,13 +100,13 @@ public class DetailFrame extends JFrame {
         addStatField(statsPanel, "Avg Profit/Trade:", df.format(stats.getAverageProfitPerTrade()));
         addStatField(statsPanel, "Max Concurrent Trades:", String.format("%d", stats.getMaxConcurrentTrades()));
         
-        // Mitte Links
+        // Rechte Statistiken
         addStatField(statsPanel, "Win Rate:", pf.format(stats.getWinRate()));
         addStatField(statsPanel, "Profit Factor:", df.format(stats.getProfitFactor()));
         addStatField(statsPanel, "Max Drawdown:", pf.format(stats.getMaxDrawdownPercent()));
         addStatField(statsPanel, "Max Concurrent Lots:", df.format(stats.getMaxConcurrentLots()));
 
-        // Button Panel für Show Trade List
+        // Button Panel
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         JButton showTradesButton = new JButton("Show Trade List");
         showTradesButton.addActionListener(e -> {
@@ -146,7 +150,7 @@ public class DetailFrame extends JFrame {
         JPanel fieldPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
         fieldPanel.add(new JLabel(label));
         JLabel valueLabel = new JLabel(value);
-        valueLabel.setForeground(new Color(0, 100, 0));  // Dunkelgrün
+        valueLabel.setForeground(new Color(0, 100, 0));
         fieldPanel.add(valueLabel);
         panel.add(fieldPanel);
     }

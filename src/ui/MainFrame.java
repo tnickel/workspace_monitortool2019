@@ -165,7 +165,10 @@ public class MainFrame extends JFrame {
     public void display() {
         SwingUtilities.invokeLater(() -> {
             setVisible(true);
-            mainTable.updateStatus();
+            // Verzögere initiale Datenladung
+            SwingUtilities.invokeLater(() -> {
+                mainTable.updateStatus();
+            });
         });
     }
     

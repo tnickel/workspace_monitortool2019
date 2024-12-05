@@ -70,10 +70,29 @@ public class HighlightTableModel extends AbstractTableModel {
 
     public void populateData(Map<String, ProviderStats> stats) {
         data.clear();
+        // Batching für bessere Performance
+        List<Object[]> newData = new ArrayList<>(stats.size());
         for (Map.Entry<String, ProviderStats> entry : stats.entrySet()) {
             ProviderStats providerStats = entry.getValue();
-            addRow(entry.getKey(), providerStats);
+            List<Trade> trades = new ArrayList<>(providerStats.getTrades());
+            
+            Object[] row = new Object[] {
+                newData.size() + 1,
+                entry.getKey(),
+                trades.size(),
+                providerStats.getWinRate(),
+                providerStats.getTotalProfit(),
+                providerStats.getAverageProfitPerTrade(),
+                providerStats.getMaxDrawdownPercent(),
+                providerStats.getProfitFactor(),
+                providerStats.getMaxConcurrentTrades(),
+                providerStats.getMaxConcurrentLots(),
+                providerStats.getStartDate().format(dateFormatter),
+                providerStats.getEndDate().format(dateFormatter)
+            };
+            newData.add(row);
         }
+        data.addAll(newData);
         fireTableDataChanged();
     }
 
