@@ -1,3 +1,4 @@
+
 package ui;
 
 import java.awt.BorderLayout;
@@ -7,6 +8,8 @@ import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +32,7 @@ import org.jfree.data.time.TimeSeries;
 import org.jfree.data.time.TimeSeriesCollection;
 
 import data.ProviderStats;
+import data.Trade;
 
 public class CompareDialog extends JDialog {
     private final Map<String, ProviderStats> providerStats;
@@ -37,7 +41,6 @@ public class CompareDialog extends JDialog {
         super(parent, "Compare Equity Curves", true);
         this.providerStats = stats;
 
-        // Hauptpanel für die Charts
         JPanel mainPanel = new JPanel();
         mainPanel.setLayout(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
@@ -47,20 +50,16 @@ public class CompareDialog extends JDialog {
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(5, 5, 5, 5);
 
-        // Erstelle für jeden Provider einen Chart
         for (Map.Entry<String, ProviderStats> entry : providerStats.entrySet()) {
             String providerName = entry.getKey();
             ProviderStats currentStats = entry.getValue();
 
-            // Chart erstellen
             JFreeChart chart = createChart(providerName, currentStats);
             ChartPanel chartPanel = new ChartPanel(chart);
             chartPanel.setPreferredSize(new Dimension(800, 300));
 
-            // Panel für Provider mit vergrößertem Titel
             JPanel providerPanel = new JPanel(new BorderLayout());
             
-            // Erstelle TitledBorder mit größerer Schrift
             Font currentFont = UIManager.getFont("TitledBorder.font");
             Font largerFont = currentFont.deriveFont(currentFont.getSize() * 2.0f);
             TitledBorder titledBorder = BorderFactory.createTitledBorder(providerName);
@@ -73,11 +72,9 @@ public class CompareDialog extends JDialog {
             gbc.gridy++;
         }
 
-        // Scrollpane für alle Charts
         JScrollPane scrollPane = new JScrollPane(mainPanel);
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
 
-        // Dialog-Einstellungen
         setLayout(new BorderLayout());
         add(scrollPane, BorderLayout.CENTER);
         setSize(1000, 800);
@@ -85,44 +82,44 @@ public class CompareDialog extends JDialog {
     }
 
     private JFreeChart createChart(String providerName, ProviderStats stats) {
-        TimeSeries series = new TimeSeries(providerName);
-        TimeSeriesCollection dataset = new TimeSeriesCollection();
+    	   TimeSeries series = new TimeSeries(providerName);
+    	   TimeSeriesCollection dataset = new TimeSeriesCollection();
 
-        List<Date> dates = stats.getTradeDates().stream()
-            .map(date -> Date.from(date.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant()))
-            .toList();
+    	   List<Trade> trades = stats.getTrades();
+    	   trades.sort((t1, t2) -> t1.getCloseTime().compareTo(t2.getCloseTime()));
+    	   
+    	   double equity = stats.getInitialBalance();
+    	   
+    	   // Für jeden Trade Equity berechnen
+    	   for (Trade trade : trades) {
+    	       if (trade.getCloseTime() != null && !trade.getCloseTime().isAfter(LocalDateTime.now())) {
+    	           equity += trade.getTotalProfit();
+    	           Date closeDate = Date.from(trade.getCloseTime().atZone(ZoneId.systemDefault()).toInstant());
+    	           series.addOrUpdate(new Day(closeDate), equity);
+    	       }
+    	   }
 
-        List<Double> profits = stats.getProfits();
-        double equity = stats.getInitialBalance();
+    	   dataset.addSeries(series);
 
-        for (int i = 0; i < dates.size(); i++) {
-            equity += profits.get(i);
-            series.addOrUpdate(new Day(dates.get(i)), equity);
-        }
+    	   JFreeChart chart = ChartFactory.createTimeSeriesChart(
+    	       "Equity Curve",
+    	       "Time",
+    	       "Equity",
+    	       dataset,
+    	       true,
+    	       true,
+    	       false
+    	   );
 
-        dataset.addSeries(series);
+    	   XYPlot plot = (XYPlot) chart.getPlot();
+    	   plot.setBackgroundPaint(Color.WHITE);
+    	   plot.setDomainGridlinePaint(Color.LIGHT_GRAY);
+    	   plot.setRangeGridlinePaint(Color.LIGHT_GRAY);
 
-        // Erstelle Chart
-        JFreeChart chart = ChartFactory.createTimeSeriesChart(
-            "Equity Curve",
-            "Time",
-            "Equity",
-            dataset,
-            true,
-            true,
-            false
-        );
+    	   XYLineAndShapeRenderer renderer = new XYLineAndShapeRenderer();
+    	   renderer.setDefaultShapesVisible(false);
+    	   plot.setRenderer(renderer);
 
-        // Customize chart
-        XYPlot plot = (XYPlot) chart.getPlot();
-        plot.setBackgroundPaint(Color.WHITE);
-        plot.setDomainGridlinePaint(Color.LIGHT_GRAY);
-        plot.setRangeGridlinePaint(Color.LIGHT_GRAY);
-
-        XYLineAndShapeRenderer renderer = new XYLineAndShapeRenderer();
-        renderer.setDefaultShapesVisible(false);
-        plot.setRenderer(renderer);
-
-        return chart;
-    }
+    	   return chart;
+    	}
 }

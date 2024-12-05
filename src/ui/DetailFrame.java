@@ -1,27 +1,49 @@
+
 package ui;
 
-import data.ProviderStats;
-import utils.ChartFactory;
-import org.jfree.chart.ChartPanel;
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import java.awt.*;
-import java.awt.event.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Cursor;
+import java.awt.Desktop;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.GridLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.net.URI;
 import java.text.DecimalFormat;
+
+import javax.swing.AbstractAction;
+import javax.swing.Action;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JComponent;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.KeyStroke;
+import javax.swing.border.EmptyBorder;
+
+import org.jfree.chart.ChartPanel;
+
+import data.ProviderStats;
+import utils.ChartFactoryUtil;
 
 public class DetailFrame extends JFrame {
     private final ProviderStats stats;
     private final String providerId;
     private final DecimalFormat df = new DecimalFormat("#,##0.00");
     private final DecimalFormat pf = new DecimalFormat("#,##0.00'%'");
-    private final ChartFactory chartFactory;
+    private final ChartFactoryUtil chartFactory;
 
     public DetailFrame(String providerName, ProviderStats stats, String providerId) {
-        super("Detailed Performance Analysis: " + providerName);
+        super("Performance Analysis: " + providerName);
         this.stats = stats;
         this.providerId = providerId;
-        this.chartFactory = new ChartFactory();
+        this.chartFactory = new ChartFactoryUtil();
         
         initializeUI();
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
@@ -69,16 +91,16 @@ public class DetailFrame extends JFrame {
         JPanel statsPanel = new JPanel(new GridLayout(4, 4, 10, 5));
         
         // Linke Statistiken
-        addStatField(statsPanel, "Total Trades:", String.format("%d", stats.getTradeCount()));
+        addStatField(statsPanel, "Total Trades:", String.format("%d", stats.getTrades().size()));
         addStatField(statsPanel, "Total Profit:", df.format(stats.getTotalProfit()));
-        addStatField(statsPanel, "Avg Profit/Trade:", df.format(stats.getAverageProfit()));
-        addStatField(statsPanel, "Largest Win:", df.format(stats.getMaxProfit()));
-
-        // Rechte Statistiken
+        addStatField(statsPanel, "Avg Profit/Trade:", df.format(stats.getAverageProfitPerTrade()));
+        addStatField(statsPanel, "Max Concurrent Trades:", String.format("%d", stats.getMaxConcurrentTrades()));
+        
+        // Mitte Links
         addStatField(statsPanel, "Win Rate:", pf.format(stats.getWinRate()));
         addStatField(statsPanel, "Profit Factor:", df.format(stats.getProfitFactor()));
-        addStatField(statsPanel, "Max Drawdown:", pf.format(stats.getMaxDrawdown()));
-        addStatField(statsPanel, "Largest Loss:", df.format(stats.getMaxLoss()));
+        addStatField(statsPanel, "Max Drawdown:", pf.format(stats.getMaxDrawdownPercent()));
+        addStatField(statsPanel, "Max Concurrent Lots:", df.format(stats.getMaxConcurrentLots()));
 
         // Button Panel für Show Trade List
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));

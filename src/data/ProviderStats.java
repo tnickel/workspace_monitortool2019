@@ -1,212 +1,135 @@
+
 package data;
 
-import java.time.*;
-import java.time.format.*;
-import java.text.DecimalFormat;
-import java.util.*;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import org.jfree.data.category.DefaultCategoryDataset;
 
 public class ProviderStats {
-   private int tradeCount;
-   private LocalDate startDate;
-   private LocalDate endDate;
-   private final List<Double> profits;
-   private final List<LocalDate> tradeDates;
-   private final List<Trade> trades;
-   private double initialBalance;
-   private double totalProfit;
-   private int winningTrades;
-   private double totalWinAmount; 
-   private double totalLossAmount;
-   private double maxDrawdown;
-   private double maxProfit;
-   private double maxLoss;
-   private final Map<YearMonth, Double> monthlyProfits;
-   private final TradeTracker tradeTracker;
+    private final List<Trade> trades;
+    private final List<Double> profits;
+    private double initialBalance;
+    private final TradeTracker tradeTracker;
+    
+    public ProviderStats() {
+        this.trades = new ArrayList<>();
+        this.profits = new ArrayList<>();
+        this.initialBalance = 0.0;
+        this.tradeTracker = new TradeTracker();
+    }
+    
+    public void setInitialBalance(double balance) {
+        this.initialBalance = balance;
+    }
+    
+    public double getInitialBalance() {
+        return initialBalance;
+    }
+    
+    public void addTrade(LocalDateTime openTime, LocalDateTime closeTime,
+                        String type, String symbol, double lots,
+                        double openPrice, double closePrice,
+                        double commission, double swap, double profit) {
+        Trade trade = new Trade(openTime, closeTime, type, symbol, lots,
+                              openPrice, closePrice, commission, swap, profit);
+        trades.add(trade);
+        profits.add(profit);
+        tradeTracker.addTrade(trade);
+    }
+    
+    public List<Trade> getTrades() {
+        return trades;
+    }
+    
+    public List<Double> getProfits() {
+        return profits;
+    }
+    
+    public double getTotalProfit() {
+        return profits.stream().mapToDouble(Double::doubleValue).sum();
+    }
+    
+    public double getWinRate() {
+        long winningTrades = profits.stream().filter(p -> p > 0).count();
+        return profits.isEmpty() ? 0.0 : (winningTrades * 100.0) / profits.size();
+    }
+    
+    public double getAverageProfitPerTrade() {
+        return profits.isEmpty() ? 0.0 : getTotalProfit() / profits.size();
+    }
+    
+    public double getProfitFactor() {
+        double totalGain = profits.stream().filter(p -> p > 0).mapToDouble(Double::doubleValue).sum();
+        double totalLoss = Math.abs(profits.stream().filter(p -> p < 0).mapToDouble(Double::doubleValue).sum());
+        return totalLoss == 0 ? totalGain : totalGain / totalLoss;
+    }
+    
+    public double getMaxDrawdownPercent() {
+        if (profits.isEmpty()) return 0.0;
+        
+        double peak = initialBalance;
+        double maxDrawdown = 0.0;
+        double currentBalance = initialBalance;
+        
+        for (double profit : profits) {
+            currentBalance += profit;
+            peak = Math.max(currentBalance, peak);
+            double drawdown = (peak - currentBalance) / peak * 100.0;
+            maxDrawdown = Math.max(maxDrawdown, drawdown);
+        }
+        
+        return maxDrawdown;
+    }
+    
+    public LocalDate getStartDate() {
+        return trades.isEmpty() ? LocalDate.now() : 
+               trades.get(0).getOpenTime().toLocalDate();
+    }
+    
+    public LocalDate getEndDate() {
+        return trades.isEmpty() ? LocalDate.now() : 
+               trades.get(trades.size() - 1).getCloseTime().toLocalDate();
+    }
+    
+    public int getMaxConcurrentTrades() {
+        return tradeTracker.getMaxConcurrentTrades();
+    }
 
-   public ProviderStats() {
-       this.profits = new ArrayList<>();
-       this.tradeDates = new ArrayList<>();
-       this.trades = new ArrayList<>();
-       this.monthlyProfits = new TreeMap<>();
-       this.maxProfit = Double.MIN_VALUE;
-       this.maxLoss = Double.MAX_VALUE;
-       this.totalProfit = 0.0;
-       this.initialBalance = 0.0;
-       this.tradeCount = 0;
-       this.winningTrades = 0;
-       this.totalWinAmount = 0.0;
-       this.totalLossAmount = 0.0;
-       this.maxDrawdown = 0.0;
-       this.tradeTracker = new TradeTracker();
-   }
+    public double getMaxConcurrentLots() {
+        return tradeTracker.getMaxConcurrentLots();
+    }
+    
+    public DefaultCategoryDataset getMonthlyProfitData() {
+        DefaultCategoryDataset dataset = new DefaultCategoryDataset();
+        // Implementation...
+        return dataset;
+    }
+    public double getMaxProfit() {
+        return profits.stream()
+            .mapToDouble(Double::doubleValue)
+            .max()
+            .orElse(0.0);
+    }
 
-   public void setInitialBalance(double balance) {
-       this.initialBalance = balance;
-   }
+    public double getMaxLoss() {
+        return profits.stream()
+            .mapToDouble(Double::doubleValue)
+            .min()
+            .orElse(0.0);
+    }
 
-   public void addTrade(LocalDateTime openTime, LocalDateTime closeTime, double lots, double profit) {
-       profits.add(profit);
-       tradeDates.add(closeTime.toLocalDate());
-       trades.add(new Trade(openTime, closeTime, lots));
-       tradeCount++;
-       totalProfit += profit;
+    public int getTradeCount() {
+        return trades.size();
+    }
 
-       if (profit > 0) {
-           winningTrades++;
-           totalWinAmount += profit;
-           maxProfit = Math.max(maxProfit, profit);
-       } else if (profit < 0) {
-           totalLossAmount += profit;
-           maxLoss = Math.min(maxLoss, profit);
-       }
+    public double getMaxDrawdown() {
+        return getMaxDrawdownPercent();
+    }
 
-       LocalDate date = closeTime.toLocalDate();
-       if (startDate == null || date.isBefore(startDate)) startDate = date;
-       if (endDate == null || date.isAfter(endDate)) endDate = date;
-
-       // Drawdown Berechnung
-       double currentBalance = initialBalance;
-       double peakBalance = initialBalance;
-       
-       for (Double p : profits) {
-           currentBalance += p;
-           peakBalance = Math.max(peakBalance, currentBalance);
-           
-           if (peakBalance > 0) {
-               double drawdown = (peakBalance - currentBalance) / peakBalance * 100;
-               maxDrawdown = Math.max(maxDrawdown, drawdown);
-           }
-       }
-
-       tradeTracker.addTrade(new Trade(openTime, closeTime, lots));
-
-       YearMonth yearMonth = YearMonth.from(date);
-       monthlyProfits.merge(yearMonth, profit, Double::sum);
-   }
-
-   public double getCurrentBalance() { 
-       return initialBalance + totalProfit; 
-   }
-   
-   public double getInitialBalance() { 
-       return initialBalance; 
-   }
-   
-   public double getTotalProfit() { 
-       return totalProfit; 
-   }
-   
-   public List<Double> getProfits() { 
-       return profits; 
-   }
-   
-   public List<LocalDate> getTradeDates() { 
-       return tradeDates; 
-   }
-   
-   public List<Trade> getTrades() {
-       return Collections.unmodifiableList(trades);
-   }
-   
-   public int getTradeCount() { 
-       return tradeCount; 
-   }
-   
-   public LocalDate getStartDate() { 
-       return startDate; 
-   }
-   
-   public LocalDate getEndDate() { 
-       return endDate; 
-   }
-
-   public double getWinRate() { 
-       return tradeCount > 0 ? (winningTrades * 100.0) / tradeCount : 0; 
-   }
-   
-   public double getProfitFactor() { 
-       return totalLossAmount != 0 ? Math.abs(totalWinAmount / totalLossAmount) : 0; 
-   }
-   
-   public double getAverageProfit() { 
-       return tradeCount > 0 ? totalProfit / tradeCount : 0; 
-   }
-   
-   public double getMaxDrawdown() { 
-       return maxDrawdown; 
-   }
-   
-   public double getMaxProfit() { 
-       return maxProfit != Double.MIN_VALUE ? maxProfit : 0; 
-   }
-   
-   public double getMaxLoss() { 
-       return maxLoss != Double.MAX_VALUE ? maxLoss : 0; 
-   }
-   
-   public int getMaxConcurrentTrades() {
-       return tradeTracker.getMaxConcurrentTrades();
-   }
-
-   public long getDaysBetween() {
-       if (startDate != null && endDate != null) {
-           return Duration.between(startDate.atStartOfDay(), endDate.atStartOfDay()).toDays();
-       }
-       return 0;
-   }
-
-   public DefaultCategoryDataset getMonthlyProfitData() {
-       DefaultCategoryDataset dataset = new DefaultCategoryDataset();
-       monthlyProfits.forEach((month, profit) -> 
-           dataset.addValue(profit, "Monthly Profit", 
-                          month.format(DateTimeFormatter.ofPattern("MMM yyyy"))));
-       return dataset;
-   }
-
-   public String getAnalysisString() {
-       DecimalFormat df = new DecimalFormat("#,##0.00");
-       DecimalFormat pf = new DecimalFormat("#,##0.00'%'");
-       
-       StringBuilder report = new StringBuilder();
-       report.append(String.format("Current Balance: %s%n", df.format(getCurrentBalance())));
-       report.append(String.format("Total Profit/Loss: %s%n", df.format(getTotalProfit())));
-       report.append(String.format("Number of Trades: %d%n", getTradeCount()));
-       report.append(String.format("Win Rate: %s%n", pf.format(getWinRate())));
-       report.append(String.format("Profit Factor: %s%n", df.format(getProfitFactor())));
-       report.append(String.format("Average Profit per Trade: %s%n", df.format(getAverageProfit())));
-       report.append(String.format("Maximum Drawdown: %s%n", pf.format(getMaxDrawdown())));
-       report.append(String.format("Largest Winning Trade: %s%n", df.format(getMaxProfit())));
-       report.append(String.format("Largest Losing Trade: %s%n", df.format(getMaxLoss())));
-       report.append(String.format("Total Winning Amount: %s%n", df.format(totalWinAmount)));
-       report.append(String.format("Total Losing Amount: %s%n", df.format(totalLossAmount)));
-       report.append(String.format("Trading Period: %d days%n", getDaysBetween()));
-       report.append(String.format("Maximum Concurrent Trades: %d%n", getMaxConcurrentTrades()));
-       
-       report.append("\nMonthly Performance:\n");
-       monthlyProfits.forEach((month, profit) -> 
-           report.append(String.format("%s: %s%n", 
-               month.format(DateTimeFormatter.ofPattern("MMM yyyy")), 
-               df.format(profit))));
-       
-       return report.toString();
-   }
-   public double getMaxConcurrentLots() {
-       TreeMap<LocalDateTime, Double> changes = new TreeMap<>();
-       
-       for (Trade trade : trades) {
-           changes.merge(trade.getOpenTime(), trade.getLots(), Double::sum);
-           changes.merge(trade.getCloseTime(), -trade.getLots(), Double::sum);
-       }
-       
-       double maxLots = 0.0;
-       double currentLots = 0.0;
-       
-       for (Double change : changes.values()) {
-           currentLots += change;
-           maxLots = Math.max(maxLots, currentLots);
-       }
-       
-       return maxLots;
-   }
+    public double getAverageProfit() {
+        return getAverageProfitPerTrade();
+    }
 }
+

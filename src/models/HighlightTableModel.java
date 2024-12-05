@@ -1,61 +1,84 @@
+
 package models;
 
-import javax.swing.table.DefaultTableModel;
-import java.util.Map;
 import data.ProviderStats;
+import data.TradeTracker;
+import data.Trade;
+import data.TradeComparator;
+import java.time.format.DateTimeFormatter;
+import javax.swing.table.AbstractTableModel;
+import java.util.*;
 
-public class HighlightTableModel extends DefaultTableModel {
-    private static final String[] COLUMN_NAMES = {
+public class HighlightTableModel extends AbstractTableModel {
+    private final List<Object[]> data = new ArrayList<>();
+    private final String[] columnNames = {
         "No.", "Signal Provider", "Trades", "Win Rate %", "Total Profit", 
         "Avg Profit/Trade", "Max Drawdown %", "Profit Factor", 
         "Max Concurrent Trades", "Max Concurrent Lots", "Start Date", "End Date"
     };
     
-    public HighlightTableModel() {
-        super(COLUMN_NAMES, 0);
-    }
-    
+    private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
     @Override
-    public boolean isCellEditable(int row, int column) {
-        return false;
-    }
-    
-    @Override
-    public Class<?> getColumnClass(int columnIndex) {
-        if (columnIndex == 0) return Integer.class;
-        if (columnIndex == 2) return Integer.class;
-        if (columnIndex == 8) return Integer.class;
-        return String.class;
-    }
-    
-    public void populateData(Map<String, ProviderStats> stats) {
-        setRowCount(0);
-        int rowNum = 1;
-        
-        for (Map.Entry<String, ProviderStats> entry : stats.entrySet()) {
-            ProviderStats stat = entry.getValue();
-            addRow(new Object[]{
-                rowNum++,
-                entry.getKey(),
-                stat.getTradeCount(),
-                String.format("%.2f", stat.getWinRate()),
-                String.format("%.2f", stat.getTotalProfit()),
-                String.format("%.2f", stat.getAverageProfit()),
-                String.format("%.2f", stat.getMaxDrawdown()),
-                String.format("%.2f", stat.getProfitFactor()),
-                stat.getMaxConcurrentTrades(),
-                String.format("%.2f", stat.getMaxConcurrentLots()),
-                stat.getStartDate(),
-                stat.getEndDate()
-            });
-        }
-        
-        fireTableDataChanged();
+    public int getRowCount() {
+        return data.size();
     }
 
     @Override
-    public void setValueAt(Object value, int row, int column) {
-        super.setValueAt(value, row, column);
-        fireTableCellUpdated(row, column);
+    public int getColumnCount() {
+        return columnNames.length;
+    }
+
+    @Override
+    public String getColumnName(int column) {
+        return columnNames[column];
+    }
+
+    @Override
+    public Object getValueAt(int row, int col) {
+        return data.get(row)[col];
+    }
+
+    @Override
+    public Class<?> getColumnClass(int columnIndex) {
+        if (data.size() > 0) {
+            return getValueAt(0, columnIndex).getClass();
+        }
+        return Object.class;
+    }
+
+    public void addRow(String providerName, ProviderStats stats) {
+        List<Trade> trades = new ArrayList<>(stats.getTrades());
+        trades.sort(new TradeComparator());
+
+        Object[] row = new Object[] {
+            data.size() + 1,
+            providerName,
+            trades.size(),
+            stats.getWinRate(),
+            stats.getTotalProfit(),
+            stats.getAverageProfitPerTrade(),
+            stats.getMaxDrawdownPercent(),
+            stats.getProfitFactor(),
+            stats.getMaxConcurrentTrades(),
+            stats.getMaxConcurrentLots(),
+            stats.getStartDate().format(dateFormatter),
+            stats.getEndDate().format(dateFormatter)
+        };
+        data.add(row);
+    }
+
+    public void populateData(Map<String, ProviderStats> stats) {
+        data.clear();
+        for (Map.Entry<String, ProviderStats> entry : stats.entrySet()) {
+            ProviderStats providerStats = entry.getValue();
+            addRow(entry.getKey(), providerStats);
+        }
+        fireTableDataChanged();
+    }
+
+    public void clear() {
+        data.clear();
+        fireTableDataChanged();
     }
 }

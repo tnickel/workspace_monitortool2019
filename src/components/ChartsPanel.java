@@ -3,17 +3,17 @@ package components;
 
 
 import data.ProviderStats;
-import utils.ChartFactory;
+import utils.ChartFactoryUtil;
 import javax.swing.*;
 import java.awt.*;
 
 public class ChartsPanel extends JPanel {
-    private final ChartFactory chartFactory;
+    private final ChartFactoryUtil chartFactory;
     private final ProviderStats stats;
     
     public ChartsPanel(ProviderStats stats) {
         this.stats = stats;
-        this.chartFactory = new ChartFactory();
+        this.chartFactory = new ChartFactoryUtil();
         createCharts();
     }
     

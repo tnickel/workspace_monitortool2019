@@ -16,16 +16,16 @@ import org.jfree.chart.ChartPanel;
 
 import components.SignalProviderPanel;
 import data.ProviderStats;
-import utils.ChartFactory;
+import utils.ChartFactoryUtil;
 
 public class EquityCurvesFrame extends JFrame {
     private final Map<String, ProviderStats> signalProviderStats;
-    private final ChartFactory chartFactory;
+    private final ChartFactoryUtil chartFactory;
 
     public EquityCurvesFrame(Map<String, ProviderStats> stats) {
         super("Equity Curves Comparison");
         this.signalProviderStats = stats;
-        this.chartFactory = new ChartFactory();
+        this.chartFactory = new ChartFactoryUtil();
         initializeUI();
     }
 
