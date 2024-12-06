@@ -1,8 +1,7 @@
-
 package models;
 
 import data.ProviderStats;
-import data.TradeTracker;
+import utils.TradeUtils;
 import data.Trade;
 import data.TradeComparator;
 import java.time.format.DateTimeFormatter;

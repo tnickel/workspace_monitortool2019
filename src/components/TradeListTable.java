@@ -19,39 +19,40 @@ import javax.swing.table.TableRowSorter;
 import data.ProviderStats;
 import data.Trade;
 import data.TradeComparator;
-import data.TradeTracker;
+import utils.TradeUtils;  // TradeTracker durch TradeUtils ersetzt
 
-public class TradeListTable extends JTable
-{
+public class TradeListTable extends JTable {
     private final DecimalFormat df = new DecimalFormat("#,##0.00");
     private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private final DefaultTableModel model;
+    private List<Trade> sortedTrades;
 
-    public TradeListTable(ProviderStats stats)
-    {
+    public TradeListTable(ProviderStats stats) {
         this.model = createTableModel(stats);
         initializeTable();
         setupRenderers();
     }
 
-    private DefaultTableModel createTableModel(ProviderStats stats)
-    {
-        String[] columnNames =
-        { "No.", "Open Time", "Close Time", "Type", "Symbol", "Lots", "Open Price", "Close Price", "Profit/Loss",
-                "Commission", "Swap", "Total", "Running Profit", "Open Trades", "Open Lots" };
+    public Trade getTradeAt(int row) {
+        return sortedTrades.get(row);
+    }
+
+    private DefaultTableModel createTableModel(ProviderStats stats) {
+        String[] columnNames = { 
+            "No.", "Open Time", "Close Time", "Type", "Symbol", "Lots", 
+            "Open Price", "Close Price", "Profit/Loss", "Commission", "Swap", 
+            "Total", "Running Profit", "Open Trades", "Open Lots" 
+        };
 
         DefaultTableModel model = new DefaultTableModel(columnNames, 0) {
             @Override
-            public boolean isCellEditable(int row, int column)
-            {
+            public boolean isCellEditable(int row, int column) {
                 return false;
             }
 
             @Override
-            public Class<?> getColumnClass(int columnIndex)
-            {
-                switch (columnIndex)
-                {
+            public Class<?> getColumnClass(int columnIndex) {
+                switch (columnIndex) {
                     case 0:
                         return Integer.class;
                     case 5: // Lots
@@ -76,7 +77,7 @@ public class TradeListTable extends JTable
     }
 
     private void populateData(DefaultTableModel model, ProviderStats stats) {
-        List<Trade> sortedTrades = new ArrayList<>(stats.getTrades());
+        this.sortedTrades = new ArrayList<>(stats.getTrades());
         sortedTrades.sort(new TradeComparator());
 
         double runningProfit = 0.0;
@@ -86,8 +87,10 @@ public class TradeListTable extends JTable
             double totalProfit = trade.getTotalProfit();
             runningProfit += totalProfit;
 
-            int openTradesCount = TradeTracker.calculateOpenTradesAt(sortedTrades, trade.getCloseTime());
-            double openLotsCount = TradeTracker.calculateOpenLotsAt(sortedTrades, trade.getCloseTime());
+            // TradeTracker durch TradeUtils ersetzt
+            List<Trade> activeTrades = TradeUtils.getActiveTradesAt(sortedTrades, trade.getOpenTime());
+            int openTradesCount = activeTrades.size();
+            double openLotsCount = activeTrades.stream().mapToDouble(Trade::getLots).sum();
 
             model.addRow(new Object[] {
                 i + 1,
@@ -107,13 +110,9 @@ public class TradeListTable extends JTable
                 openLotsCount
             });
         }
-    
-        
-    
     }
 
-    private void initializeTable()
-    {
+    private void initializeTable() {
         setModel(model);
 
         TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(model);
@@ -143,8 +142,7 @@ public class TradeListTable extends JTable
         }
     }
 
-    private void setupRenderers()
-    {
+    private void setupRenderers() {
         TableCellRenderer moneyRenderer = new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
@@ -162,8 +160,8 @@ public class TradeListTable extends JTable
             }
         };
 
-        getColumnModel().getColumn(8).setCellRenderer(moneyRenderer); // Profit/Loss
-        getColumnModel().getColumn(9).setCellRenderer(moneyRenderer); // Commission
+        getColumnModel().getColumn(8).setCellRenderer(moneyRenderer);  // Profit/Loss
+        getColumnModel().getColumn(9).setCellRenderer(moneyRenderer);  // Commission
         getColumnModel().getColumn(10).setCellRenderer(moneyRenderer); // Swap
         getColumnModel().getColumn(11).setCellRenderer(moneyRenderer); // Total
         getColumnModel().getColumn(12).setCellRenderer(moneyRenderer); // Running Profit

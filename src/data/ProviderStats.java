@@ -1,4 +1,3 @@
-
 package data;
 
 import java.time.LocalDate;
@@ -6,18 +5,17 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import org.jfree.data.category.DefaultCategoryDataset;
+import utils.TradeUtils;
 
 public class ProviderStats {
     private final List<Trade> trades;
     private final List<Double> profits;
     private double initialBalance;
-    private final TradeTracker tradeTracker;
     
     public ProviderStats() {
         this.trades = new ArrayList<>();
         this.profits = new ArrayList<>();
         this.initialBalance = 0.0;
-        this.tradeTracker = new TradeTracker();
     }
     
     public void setInitialBalance(double balance) {
@@ -36,7 +34,6 @@ public class ProviderStats {
                               openPrice, closePrice, commission, swap, profit);
         trades.add(trade);
         profits.add(profit);
-        tradeTracker.addTrade(trade);
     }
     
     public List<Trade> getTrades() {
@@ -94,11 +91,11 @@ public class ProviderStats {
     }
     
     public int getMaxConcurrentTrades() {
-        return tradeTracker.getMaxConcurrentTrades();
+        return TradeUtils.findMaxConcurrentTrades(trades);
     }
 
     public double getMaxConcurrentLots() {
-        return tradeTracker.getMaxConcurrentLots();
+        return TradeUtils.findMaxConcurrentLots(trades);
     }
     
     public DefaultCategoryDataset getMonthlyProfitData() {
@@ -106,6 +103,7 @@ public class ProviderStats {
         // Implementation...
         return dataset;
     }
+    
     public double getMaxProfit() {
         return profits.stream()
             .mapToDouble(Double::doubleValue)
@@ -132,4 +130,3 @@ public class ProviderStats {
         return getAverageProfitPerTrade();
     }
 }
-
