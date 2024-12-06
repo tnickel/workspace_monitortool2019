@@ -1,118 +1,197 @@
 package charts;
 
-import data.Trade;
-import javax.swing.*;
-import java.awt.*;
-import java.time.format.DateTimeFormatter;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.text.SimpleDateFormat;
+import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
+import javax.swing.JPanel;
+
+import org.jfree.chart.ChartFactory;
+import org.jfree.chart.ChartPanel;
+import org.jfree.chart.JFreeChart;
+import org.jfree.chart.axis.DateAxis;
+import org.jfree.chart.axis.DateTickMarkPosition;
+import org.jfree.chart.axis.NumberAxis;
+import org.jfree.chart.axis.NumberTickUnit;
+import org.jfree.chart.plot.XYPlot;
+import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
+import org.jfree.chart.ui.RectangleEdge;
+import org.jfree.chart.ui.RectangleInsets;
+import org.jfree.data.time.Millisecond;
+import org.jfree.data.time.TimeSeries;
+import org.jfree.data.time.TimeSeriesCollection;
+
+import data.Trade;
+
 public class TradeStackingChart extends JPanel {
-   private final List<Trade> trades;
-   private static final int HEIGHT = 400;
-   private static final int WIDTH = 950;
-   private static final int PADDING = 50;
-   private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
-
-   public TradeStackingChart(List<Trade> trades) {
-       this.trades = new ArrayList<>(trades);
-       this.trades.sort((t1, t2) -> t1.getOpenTime().compareTo(t2.getOpenTime()));
-       setPreferredSize(new Dimension(WIDTH, HEIGHT));
-   }
-
-   @Override
-   protected void paintComponent(Graphics g) {
-       super.paintComponent(g);
-       Graphics2D g2 = (Graphics2D) g;
-       g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
-       if (trades.isEmpty()) return;
-
-       // Weißer Hintergrund
-       g2.setColor(Color.WHITE);
-       g2.fillRect(0, 0, getWidth(), getHeight());
-       g2.setColor(Color.BLACK);
-
-       List<Trade> activeTrades = new ArrayList<>();
-       int maxTrades = 0;
-       double maxLots = 0;
-
-       // Maxima berechnen
-       for (Trade trade : trades) {
-           activeTrades.removeIf(t -> t.getCloseTime().compareTo(trade.getOpenTime()) <= 0);
-           activeTrades.add(trade);
-           maxTrades = Math.max(maxTrades, activeTrades.size());
-           maxLots = Math.max(maxLots, activeTrades.stream().mapToDouble(Trade::getLots).sum());
-       }
-
-       // Minimumwerte setzen
-       maxTrades = Math.max(1, maxTrades); 
-       maxLots = Math.max(0.1, maxLots);
-
-       // Y-Achsen-Beschriftung
-       int ySteps = maxTrades + 1;
-       double lotStep = maxLots / ySteps;
-       for (int i = 0; i <= ySteps; i++) {
-           int y = HEIGHT - PADDING - (i * (HEIGHT - 2*PADDING) / ySteps);
-           g2.setColor(Color.LIGHT_GRAY);
-           g2.drawLine(PADDING, y, WIDTH-PADDING, y);
-           g2.setColor(Color.BLACK);
-           g2.drawString(String.format("%d", i), 5, y);                    // Trades-Skala
-           g2.drawString(String.format("%.2f", i * lotStep), WIDTH-45, y); // Lots-Skala
-       }
-
-       // Achsen zeichnen
-       g2.setColor(Color.BLACK);
-       g2.drawLine(PADDING, HEIGHT-PADDING, WIDTH-PADDING, HEIGHT-PADDING); // X-Achse
-       g2.drawLine(PADDING, PADDING, PADDING, HEIGHT-PADDING); // Y-Achse
-
-       // Balken zeichnen
-       activeTrades.clear();
-       int barWidth = Math.max(5, (WIDTH - 2*PADDING) / trades.size());
-       int x = PADDING;
-
-       for (Trade trade : trades) {
-           activeTrades.removeIf(t -> t.getCloseTime().compareTo(trade.getOpenTime()) <= 0);
-           activeTrades.add(trade);
-           
-           int currentTrades = activeTrades.size();
-           double currentLots = activeTrades.stream().mapToDouble(Trade::getLots).sum();
-           
-           int tradeHeight = (int)((HEIGHT - 2*PADDING) * (currentTrades / (double)maxTrades));
-           int lotHeight = (int)((HEIGHT - 2*PADDING) * (currentLots / maxLots));
-           
-           // Trades-Balken (blau)
-           g2.setColor(new Color(100, 100, 255, 200));
-           g2.fillRect(x, HEIGHT-PADDING-tradeHeight, barWidth/2, tradeHeight);
-           
-           // Lots-Balken (rot)
-           g2.setColor(new Color(255, 100, 100, 200));
-           g2.fillRect(x + barWidth/2, HEIGHT-PADDING-lotHeight, barWidth/2, lotHeight);
-
-           // Beschriftung bei Maxima
-           if (currentTrades == maxTrades || Math.abs(currentLots - maxLots) < 0.001) {
-               g2.setColor(Color.BLACK);
-               String label = String.format("Trades: %d, Lots: %.2f", currentTrades, currentLots);
-               g2.drawString(label, x, HEIGHT-PADDING-Math.max(tradeHeight, lotHeight)-5);
-               g2.drawString(trade.getOpenTime().format(DATE_FORMATTER), x-20, HEIGHT-PADDING+15);
-           }
-
-           x += barWidth;
-       }
-
-       // Legende
-       g2.setColor(new Color(100, 100, 255, 200));
-       g2.fillRect(WIDTH-120, 20, 20, 20);
-       g2.setColor(new Color(255, 100, 100, 200));
-       g2.fillRect(WIDTH-120, 50, 20, 20);
-       g2.setColor(Color.BLACK);
-       g2.drawString("Trades", WIDTH-90, 35);
-       g2.drawString("Lots", WIDTH-90, 65);
-
-       // Aktuelle Werte
-       String currentStats = String.format("Current - Trades: %d, Lots: %.2f", 
-           activeTrades.size(), 
-           activeTrades.stream().mapToDouble(Trade::getLots).sum());
-       g2.drawString(currentStats, PADDING + 10, 30);
-   }
+    private final JFreeChart chart;
+    private final TimeSeriesCollection dataset;
+    
+    public TradeStackingChart(List<Trade> trades) {
+        dataset = new TimeSeriesCollection();
+        
+        chart = ChartFactory.createTimeSeriesChart(
+            "Verlauf Der Gleichzeitig Geöffneten Trades Über Die Zeit",
+            "Zeit",
+            "Anzahl geöffneter Trades",
+            dataset,
+            true,
+            true,
+            false
+        );
+        
+        // Plot-Grundeinstellungen
+        XYPlot plot = (XYPlot) chart.getPlot();
+        plot.setBackgroundPaint(Color.WHITE);
+        plot.setDomainGridlinePaint(Color.LIGHT_GRAY);
+        plot.setRangeGridlinePaint(Color.LIGHT_GRAY);
+        
+        // Renderer anpassen
+        XYLineAndShapeRenderer renderer = new XYLineAndShapeRenderer();
+        renderer.setDefaultShapesVisible(false);
+        renderer.setSeriesPaint(0, Color.BLUE);  // Trades in Blau
+        renderer.setSeriesPaint(1, Color.RED);   // Lots in Rot
+        plot.setRenderer(renderer);
+        
+        // Datumsachse (X-Achse) anpassen
+        DateAxis dateAxis = (DateAxis) plot.getDomainAxis();
+        dateAxis.setDateFormatOverride(new SimpleDateFormat("yyyy-MM-dd HH:mm"));
+        dateAxis.setTickLabelFont(new Font("SansSerif", Font.PLAIN, 10));
+        dateAxis.setLabelAngle(Math.PI / 2.0);  // Vertikale Ausrichtung (90 Grad)
+        dateAxis.setVerticalTickLabels(true);
+        dateAxis.setLowerMargin(0.05);
+        dateAxis.setUpperMargin(0.05);
+        
+        // Mehr Platz für Datumsbeschriftungen
+        chart.setPadding(new RectangleInsets(5, 5, 50, 5));  // oben, links, unten, rechts
+        plot.setAxisOffset(new RectangleInsets(5, 5, 50, 5));
+        dateAxis.setTickMarkPosition(DateTickMarkPosition.MIDDLE);
+        dateAxis.setLabelInsets(new RectangleInsets(5, 5, 20, 5));
+        
+        // Y-Achse (Range Axis) anpassen
+        NumberAxis rangeAxis = (NumberAxis) plot.getRangeAxis();
+        int maxValue = getMaxTradeValue(trades);
+        rangeAxis.setRange(0, maxValue * 1.2); // 20% mehr als Maximum für Puffer
+        rangeAxis.setTickUnit(new NumberTickUnit(1)); // Ganze Zahlen als Ticks
+        rangeAxis.setVerticalTickLabels(true);
+        
+        // Legende oben platzieren für mehr Platz unten
+        chart.getLegend().setPosition(RectangleEdge.TOP);
+        
+        // ChartPanel erstellen und konfigurieren
+        ChartPanel chartPanel = new ChartPanel(chart) {
+            @Override
+            public Dimension getPreferredSize() {
+                return new Dimension(800, 400);
+            }
+            
+            @Override
+            public Dimension getMinimumSize() {
+                return new Dimension(600, 400);
+            }
+        };
+        
+        // Layout setzen
+        setLayout(new BorderLayout());
+        add(chartPanel, BorderLayout.CENTER);
+        
+        // Daten hinzufügen
+        addProvider("Trades", trades);
+        addLotsProvider("Lots", trades);
+    }
+    
+    private int getMaxTradeValue(List<Trade> trades) {
+        List<Trade> activeTrades = new ArrayList<>();
+        List<Trade> sortedTrades = new ArrayList<>(trades);
+        sortedTrades.sort((t1, t2) -> t1.getOpenTime().compareTo(t2.getOpenTime()));
+        
+        int maxValue = 0;
+        for (Trade trade : sortedTrades) {
+            activeTrades.removeIf(t -> t.getCloseTime().compareTo(trade.getOpenTime()) <= 0);
+            activeTrades.add(trade);
+            maxValue = Math.max(maxValue, activeTrades.size());
+        }
+        return maxValue;
+    }
+    
+    public void addProvider(String providerName, List<Trade> trades) {
+        TimeSeries series = new TimeSeries(providerName);
+        
+        // Liste der aktiven Trades
+        List<Trade> activeTrades = new ArrayList<>();
+        
+        // Sortiere alle Trades nach OpenTime
+        List<Trade> sortedTrades = new ArrayList<>(trades);
+        sortedTrades.sort((t1, t2) -> t1.getOpenTime().compareTo(t2.getOpenTime()));
+        
+        for (Trade trade : sortedTrades) {
+            // Entferne zuerst alle Trades die vor diesem Trade geschlossen wurden
+            activeTrades.removeIf(t -> t.getCloseTime().compareTo(trade.getOpenTime()) <= 0);
+            
+            // Füge den neuen Trade hinzu
+            activeTrades.add(trade);
+            
+            // Füge nur einen Datenpunkt zum Zeitpunkt des Trade-Opens hinzu
+            series.addOrUpdate(
+                new Millisecond(
+                    Date.from(trade.getOpenTime().atZone(ZoneId.systemDefault()).toInstant())
+                ),
+                activeTrades.size()
+            );
+        }
+        
+        dataset.addSeries(series);
+    }
+    
+    public void addLotsProvider(String providerName, List<Trade> trades) {
+        TimeSeries series = new TimeSeries(providerName);
+        
+        // Liste der aktiven Trades
+        List<Trade> activeTrades = new ArrayList<>();
+        
+        // Sortiere alle Trades nach OpenTime
+        List<Trade> sortedTrades = new ArrayList<>(trades);
+        sortedTrades.sort((t1, t2) -> t1.getOpenTime().compareTo(t2.getOpenTime()));
+        
+        for (Trade trade : sortedTrades) {
+            // Entferne zuerst alle Trades die vor diesem Trade geschlossen wurden
+            activeTrades.removeIf(t -> t.getCloseTime().compareTo(trade.getOpenTime()) <= 0);
+            
+            // Füge den neuen Trade hinzu
+            activeTrades.add(trade);
+            
+            // Berechne Gesamt-Lots
+            double totalLots = activeTrades.stream()
+                                         .mapToDouble(Trade::getLots)
+                                         .sum();
+            
+            // Füge nur einen Datenpunkt zum Zeitpunkt des Trade-Opens hinzu
+            series.addOrUpdate(
+                new Millisecond(
+                    Date.from(trade.getOpenTime().atZone(ZoneId.systemDefault()).toInstant())
+                ),
+                totalLots
+            );
+        }
+        
+        dataset.addSeries(series);
+    }
+    
+    public void clear() {
+        dataset.removeAllSeries();
+    }
+    
+    public JFreeChart getChart() {
+        return chart;
+    }
+    
+    public void setTitle(String title) {
+        chart.setTitle(title);
+    }
 }

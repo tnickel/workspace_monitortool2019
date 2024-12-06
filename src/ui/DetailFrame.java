@@ -1,4 +1,3 @@
-
 package ui;
 
 import java.awt.BorderLayout;
@@ -48,7 +47,7 @@ public class DetailFrame extends JFrame {
         
         initializeUI();
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        setSize(1000, 800);
+        setSize(1000, 3500);  // Erhöhte Höhe für bessere Darstellung
         setLocationRelativeTo(null);
 
         KeyStroke escapeKeyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0, false);
@@ -69,21 +68,24 @@ public class DetailFrame extends JFrame {
         JPanel statsPanel = createStatsPanel();
         mainPanel.add(statsPanel);
         
-        // Charts
+        // Equity Curve Chart
         ChartPanel equityChart = chartFactory.createEquityCurveChart(stats);
         equityChart.setPreferredSize(new Dimension(950, 300));
         mainPanel.add(equityChart);
         
+        // Monthly Profit Chart
         ChartPanel monthlyChart = chartFactory.createMonthlyProfitChart(stats);
         monthlyChart.setPreferredSize(new Dimension(950, 300));
         mainPanel.add(monthlyChart);
         
-        // Trade Stacking Chart
+        // Trade Stacking Chart - deutlich größer für bessere Übersicht
         TradeStackingChart stackingChart = new TradeStackingChart(stats.getTrades());
-        stackingChart.setPreferredSize(new Dimension(950, 300));
+        stackingChart.setPreferredSize(new Dimension(950, 2800));  // Erhöhte Höhe
         mainPanel.add(stackingChart);
         
+        // Scrollpane für das gesamte Panel
         JScrollPane scrollPane = new JScrollPane(mainPanel);
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);  // Schnelleres Scrollen
         add(scrollPane);
     }
 
@@ -106,7 +108,7 @@ public class DetailFrame extends JFrame {
         addStatField(statsPanel, "Max Drawdown:", pf.format(stats.getMaxDrawdownPercent()));
         addStatField(statsPanel, "Max Concurrent Lots:", df.format(stats.getMaxConcurrentLots()));
 
-        // Button Panel
+        // Button Panel für Trade List
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         JButton showTradesButton = new JButton("Show Trade List");
         showTradesButton.addActionListener(e -> {
@@ -115,7 +117,7 @@ public class DetailFrame extends JFrame {
         });
         buttonPanel.add(showTradesButton);
 
-        // Link Panel
+        // Link Panel für mql5.com
         JPanel linkPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         JLabel urlLabel = new JLabel("<html><u>https://www.mql5.com/de/signals/" + 
             providerId + "?source=Site+Signals+Subscriptions#!tab=account</u></html>");
@@ -150,7 +152,7 @@ public class DetailFrame extends JFrame {
         JPanel fieldPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
         fieldPanel.add(new JLabel(label));
         JLabel valueLabel = new JLabel(value);
-        valueLabel.setForeground(new Color(0, 100, 0));
+        valueLabel.setForeground(new Color(0, 100, 0));  // Dunkelgrün
         fieldPanel.add(valueLabel);
         panel.add(fieldPanel);
     }
