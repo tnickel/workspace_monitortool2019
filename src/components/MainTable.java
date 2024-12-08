@@ -18,10 +18,11 @@ import ui.DetailFrame;
 
 public class MainTable extends JTable {
     private final HighlightTableModel model;
-    private final HighlightRenderer renderer;
     private final DataManager dataManager;
+    private final HighlightRenderer renderer;
     private FilterCriteria currentFilter;
     private Consumer<String> statusUpdateCallback;
+
     
     public MainTable(DataManager dataManager) {
         this.dataManager = dataManager;
@@ -78,38 +79,11 @@ public class MainTable extends JTable {
             int visibleProviders = model.getRowCount();
             
             StringBuilder status = new StringBuilder()
-                .append(String.format("Loaded %d providers (showing %d)", totalProviders, visibleProviders));
+                .append(String.format("Loaded %d providers (showing %d)", 
+                    totalProviders, visibleProviders));
             
             if (currentFilter != null) {
-                status.append(" | Filter: ");
-                List<String> activeFilters = new ArrayList<>();
-                
-                if (currentFilter.getMinTradeDays() > 0) {
-                    activeFilters.add(String.format("Min Days: %d", currentFilter.getMinTradeDays()));
-                }
-                if (currentFilter.getMinProfit() > 0) {
-                    activeFilters.add(String.format("Min Profit: %.2f", currentFilter.getMinProfit()));
-                }
-                if (currentFilter.getMinProfitFactor() > 0) {
-                    activeFilters.add(String.format("Min PF: %.2f", currentFilter.getMinProfitFactor()));
-                }
-                if (currentFilter.getMinWinRate() > 0) {
-                    activeFilters.add(String.format("Min WinRate: %.1f%%", currentFilter.getMinWinRate()));
-                }
-                if (currentFilter.getMaxDrawdown() < 100) {
-                    activeFilters.add(String.format("Max DD: %.1f%%", currentFilter.getMaxDrawdown()));
-                }
-                if (currentFilter.getMinTotalProfit() > 0) {
-                    activeFilters.add(String.format("Min Total Profit: %.2f", currentFilter.getMinTotalProfit()));
-                }
-                if (currentFilter.getMinMaxConcurrentTrades() > 0) {
-                    activeFilters.add(String.format("Min Max Concurrent Trades: %d", currentFilter.getMinMaxConcurrentTrades()));
-                }
-                if (currentFilter.getMinMaxConcurrentLots() > 0) {
-                    activeFilters.add(String.format("Min Max Concurrent Lots: %.2f", currentFilter.getMinMaxConcurrentLots()));
-                }
-                
-                status.append(String.join(", ", activeFilters));
+                status.append(" | Filter active");
             }
             
             statusUpdateCallback.accept(status.toString());
@@ -145,15 +119,15 @@ public class MainTable extends JTable {
     
     public void applyFilter(FilterCriteria criteria) {
         this.currentFilter = criteria;
-        refreshTableData();
     }
+
     
     public void clearFilter() {
         this.currentFilter = null;
         refreshTableData();
     }
     
-    private void refreshTableData() {
+    public void refreshTableData() {
         if (currentFilter == null) {
             model.populateData(dataManager.getStats());
         } else {

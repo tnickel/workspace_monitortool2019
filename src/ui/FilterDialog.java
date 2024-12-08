@@ -6,14 +6,15 @@ import models.FilterCriteria;
 
 public class FilterDialog extends JDialog {
     private FilterCriteria result = null;
+    private static FilterCriteria lastCriteria = null;
     private final JTextField minTradeDaysField = new JTextField(10);
     private final JTextField minProfitField = new JTextField(10);
     private final JTextField minProfitFactorField = new JTextField(10);
     private final JTextField minWinRateField = new JTextField(10);
     private final JTextField maxDrawdownField = new JTextField(10);
     private final JTextField minTotalProfitField = new JTextField(10);
-    private final JTextField minMaxConcurrentTradesField = new JTextField(10);
-    private final JTextField minMaxConcurrentLotsField = new JTextField(10);
+    private final JTextField maxConcurrentTradesField = new JTextField(10);
+    private final JTextField maxConcurrentLotsField = new JTextField(10);
     
     public FilterDialog(JFrame parent) {
         super(parent, "Filter Signal Providers", true);
@@ -60,17 +61,17 @@ public class FilterDialog extends JDialog {
         gbc.gridx = 1;
         filterPanel.add(maxDrawdownField, gbc);
         
-        // Zeile 7: Min Max Concurrent Trades
+        // Zeile 7: Max Concurrent Trades
         gbc.gridx = 0; gbc.gridy = 6;
-        filterPanel.add(new JLabel("Min. Max Concurrent Trades:"), gbc);
+        filterPanel.add(new JLabel("Max Concurrent Trades:"), gbc);
         gbc.gridx = 1;
-        filterPanel.add(minMaxConcurrentTradesField, gbc);
+        filterPanel.add(maxConcurrentTradesField, gbc);
         
-        // Zeile 8: Min Max Concurrent Lots
+        // Zeile 8: Max Concurrent Lots
         gbc.gridx = 0; gbc.gridy = 7;
-        filterPanel.add(new JLabel("Min. Max Concurrent Lots:"), gbc);
+        filterPanel.add(new JLabel("Max Concurrent Lots:"), gbc);
         gbc.gridx = 1;
-        filterPanel.add(minMaxConcurrentLotsField, gbc);
+        filterPanel.add(maxConcurrentLotsField, gbc);
         
         // Button Panel
         JPanel buttonPanel = new JPanel();
@@ -79,6 +80,7 @@ public class FilterDialog extends JDialog {
         
         okButton.addActionListener(e -> {
             if (validateAndSetResult()) {
+                lastCriteria = result;  // Speichern der letzten Werte
                 dispose();
             }
         });
@@ -96,8 +98,40 @@ public class FilterDialog extends JDialog {
         add(filterPanel, BorderLayout.CENTER);
         add(buttonPanel, BorderLayout.SOUTH);
         
+        // Letzte Werte setzen, falls vorhanden
+        restoreLastValues();
+        
         pack();
         setLocationRelativeTo(parent);
+    }
+    
+    private void restoreLastValues() {
+        if (lastCriteria != null) {
+            if (lastCriteria.getMinTradeDays() > 0) {
+                minTradeDaysField.setText(String.valueOf(lastCriteria.getMinTradeDays()));
+            }
+            if (lastCriteria.getMinProfit() > 0) {
+                minProfitField.setText(String.valueOf(lastCriteria.getMinProfit()));
+            }
+            if (lastCriteria.getMinTotalProfit() > 0) {
+                minTotalProfitField.setText(String.valueOf(lastCriteria.getMinTotalProfit()));
+            }
+            if (lastCriteria.getMinProfitFactor() > 0) {
+                minProfitFactorField.setText(String.valueOf(lastCriteria.getMinProfitFactor()));
+            }
+            if (lastCriteria.getMinWinRate() > 0) {
+                minWinRateField.setText(String.valueOf(lastCriteria.getMinWinRate()));
+            }
+            if (lastCriteria.getMaxDrawdown() < 100) {
+                maxDrawdownField.setText(String.valueOf(lastCriteria.getMaxDrawdown()));
+            }
+            if (lastCriteria.getMaxConcurrentTrades() < Integer.MAX_VALUE) {
+                maxConcurrentTradesField.setText(String.valueOf(lastCriteria.getMaxConcurrentTrades()));
+            }
+            if (lastCriteria.getMaxConcurrentLots() < Double.MAX_VALUE) {
+                maxConcurrentLotsField.setText(String.valueOf(lastCriteria.getMaxConcurrentLots()));
+            }
+        }
     }
     
     private boolean validateAndSetResult() {
@@ -128,12 +162,12 @@ public class FilterDialog extends JDialog {
                 criteria.setMaxDrawdown(Double.parseDouble(maxDrawdownField.getText().trim()));
             }
             
-            if (!minMaxConcurrentTradesField.getText().isEmpty()) {
-                criteria.setMinMaxConcurrentTrades(Integer.parseInt(minMaxConcurrentTradesField.getText().trim()));
+            if (!maxConcurrentTradesField.getText().isEmpty()) {
+                criteria.setMaxConcurrentTrades(Integer.parseInt(maxConcurrentTradesField.getText().trim()));
             }
             
-            if (!minMaxConcurrentLotsField.getText().isEmpty()) {
-                criteria.setMinMaxConcurrentLots(Double.parseDouble(minMaxConcurrentLotsField.getText().trim()));
+            if (!maxConcurrentLotsField.getText().isEmpty()) {
+                criteria.setMaxConcurrentLots(Double.parseDouble(maxConcurrentLotsField.getText().trim()));
             }
             
             result = criteria;
@@ -142,8 +176,7 @@ public class FilterDialog extends JDialog {
         } catch (NumberFormatException e) {
             JOptionPane.showMessageDialog(this,
                 "Please enter valid numbers for all fields.",
-                "Invalid Input",
-                JOptionPane.ERROR_MESSAGE);
+                "Invalid Input", JOptionPane.ERROR_MESSAGE);
             return false;
         }
     }

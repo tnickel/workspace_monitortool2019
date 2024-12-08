@@ -1,4 +1,3 @@
-
 package models;
 
 import data.ProviderStats;
@@ -10,8 +9,8 @@ public class FilterCriteria {
     private double minProfitFactor;
     private double minWinRate;
     private double maxDrawdown;
-    private int minMaxConcurrentTrades;
-    private double minMaxConcurrentLots;
+    private int maxConcurrentTrades;
+    private double maxConcurrentLots;
 
     public FilterCriteria() {
         this.minTradeDays = 0;
@@ -20,11 +19,10 @@ public class FilterCriteria {
         this.minProfitFactor = 0.0;
         this.minWinRate = 0.0;
         this.maxDrawdown = 100.0;
-        this.minMaxConcurrentTrades = 0;
-        this.minMaxConcurrentLots = 0.0;
+        this.maxConcurrentTrades = Integer.MAX_VALUE;
+        this.maxConcurrentLots = Double.MAX_VALUE;
     }
 
-    // Getter und Setter
     public int getMinTradeDays() {
         return minTradeDays;
     }
@@ -73,20 +71,20 @@ public class FilterCriteria {
         this.maxDrawdown = maxDrawdown;
     }
 
-    public int getMinMaxConcurrentTrades() {
-        return minMaxConcurrentTrades;
+    public int getMaxConcurrentTrades() {
+        return maxConcurrentTrades;
     }
 
-    public void setMinMaxConcurrentTrades(int minMaxConcurrentTrades) {
-        this.minMaxConcurrentTrades = minMaxConcurrentTrades;
+    public void setMaxConcurrentTrades(int maxConcurrentTrades) {
+        this.maxConcurrentTrades = maxConcurrentTrades;
     }
 
-    public double getMinMaxConcurrentLots() {
-        return minMaxConcurrentLots;
+    public double getMaxConcurrentLots() {
+        return maxConcurrentLots;
     }
 
-    public void setMinMaxConcurrentLots(double minMaxConcurrentLots) {
-        this.minMaxConcurrentLots = minMaxConcurrentLots;
+    public void setMaxConcurrentLots(double maxConcurrentLots) {
+        this.maxConcurrentLots = maxConcurrentLots;
     }
 
     public boolean matches(ProviderStats stats) {
@@ -96,17 +94,17 @@ public class FilterCriteria {
                stats.getProfitFactor() >= minProfitFactor &&
                stats.getWinRate() >= minWinRate &&
                stats.getMaxDrawdownPercent() <= maxDrawdown &&
-               stats.getMaxConcurrentTrades() >= minMaxConcurrentTrades &&
-               stats.getMaxConcurrentLots() >= minMaxConcurrentLots;
+               stats.getMaxConcurrentTrades() <= maxConcurrentTrades &&
+               stats.getMaxConcurrentLots() <= maxConcurrentLots;
     }
 
     @Override
     public String toString() {
         return String.format("FilterCriteria{minTradeDays=%d, minProfit=%.2f, minTotalProfit=%.2f, " +
                            "minProfitFactor=%.2f, minWinRate=%.2f, maxDrawdown=%.2f, " +
-                           "minMaxConcurrentTrades=%d, minMaxConcurrentLots=%.2f}",
+                           "maxConcurrentTrades=%d, maxConcurrentLots=%.2f}",
                            minTradeDays, minProfit, minTotalProfit,
                            minProfitFactor, minWinRate, maxDrawdown,
-                           minMaxConcurrentTrades, minMaxConcurrentLots);
+                           maxConcurrentTrades, maxConcurrentLots);
     }
 }

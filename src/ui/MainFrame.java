@@ -6,20 +6,15 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.util.logging.Logger;
 
-import javax.swing.JButton;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JTextField;
-import javax.swing.JToolBar;
-import javax.swing.SwingUtilities;
+import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 
-import components.MainTable;
 import data.DataManager;
 import models.FilterCriteria;
+import components.MainTable;
+import ui.FilterDialog;        // Dieser Import fehlte
+import ui.CompareDialog;
+import ui.OpenTradesDialog;
 
 public class MainFrame extends JFrame {
     private static final Logger LOGGER = Logger.getLogger(MainFrame.class.getName());
@@ -77,7 +72,7 @@ public class MainFrame extends JFrame {
         
         // Search panel
         JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        searchPanel.add(new JLabel("Search:"));
+        searchPanel.add(new JLabel("Search: "));
         searchPanel.add(searchField);
         
         JButton searchButton = new JButton("Search");
@@ -111,7 +106,6 @@ public class MainFrame extends JFrame {
     private void setupSearch() {
         searchField.addActionListener(e -> performSearch());
         
-        // Add key listener for Escape key to clear search
         searchField.addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
@@ -142,9 +136,9 @@ public class MainFrame extends JFrame {
             currentSearchIndex[0] = -1; // Reset search
             if (!mainTable.findAndSelectNext(searchText, currentSearchIndex)) {
                 JOptionPane.showMessageDialog(this,
-                    "No matches found for: " + searchText,
-                    "Search Result",
-                    JOptionPane.INFORMATION_MESSAGE);
+                        "No matches found for: " + searchText,
+                        "Search Result",
+                        JOptionPane.INFORMATION_MESSAGE);
             }
         }
     }
@@ -154,6 +148,7 @@ public class MainFrame extends JFrame {
         FilterCriteria criteria = dialog.showDialog();
         if (criteria != null) {
             mainTable.applyFilter(criteria);
+            mainTable.refreshTableData();
         }
     }
     
@@ -165,11 +160,9 @@ public class MainFrame extends JFrame {
     public void display() {
         SwingUtilities.invokeLater(() -> {
             setVisible(true);
-            // Verzögere initiale Datenladung
             SwingUtilities.invokeLater(() -> {
                 mainTable.updateStatus();
             });
         });
     }
-    
 }
