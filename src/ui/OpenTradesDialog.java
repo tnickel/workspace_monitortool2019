@@ -1,4 +1,3 @@
-
 package ui;
 
 import java.awt.BorderLayout;
@@ -34,20 +33,23 @@ import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
-import org.jfree.data.time.Millisecond;
+import org.jfree.data.time.Day;
 import org.jfree.data.time.TimeSeries;
 import org.jfree.data.time.TimeSeriesCollection;
 
 import data.ProviderStats;
 import data.Trade;
+import utils.ChartFactoryUtil;
 
 public class OpenTradesDialog extends JDialog {
     private final Map<String, ProviderStats> providerStats;
     private JPanel detailPanel;
+    private final ChartFactoryUtil chartFactory;
     
     public OpenTradesDialog(JFrame parent, Map<String, ProviderStats> stats) {
         super(parent, "Compare Open Trades", true);
         this.providerStats = stats;
+        this.chartFactory = new ChartFactoryUtil();
         
         setLayout(new BorderLayout(5, 0));
         
@@ -67,7 +69,7 @@ public class OpenTradesDialog extends JDialog {
         detailPanel.setPreferredSize(new Dimension(300, 0));
         detailPanel.setBorder(BorderFactory.createTitledBorder("Concurrent Trades"));
         
-        // Erstelle für jeden Provider zwei Charts nebeneinander
+        // Erstelle für jeden Provider drei Charts nebeneinander
         for (Map.Entry<String, ProviderStats> entry : providerStats.entrySet()) {
             String providerName = entry.getKey();
             ProviderStats currentStats = entry.getValue();
@@ -80,13 +82,18 @@ public class OpenTradesDialog extends JDialog {
             titledBorder.setTitleFont(largerFont);
             providerPanel.setBorder(titledBorder);
             
-            // Panel für die zwei Charts nebeneinander
-            JPanel chartsPanel = new JPanel(new GridLayout(1, 2, 5, 0));
+            // Panel für die drei Charts nebeneinander
+            JPanel chartsPanel = new JPanel(new GridLayout(1, 3, 5, 0));
             
-            // Trades Count Chart
+            // Equity Kurve (links)
+            ChartPanel equityChart = chartFactory.createEquityCurveChart(currentStats);
+            equityChart.setPreferredSize(new Dimension(300, 300));
+            chartsPanel.add(equityChart);
+            
+            // Trades Count Chart (mitte)
             JFreeChart tradesChart = createTradesChart("Anzahl Offener Trades", currentStats.getTrades());
             ChartPanel tradesChartPanel = new ChartPanel(tradesChart);
-            tradesChartPanel.setPreferredSize(new Dimension(400, 300));
+            tradesChartPanel.setPreferredSize(new Dimension(300, 300));
             
             // Mouse Listener für Trade Details
             tradesChartPanel.addChartMouseListener(new ChartMouseListener() {
@@ -108,13 +115,12 @@ public class OpenTradesDialog extends JDialog {
                     // Nicht benötigt
                 }
             });
+            chartsPanel.add(tradesChartPanel);
             
-            // Lots Sum Chart
+            // Lots Chart (rechts)
             JFreeChart lotsChart = createLotsChart("Summe Offener Lots", currentStats.getTrades());
             ChartPanel lotsChartPanel = new ChartPanel(lotsChart);
-            lotsChartPanel.setPreferredSize(new Dimension(400, 300));
-            
-            chartsPanel.add(tradesChartPanel);
+            lotsChartPanel.setPreferredSize(new Dimension(300, 300));
             chartsPanel.add(lotsChartPanel);
             
             providerPanel.add(chartsPanel, BorderLayout.CENTER);
@@ -130,7 +136,7 @@ public class OpenTradesDialog extends JDialog {
         add(scrollPane, BorderLayout.CENTER);
         add(detailPanel, BorderLayout.EAST);
         
-        setSize(1500, 800);  // Breiter für Charts und Details
+        setSize(1500, 800);  // Breiter für drei Charts nebeneinander
         setLocationRelativeTo(null);
     }
     
@@ -197,11 +203,10 @@ public class OpenTradesDialog extends JDialog {
             tgbc.gridy++;
             tradePanel.add(new JLabel("Close Time: " + trade.getCloseTime()), tgbc);
             
-            gbc.fill = GridBagConstraints.HORIZONTAL;
             content.add(tradePanel, gbc);
             gbc.gridy++;
         }
-        
+
         detailPanel.add(new JScrollPane(content), BorderLayout.CENTER);
         detailPanel.revalidate();
         detailPanel.repaint();
@@ -220,16 +225,36 @@ public class OpenTradesDialog extends JDialog {
         int currentOpen = 0;
         for (Map.Entry<LocalDateTime, Integer> entry : changes.entrySet()) {
             currentOpen += entry.getValue();
-            series.addOrUpdate(
-                new Millisecond(
-                    Date.from(entry.getKey().atZone(java.time.ZoneId.systemDefault()).toInstant())
+            series.addOrUpdate(  // hier geändert von add zu addOrUpdate
+                new Day(
+                    Date.from(entry.getKey().atZone(ZoneId.systemDefault()).toInstant())
                 ),
                 currentOpen
             );
         }
         
         dataset.addSeries(series);
-        return createBaseChart(title, "Anzahl offener Trades", dataset);
+
+        JFreeChart chart = ChartFactory.createTimeSeriesChart(
+            title,
+            "Zeit",
+            "Anzahl offener Trades",
+            dataset,
+            true,   
+            true,   
+            false   
+        );
+        
+        XYPlot plot = (XYPlot) chart.getPlot();
+        plot.setBackgroundPaint(Color.WHITE);
+        plot.setDomainGridlinePaint(Color.LIGHT_GRAY);
+        plot.setRangeGridlinePaint(Color.LIGHT_GRAY);
+        
+        XYLineAndShapeRenderer renderer = new XYLineAndShapeRenderer();
+        renderer.setDefaultShapesVisible(false);
+        plot.setRenderer(renderer);
+
+        return chart;
     }
     
     private JFreeChart createLotsChart(String title, List<Trade> trades) {
@@ -245,38 +270,23 @@ public class OpenTradesDialog extends JDialog {
         double currentLots = 0.0;
         for (Map.Entry<LocalDateTime, Double> entry : changes.entrySet()) {
             currentLots += entry.getValue();
-            series.addOrUpdate(
-                new Millisecond(
-                    Date.from(entry.getKey().atZone(java.time.ZoneId.systemDefault()).toInstant())
+            series.addOrUpdate(  // hier geändert von add zu addOrUpdate
+                new Day(
+                    Date.from(entry.getKey().atZone(ZoneId.systemDefault()).toInstant())
                 ),
                 currentLots
             );
         }
         
         dataset.addSeries(series);
-        return createBaseChart(title, "Summe der Lots", dataset);
-    }
-    
-    private JFreeChart createBaseChart(String title, String yAxisLabel, TimeSeriesCollection dataset) {
-        JFreeChart chart = ChartFactory.createTimeSeriesChart(
+        return ChartFactory.createTimeSeriesChart(
             title,
             "Zeit",
-            yAxisLabel,
+            "Summe der Lots",
             dataset,
             true,
             true,
             false
         );
-        
-        XYPlot plot = (XYPlot) chart.getPlot();
-        plot.setBackgroundPaint(Color.WHITE);
-        plot.setDomainGridlinePaint(Color.LIGHT_GRAY);
-        plot.setRangeGridlinePaint(Color.LIGHT_GRAY);
-        
-        XYLineAndShapeRenderer renderer = new XYLineAndShapeRenderer();
-        renderer.setDefaultShapesVisible(false);
-        plot.setRenderer(renderer);
-        
-        return chart;
     }
 }
