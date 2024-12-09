@@ -1,5 +1,7 @@
 package components;
 
+import java.awt.Color;
+import java.awt.Component;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.*;
@@ -18,21 +20,22 @@ import ui.DetailFrame;
 
 public class MainTable extends JTable {
     private final HighlightTableModel model;
-    private final DataManager dataManager;
     private final HighlightRenderer renderer;
+    private final DataManager dataManager;
+    private final String rootPath;
     private FilterCriteria currentFilter;
     private Consumer<String> statusUpdateCallback;
 
-    
-    public MainTable(DataManager dataManager) {
+    public MainTable(DataManager dataManager, String rootPath) {
         this.dataManager = dataManager;
+        this.rootPath = rootPath;
         this.model = new HighlightTableModel();
         this.renderer = new HighlightRenderer();
         initializeTable();
         setupMouseListener();
         setupModelListener();
     }
-    
+
     private void initializeTable() {
         setModel(model);
         setRowSorter(new TableRowSorter<>(model));
@@ -45,7 +48,7 @@ public class MainTable extends JTable {
         // Populate data
         model.populateData(dataManager.getStats());
     }
-    
+
     private void setupMouseListener() {
         addMouseListener(new MouseAdapter() {
             @Override
@@ -56,50 +59,55 @@ public class MainTable extends JTable {
                         row = convertRowIndexToModel(row);
                         String providerName = (String) model.getValueAt(row, 1);
                         String providerId = providerName.substring(providerName.lastIndexOf("_") + 1).replace(".csv", "");
-                        new DetailFrame(providerName,
+                        new DetailFrame(providerName, 
                             dataManager.getStats().get(providerName),
-                            providerId).setVisible(true);
+                            providerId,
+                            rootPath).setVisible(true);
                     }
                 }
             }
         });
     }
-    
+
     private void setupModelListener() {
         model.addTableModelListener(e -> updateStatus());
     }
-    
+
     public void setStatusUpdateCallback(Consumer<String> callback) {
         this.statusUpdateCallback = callback;
     }
-    
+
     public void updateStatus() {
         if (statusUpdateCallback != null) {
             int totalProviders = dataManager.getStats().size();
             int visibleProviders = model.getRowCount();
             
             StringBuilder status = new StringBuilder()
-                .append(String.format("Loaded %d providers (showing %d)", 
-                    totalProviders, visibleProviders));
+                .append(String.format("Loaded %d providers (showing %d)", totalProviders, visibleProviders));
             
             if (currentFilter != null) {
-                status.append(" | Filter active");
+                status.append(" | Filter Active");
             }
             
             statusUpdateCallback.accept(status.toString());
         }
     }
-    
+
     public void highlightSearchText(String text) {
         renderer.setSearchText(text);
         repaint();
     }
-    
+
     public void clearHighlight() {
         renderer.setSearchText("");
         repaint();
     }
-    
+ // In MainTable.java hinzufügen:
+
+    public void setData(Map<String, ProviderStats> data) {
+        model.populateData(data);
+        updateStatus();
+    }
     public boolean findAndSelectNext(String searchText, int[] currentIndex) {
         int startRow = currentIndex[0] + 1;
         
@@ -116,18 +124,18 @@ public class MainTable extends JTable {
         }
         return false;
     }
-    
+
     public void applyFilter(FilterCriteria criteria) {
         this.currentFilter = criteria;
+        refreshTableData();
     }
 
-    
     public void clearFilter() {
         this.currentFilter = null;
         refreshTableData();
     }
-    
-    public void refreshTableData() {
+
+    private void refreshTableData() {
         if (currentFilter == null) {
             model.populateData(dataManager.getStats());
         } else {
@@ -141,7 +149,7 @@ public class MainTable extends JTable {
         }
         updateStatus();
     }
-    
+
     public Map<String, ProviderStats> getCurrentProviderStats() {
         if (currentFilter == null) {
             return dataManager.getStats();

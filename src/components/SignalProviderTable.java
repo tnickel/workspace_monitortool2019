@@ -32,7 +32,7 @@ public class SignalProviderTable {
             throw new RuntimeException("Failed to initialize application", e);
         }
         
-        this.mainFrame = new MainFrame(dataManager);
+        this.mainFrame = new MainFrame(dataManager, rootPathStr);
     }
     
     public void start() {

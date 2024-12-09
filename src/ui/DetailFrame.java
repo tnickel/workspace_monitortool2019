@@ -23,12 +23,14 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JToggleButton;
 import javax.swing.KeyStroke;
 import javax.swing.border.EmptyBorder;
 
 import org.jfree.chart.ChartPanel;
 
-import charts.OpenTradesChart;
+import charts.TradeStackingChart;
+import data.FavoritesManager;
 import data.ProviderStats;
 import utils.ChartFactoryUtil;
 
@@ -38,16 +40,20 @@ public class DetailFrame extends JFrame {
     private final DecimalFormat df = new DecimalFormat("#,##0.00");
     private final DecimalFormat pf = new DecimalFormat("#,##0.00'%'");
     private final ChartFactoryUtil chartFactory;
+    private final FavoritesManager favoritesManager;
+    private final JToggleButton favoriteButton;
 
-    public DetailFrame(String providerName, ProviderStats stats, String providerId) {
+    public DetailFrame(String providerName, ProviderStats stats, String providerId, String rootPath) {
         super("Performance Analysis: " + providerName);
         this.stats = stats;
         this.providerId = providerId;
         this.chartFactory = new ChartFactoryUtil();
+        this.favoritesManager = new FavoritesManager(rootPath);
+        this.favoriteButton = createFavoriteButton();
         
         initializeUI();
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        setSize(1800, 1200);  // Höhe angepasst für drei Zeilen Charts
+        setSize(1000, 3500);
         setLocationRelativeTo(null);
 
         KeyStroke escapeKeyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0, false);
@@ -66,45 +72,25 @@ public class DetailFrame extends JFrame {
         
         // Stats Panel oben
         JPanel statsPanel = createStatsPanel();
-        statsPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 100));
         mainPanel.add(statsPanel);
         
-        // Erste Zeile: Equity Kurve
+        // Favorite Button hinzufügen in Position 4
+        statsPanel.add(favoriteButton);
+        
+        // Equity Curve Chart
         ChartPanel equityChart = chartFactory.createEquityCurveChart(stats);
-        equityChart.setPreferredSize(new Dimension(1700, 300));
-        JPanel equityPanel = new JPanel(new BorderLayout());
-        equityPanel.add(equityChart, BorderLayout.CENTER);
-        equityPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 320));
-        mainPanel.add(equityPanel);
+        equityChart.setPreferredSize(new Dimension(950, 300));
+        mainPanel.add(equityChart);
         
-        // Zweite Zeile: Offene Trades und Lots nebeneinander
-        JPanel secondRowPanel = new JPanel(new GridLayout(1, 2, 10, 0));
+        // Monthly Profit Chart
+        ChartPanel monthlyChart = chartFactory.createMonthlyProfitChart(stats);
+        monthlyChart.setPreferredSize(new Dimension(950, 300));
+        mainPanel.add(monthlyChart);
         
-        // Offene Trades Chart (links)
-        OpenTradesChart openTradesChart = new OpenTradesChart();
-        openTradesChart.addProvider("Anzahl Trades", stats.getTrades());
-        openTradesChart.setPreferredSize(new Dimension(840, 300));
-        secondRowPanel.add(openTradesChart);
-        
-        // Offene Lots Chart (rechts)
-        OpenTradesChart lotsChart = new OpenTradesChart();
-        lotsChart.addLotsProvider("Lots Summe", stats.getTrades());
-        lotsChart.setPreferredSize(new Dimension(840, 300));
-        secondRowPanel.add(lotsChart);
-        
-        // Panel für zweite Zeile mit maximaler Höhe
-        JPanel secondRowContainer = new JPanel(new BorderLayout());
-        secondRowContainer.add(secondRowPanel, BorderLayout.CENTER);
-        secondRowContainer.setMaximumSize(new Dimension(Integer.MAX_VALUE, 320));
-        mainPanel.add(secondRowContainer);
-        
-        // Dritte Zeile: Monatsübersicht
-        ChartPanel monthlyProfitChart = chartFactory.createMonthlyProfitChart(stats);
-        monthlyProfitChart.setPreferredSize(new Dimension(1700, 300));
-        JPanel monthlyPanel = new JPanel(new BorderLayout());
-        monthlyPanel.add(monthlyProfitChart, BorderLayout.CENTER);
-        monthlyPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 320));
-        mainPanel.add(monthlyPanel);
+        // Trade Stacking Chart - deutlich größer für bessere übersicht
+        TradeStackingChart stackingChart = new TradeStackingChart(stats.getTrades());
+        stackingChart.setPreferredSize(new Dimension(950, 2800));
+        mainPanel.add(stackingChart);
         
         // Scrollpane für das gesamte Panel
         JScrollPane scrollPane = new JScrollPane(mainPanel);
@@ -112,25 +98,34 @@ public class DetailFrame extends JFrame {
         add(scrollPane);
     }
 
+    private JToggleButton createFavoriteButton() {
+        JToggleButton button = new JToggleButton("Set Favorite");
+        button.setSelected(favoritesManager.isFavorite(providerId));
+        button.addActionListener(e -> {
+            favoritesManager.toggleFavorite(providerId);
+            button.setSelected(favoritesManager.isFavorite(providerId));
+        });
+        return button;
+    }
+
     private JPanel createStatsPanel() {
         JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
         mainPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
 
         // Stats Grid
-        JPanel statsGrid = new JPanel(new GridLayout(2, 4, 10, 5));
-        statsGrid.setBorder(new EmptyBorder(5, 10, 5, 10));
-
-        // Zeile 1
-        addStatField(statsGrid, "Total Trades:", String.format("%d", stats.getTradeCount()));
-        addStatField(statsGrid, "Win Rate:", pf.format(stats.getWinRate()));
-        addStatField(statsGrid, "Total Profit:", df.format(stats.getTotalProfit()));
-        addStatField(statsGrid, "Max Concurrent Trades:", String.format("%d", stats.getMaxConcurrentTrades()));
+        JPanel statsPanel = new JPanel(new GridLayout(4, 4, 10, 5));
         
-        // Zeile 2
-        addStatField(statsGrid, "Avg Profit:", df.format(stats.getAverageProfit()));
-        addStatField(statsGrid, "Profit Factor:", df.format(stats.getProfitFactor()));
-        addStatField(statsGrid, "Max Drawdown:", pf.format(stats.getMaxDrawdown()));
-        addStatField(statsGrid, "Max Concurrent Lots:", df.format(stats.getMaxConcurrentLots()));
+        // Left statistics
+        addStatField(statsPanel, "Total Trades:", String.format("%d", stats.getTrades().size()));
+        addStatField(statsPanel, "Total Profit:", df.format(stats.getTotalProfit()));
+        addStatField(statsPanel, "Avg Profit/Trade:", df.format(stats.getAverageProfit()));
+        addStatField(statsPanel, "Max Concurrent Trades:", String.format("%d", stats.getMaxConcurrentTrades()));
+        
+        // Right statistics
+        addStatField(statsPanel, "Win Rate:", pf.format(stats.getWinRate()));
+        addStatField(statsPanel, "Profit Factor:", df.format(stats.getProfitFactor()));
+        addStatField(statsPanel, "Max Drawdown:", pf.format(stats.getMaxDrawdown()));
+        addStatField(statsPanel, "Max Concurrent Lots:", df.format(stats.getMaxConcurrentLots()));
 
         // Button Panel für Trade List
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
@@ -159,11 +154,16 @@ public class DetailFrame extends JFrame {
                 }
             }
         });
+        
         linkPanel.add(urlLabel);
 
-        mainPanel.add(statsGrid, BorderLayout.CENTER);
-        mainPanel.add(buttonPanel, BorderLayout.EAST);
-        mainPanel.add(linkPanel, BorderLayout.SOUTH);
+        // Layout zusammenbauen
+        JPanel topPanel = new JPanel(new BorderLayout());
+        topPanel.add(statsPanel, BorderLayout.CENTER);
+        topPanel.add(buttonPanel, BorderLayout.EAST);
+        
+        mainPanel.add(topPanel, BorderLayout.NORTH);
+        mainPanel.add(linkPanel, BorderLayout.CENTER);
 
         return mainPanel;
     }
@@ -176,4 +176,4 @@ public class DetailFrame extends JFrame {
         fieldPanel.add(valueLabel);
         panel.add(fieldPanel);
     }
-   }
+}
