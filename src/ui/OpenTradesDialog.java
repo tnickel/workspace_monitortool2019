@@ -2,6 +2,7 @@ package ui;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
@@ -18,6 +19,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 import javax.swing.AbstractAction;
 import javax.swing.Action;
@@ -29,6 +31,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JToggleButton;
+import javax.swing.JToolBar;
 import javax.swing.KeyStroke;
 
 import org.jfree.chart.ChartFactory;
@@ -60,6 +63,10 @@ public class OpenTradesDialog extends JDialog {
        this.detailPanel = new JPanel();
        
        setLayout(new BorderLayout(5, 0));
+
+       // Toolbar hinzufügen
+       JToolBar toolBar = createToolBar();
+       add(toolBar, BorderLayout.NORTH);
        
        // Main panel für die Charts
        JPanel mainPanel = new JPanel();
@@ -102,6 +109,62 @@ public class OpenTradesDialog extends JDialog {
        };
        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(escapeKeyStroke, "ESCAPE");
        getRootPane().getActionMap().put("ESCAPE", escapeAction);
+   }
+
+   private JToolBar createToolBar() {
+       JToolBar toolBar = new JToolBar();
+       toolBar.setFloatable(false);
+       
+       // Favorites Toggle Button
+       JToggleButton favoritesToggle = new JToggleButton("Show Favorites");
+       favoritesToggle.addActionListener(e -> {
+           if (favoritesToggle.isSelected()) {
+               Map<String, ProviderStats> favorites = providerStats.entrySet().stream()
+                   .filter(entry -> favoritesManager.isFavorite(
+                       entry.getKey().substring(entry.getKey().lastIndexOf("_") + 1).replace(".csv", "")
+                   ))
+                   .collect(Collectors.toMap(
+                       Map.Entry::getKey,
+                       Map.Entry::getValue
+                   ));
+               updateProviderList(favorites);
+           } else {
+               updateProviderList(providerStats);
+           }
+       });
+       toolBar.add(favoritesToggle);
+       
+       return toolBar;
+   }
+
+   private void updateProviderList(Map<String, ProviderStats> providers) {
+       JPanel mainPanel = new JPanel();
+       mainPanel.setLayout(new GridBagLayout());
+       GridBagConstraints gbc = new GridBagConstraints();
+       gbc.gridx = 0;
+       gbc.gridy = 0;
+       gbc.weightx = 1.0;
+       gbc.fill = GridBagConstraints.HORIZONTAL;
+       gbc.insets = new Insets(5, 5, 5, 5);
+
+       for (Map.Entry<String, ProviderStats> entry : providers.entrySet()) {
+           setupProviderPanel(entry.getKey(), entry.getValue(), mainPanel, gbc);
+           gbc.gridy++;
+       }
+
+       JScrollPane scrollPane = new JScrollPane(mainPanel);
+       scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+       
+       // Altes Panel entfernen und neues hinzufügen
+       Component oldScrollPane = ((BorderLayout)getContentPane().getLayout())
+           .getLayoutComponent(BorderLayout.CENTER);
+       if (oldScrollPane != null) {
+           getContentPane().remove(oldScrollPane);
+       }
+       add(scrollPane, BorderLayout.CENTER);
+       
+       revalidate();
+       repaint();
    }
 
    private void setupProviderPanel(String providerName, ProviderStats stats, JPanel mainPanel, GridBagConstraints gbc) {
