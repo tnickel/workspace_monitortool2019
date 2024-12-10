@@ -21,6 +21,7 @@ import data.ProviderStats;
 import data.Trade;
 import data.FavoritesManager;
 
+
 public class CompareDialog extends JDialog {
     private final Map<String, ProviderStats> providerStats;
     private final JPanel detailPanel;

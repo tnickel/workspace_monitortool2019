@@ -41,7 +41,7 @@ public class TradeListFrame extends JFrame {
     }
 
     private void initializeUI() {
-        setSize(1100, 600);
+    	setSize(1430, 780); 
         setLayout(new BorderLayout(5, 0));
 
         // Hauptbereich mit Tabelle

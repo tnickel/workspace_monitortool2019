@@ -6,16 +6,15 @@ import java.awt.Cursor;
 import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.Font;
 import java.awt.GridLayout;
-import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.net.URI;
 import java.text.DecimalFormat;
 
 import javax.swing.AbstractAction;
 import javax.swing.Action;
+import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JComponent;
@@ -23,14 +22,14 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
-import javax.swing.JToggleButton;
 import javax.swing.KeyStroke;
 import javax.swing.border.EmptyBorder;
 
 import org.jfree.chart.ChartPanel;
 
+import charts.DrawdownChart;
 import charts.TradeStackingChart;
-import data.FavoritesManager;
+import charts.SymbolDistributionChart;
 import data.ProviderStats;
 import utils.ChartFactoryUtil;
 
@@ -40,25 +39,22 @@ public class DetailFrame extends JFrame {
     private final DecimalFormat df = new DecimalFormat("#,##0.00");
     private final DecimalFormat pf = new DecimalFormat("#,##0.00'%'");
     private final ChartFactoryUtil chartFactory;
-    private final FavoritesManager favoritesManager;
-    private final JToggleButton favoriteButton;
 
-    public DetailFrame(String providerName, ProviderStats stats, String providerId, String rootPath) {
+    public DetailFrame(String providerName, ProviderStats stats, String providerId) {
         super("Performance Analysis: " + providerName);
         this.stats = stats;
         this.providerId = providerId;
         this.chartFactory = new ChartFactoryUtil();
-        this.favoritesManager = new FavoritesManager(rootPath);
-        this.favoriteButton = createFavoriteButton();
         
         initializeUI();
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        setSize(1000, 3500);
+        setSize(1000, 1800); // Höhe erhöht für alle Charts
         setLocationRelativeTo(null);
 
+        // ESC zum Schließen
         KeyStroke escapeKeyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0, false);
         Action escapeAction = new AbstractAction() {
-            public void actionPerformed(ActionEvent e) {
+            public void actionPerformed(java.awt.event.ActionEvent e) {
                 dispose();
             }
         };
@@ -69,111 +65,145 @@ public class DetailFrame extends JFrame {
     private void initializeUI() {
         JPanel mainPanel = new JPanel();
         mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
+        mainPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
         
         // Stats Panel oben
         JPanel statsPanel = createStatsPanel();
+        statsPanel.setAlignmentX(LEFT_ALIGNMENT);
         mainPanel.add(statsPanel);
+        mainPanel.add(javax.swing.Box.createRigidArea(new Dimension(0, 20)));
         
-        // Favorite Button hinzufügen in Position 4
-        statsPanel.add(favoriteButton);
+        // Alle Charts mit gleicher Breite
+        Dimension chartSize = new Dimension(950, 300);
         
         // Equity Curve Chart
         ChartPanel equityChart = chartFactory.createEquityCurveChart(stats);
-        equityChart.setPreferredSize(new Dimension(950, 300));
+        equityChart.setPreferredSize(chartSize);
+        equityChart.setAlignmentX(LEFT_ALIGNMENT);
         mainPanel.add(equityChart);
+        mainPanel.add(javax.swing.Box.createRigidArea(new Dimension(0, 20)));
         
-        // Monthly Profit Chart
+        // Monthly Performance Chart
         ChartPanel monthlyChart = chartFactory.createMonthlyProfitChart(stats);
-        monthlyChart.setPreferredSize(new Dimension(950, 300));
+        monthlyChart.setPreferredSize(chartSize);
+        monthlyChart.setAlignmentX(LEFT_ALIGNMENT);
         mainPanel.add(monthlyChart);
+        mainPanel.add(javax.swing.Box.createRigidArea(new Dimension(0, 20)));
         
-        // Trade Stacking Chart - deutlich größer für bessere übersicht
+        // Trade Stacking Chart
         TradeStackingChart stackingChart = new TradeStackingChart(stats.getTrades());
-        stackingChart.setPreferredSize(new Dimension(950, 2800));
+        stackingChart.setPreferredSize(chartSize);
+        stackingChart.setAlignmentX(LEFT_ALIGNMENT);
         mainPanel.add(stackingChart);
+        mainPanel.add(javax.swing.Box.createRigidArea(new Dimension(0, 20)));
         
-        // Scrollpane für das gesamte Panel
+        // Drawdown Chart
+        DrawdownChart drawdownChart = new DrawdownChart(stats.getTrades());
+        drawdownChart.setPreferredSize(chartSize);
+        drawdownChart.setAlignmentX(LEFT_ALIGNMENT);
+        mainPanel.add(drawdownChart);
+        mainPanel.add(javax.swing.Box.createRigidArea(new Dimension(0, 20)));
+        
+        // Symbol Distribution Chart
+        SymbolDistributionChart symbolChart = new SymbolDistributionChart(stats.getTrades());
+        symbolChart.setPreferredSize(chartSize);
+        symbolChart.setAlignmentX(LEFT_ALIGNMENT);
+        mainPanel.add(symbolChart);
+
+        // Scrollpane
         JScrollPane scrollPane = new JScrollPane(mainPanel);
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        scrollPane.setBorder(null); // Kein Border für ScrollPane
         add(scrollPane);
     }
 
-    private JToggleButton createFavoriteButton() {
-        JToggleButton button = new JToggleButton("Set Favorite");
-        button.setSelected(favoritesManager.isFavorite(providerId));
-        button.addActionListener(e -> {
-            favoritesManager.toggleFavorite(providerId);
-            button.setSelected(favoritesManager.isFavorite(providerId));
-        });
-        return button;
-    }
-
     private JPanel createStatsPanel() {
-        JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
-        mainPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
+        JPanel mainPanel = new JPanel(new BorderLayout());
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
 
         // Stats Grid
-        JPanel statsPanel = new JPanel(new GridLayout(4, 4, 10, 5));
+        JPanel statsGrid = new JPanel(new GridLayout(2, 4, 15, 5));
         
-        // Left statistics
-        addStatField(statsPanel, "Total Trades:", String.format("%d", stats.getTrades().size()));
-        addStatField(statsPanel, "Total Profit:", df.format(stats.getTotalProfit()));
-        addStatField(statsPanel, "Avg Profit/Trade:", df.format(stats.getAverageProfit()));
-        addStatField(statsPanel, "Max Concurrent Trades:", String.format("%d", stats.getMaxConcurrentTrades()));
-        
-        // Right statistics
-        addStatField(statsPanel, "Win Rate:", pf.format(stats.getWinRate()));
-        addStatField(statsPanel, "Profit Factor:", df.format(stats.getProfitFactor()));
-        addStatField(statsPanel, "Max Drawdown:", pf.format(stats.getMaxDrawdown()));
-        addStatField(statsPanel, "Max Concurrent Lots:", df.format(stats.getMaxConcurrentLots()));
+        // Linke Statistiken
+        addStatField(statsGrid, "Total Trades: ", String.format("%d", stats.getTrades().size()));
+        addStatField(statsGrid, "Win Rate: ", pf.format(stats.getWinRate()));
+        addStatField(statsGrid, "Total Profit: ", df.format(stats.getTotalProfit()));
+        addStatField(statsGrid, "Profit Factor: ", df.format(stats.getProfitFactor()));
+        addStatField(statsGrid, "Avg Profit/Trade: ", df.format(stats.getAverageProfit()));
+        addStatField(statsGrid, "Max Drawdown: ", pf.format(stats.getMaxDrawdown()));
+        addStatField(statsGrid, "Max Concurrent Trades: ", String.format("%d", stats.getMaxConcurrentTrades()));
+        addStatField(statsGrid, "Max Concurrent Lots: ", df.format(stats.getMaxConcurrentLots()));
 
-        // Button Panel für Trade List
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        JButton showTradesButton = new JButton("Show Trade List");
-        showTradesButton.addActionListener(e -> {
-            TradeListFrame tradeListFrame = new TradeListFrame(getTitle(), stats);
-            tradeListFrame.setVisible(true);
-        });
-        buttonPanel.add(showTradesButton);
-
-        // Link Panel für mql5.com
-        JPanel linkPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        JLabel urlLabel = new JLabel("<html><u>https://www.mql5.com/de/signals/" + 
-            providerId + "?source=Site+Signals+Subscriptions#!tab=account</u></html>");
+        // URL Panel
+        JPanel urlPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        String urlText = String.format("<html><u>https://www.mql5.com/de/signals/%s?source=Site+Signals+Subscriptions#!tab=account</u></html>", 
+            providerId);
+        JLabel urlLabel = new JLabel(urlText);
         urlLabel.setForeground(Color.BLUE);
         urlLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         
-        urlLabel.addMouseListener(new MouseAdapter() {
+        urlLabel.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
-            public void mouseClicked(MouseEvent e) {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
                 try {
-                    Desktop.getDesktop().browse(new URI("https://www.mql5.com/de/signals/" + 
-                        providerId + "?source=Site+Signals+Subscriptions#!tab=account"));
-                } catch (Exception ex) {
-                    ex.printStackTrace();
+                    Desktop.getDesktop().browse(new URI(String.format(
+                        "https://www.mql5.com/de/signals/%s?source=Site+Signals+Subscriptions#!tab=account", 
+                        providerId)));
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
             }
         });
         
-        linkPanel.add(urlLabel);
+        urlPanel.add(urlLabel);
+
+        // Button Panel
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        JButton favButton = new JButton("Set Favorite");
+        JButton showTradesButton = new JButton("Show Trade List");
+        
+        favButton.setBackground(Color.WHITE);
+        favButton.addActionListener(e -> {
+            if (favButton.getBackground() == Color.WHITE) {
+                favButton.setBackground(Color.YELLOW);
+                favButton.setText("Remove Favorite");
+            } else {
+                favButton.setBackground(Color.WHITE);
+                favButton.setText("Set Favorite");
+            }
+        });
+
+        showTradesButton.addActionListener(e -> {
+            TradeListFrame tradeListFrame = new TradeListFrame(getTitle(), stats);
+            tradeListFrame.setVisible(true);
+        });
+
+        buttonPanel.add(favButton);
+        buttonPanel.add(showTradesButton);
 
         // Layout zusammenbauen
         JPanel topPanel = new JPanel(new BorderLayout());
-        topPanel.add(statsPanel, BorderLayout.CENTER);
+        topPanel.add(statsGrid, BorderLayout.CENTER);
         topPanel.add(buttonPanel, BorderLayout.EAST);
         
         mainPanel.add(topPanel, BorderLayout.NORTH);
-        mainPanel.add(linkPanel, BorderLayout.CENTER);
+        mainPanel.add(urlPanel, BorderLayout.CENTER);
 
         return mainPanel;
     }
 
     private void addStatField(JPanel panel, String label, String value) {
         JPanel fieldPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
-        fieldPanel.add(new JLabel(label));
-        JLabel valueLabel = new JLabel(value);
-        valueLabel.setForeground(new Color(0, 100, 0));  // Dunkelgrün
-        fieldPanel.add(valueLabel);
+        
+        JLabel labelComponent = new JLabel(label);
+        labelComponent.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        fieldPanel.add(labelComponent);
+        
+        JLabel valueComponent = new JLabel(value);
+        valueComponent.setFont(new Font("SansSerif", Font.BOLD, 12));
+        valueComponent.setForeground(new Color(0, 100, 0));
+        fieldPanel.add(valueComponent);
+        
         panel.add(fieldPanel);
     }
 }
