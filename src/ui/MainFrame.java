@@ -1,6 +1,7 @@
 package ui;
 
 import java.awt.BorderLayout;
+import ui.RiskScoreExplanationDialog;
 import java.awt.Color;
 import java.awt.FlowLayout;
 import java.awt.Font;
@@ -106,7 +107,14 @@ public class MainFrame extends JFrame {
             OpenTradesDialog dialog = new OpenTradesDialog(this, mainTable.getCurrentProviderStats());
             dialog.setVisible(true);
         });
+        // Risk Score Explanation Button
+        JButton riskScoreButton = new JButton("Risk Score Explanation");
+        riskScoreButton.addActionListener(e -> {
+            RiskScoreExplanationDialog dialog = new RiskScoreExplanationDialog(this);
+            dialog.setVisible(true);
+        });
         toolBar.add(compareOpenTradesButton);
+        toolBar.add(riskScoreButton);
         
         add(toolBar, BorderLayout.NORTH);
     }
