@@ -88,9 +88,15 @@ public class FilterCriteria {
     }
 
     public boolean matches(ProviderStats stats) {
-        return stats.getTrades().size() >= minTradeDays &&
-               stats.getTotalProfit() >= minTotalProfit &&
+        // Berechne die Anzahl der Handelstage zwischen Start- und Enddatum
+        long tradingDays = java.time.temporal.ChronoUnit.DAYS.between(
+            stats.getStartDate(),
+            stats.getEndDate().plusDays(1) // plusDays(1) um den letzten Tag einzuschließen
+        );
+        
+        return tradingDays >= minTradeDays &&
                stats.getAverageProfitPerTrade() >= minProfit &&
+               stats.getTotalProfit() >= minTotalProfit &&
                stats.getProfitFactor() >= minProfitFactor &&
                stats.getWinRate() >= minWinRate &&
                stats.getMaxDrawdownPercent() <= maxDrawdown &&
@@ -101,10 +107,10 @@ public class FilterCriteria {
     @Override
     public String toString() {
         return String.format("FilterCriteria{minTradeDays=%d, minProfit=%.2f, minTotalProfit=%.2f, " +
-                           "minProfitFactor=%.2f, minWinRate=%.2f, maxDrawdown=%.2f, " +
-                           "maxConcurrentTrades=%d, maxConcurrentLots=%.2f}",
-                           minTradeDays, minProfit, minTotalProfit,
-                           minProfitFactor, minWinRate, maxDrawdown,
-                           maxConcurrentTrades, maxConcurrentLots);
+                            "minProfitFactor=%.2f, minWinRate=%.2f, maxDrawdown=%.2f, " +
+                            "maxConcurrentTrades=%d, maxConcurrentLots=%.2f}",
+                            minTradeDays, minProfit, minTotalProfit,
+                            minProfitFactor, minWinRate, maxDrawdown,
+                            maxConcurrentTrades, maxConcurrentLots);
     }
 }

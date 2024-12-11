@@ -4,7 +4,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+
 import org.jfree.data.category.DefaultCategoryDataset;
+
 import utils.TradeUtils;
 
 public class ProviderStats {
@@ -81,13 +83,23 @@ public class ProviderStats {
     }
     
     public LocalDate getStartDate() {
-        return trades.isEmpty() ? LocalDate.now() : 
-               trades.get(0).getOpenTime().toLocalDate();
+        if (trades.isEmpty()) {
+            return LocalDate.now();
+        }
+        return trades.stream()
+            .map(trade -> trade.getOpenTime().toLocalDate())
+            .min(LocalDate::compareTo)
+            .orElse(LocalDate.now());
     }
     
     public LocalDate getEndDate() {
-        return trades.isEmpty() ? LocalDate.now() : 
-               trades.get(trades.size() - 1).getCloseTime().toLocalDate();
+        if (trades.isEmpty()) {
+            return LocalDate.now();
+        }
+        return trades.stream()
+            .map(trade -> trade.getCloseTime().toLocalDate())
+            .max(LocalDate::compareTo)
+            .orElse(LocalDate.now());
     }
     
     public int getMaxConcurrentTrades() {
