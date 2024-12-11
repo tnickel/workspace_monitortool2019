@@ -106,23 +106,23 @@ public class TradeStackingChart extends JPanel {
      chart.getLegend().setPosition(RectangleEdge.TOP);
      chart.getLegend().setItemFont(new Font("SansSerif", Font.PLAIN, 12));
      
-     // Hier wird die Höhe um Faktor 3 gestreckt
+     // Modify the ChartPanel creation to double the height
      ChartPanel chartPanel = new ChartPanel(chart) {
          @Override
          public Dimension getPreferredSize() {
-             // Normale Breite (950), aber dreifache Höhe (300 * 3 = 900)
-             return new Dimension(950, 900);
+             // Keep normal width (950) but double the height (600)
+             return new Dimension(950, 600);
          }
          
          @Override
          public Dimension getMinimumSize() {
-             // Minimale Breite (600), aber dreifache Höhe (400 * 3 = 1200)
-             return new Dimension(600, 1200);
+             // Keep minimum width (600) but double the height (800)
+             return new Dimension(600, 800);
          }
      };
      
-     // Feste Größe setzen
-     chartPanel.setPreferredSize(new Dimension(950, 1200));
+     // Set fixed size with doubled height
+     chartPanel.setPreferredSize(new Dimension(950, 600));
      
      setLayout(new BorderLayout());
      add(chartPanel, BorderLayout.CENTER);
