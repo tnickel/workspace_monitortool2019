@@ -1,102 +1,72 @@
 package models;
 
+import javax.swing.table.DefaultTableModel;
+import java.util.Map;
 import data.ProviderStats;
-import utils.TradeUtils;
-import data.Trade;
-import data.TradeComparator;
-import java.time.format.DateTimeFormatter;
-import javax.swing.table.AbstractTableModel;
-import java.util.*;
+import services.RiskAnalysisServ;
 
-public class HighlightTableModel extends AbstractTableModel {
-    private final List<Object[]> data = new ArrayList<>();
-    private final String[] columnNames = {
-        "No.", "Signal Provider", "Trades", "Win Rate %", "Total Profit", 
+public class HighlightTableModel extends DefaultTableModel {
+    
+    private static final String[] COLUMN_NAMES = {
+        "No.", "Signal Provider", "Trades", "Win Rate %", "Total Profit",
         "Avg Profit/Trade", "Max Drawdown %", "Profit Factor", 
-        "Max Concurrent Trades", "Max Concurrent Lots", "Start Date", "End Date"
+        "Max Concurrent Trades", "Max Concurrent Lots", "Risk Score",
+        "Start Date", "End Date"
     };
     
-    private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-
-    @Override
-    public int getRowCount() {
-        return data.size();
+    public HighlightTableModel() {
+        super(COLUMN_NAMES, 0);
     }
-
+    
     @Override
-    public int getColumnCount() {
-        return columnNames.length;
+    public boolean isCellEditable(int row, int column) {
+        return false; // Verhindert das Editieren aller Zellen
     }
-
-    @Override
-    public String getColumnName(int column) {
-        return columnNames[column];
-    }
-
-    @Override
-    public Object getValueAt(int row, int col) {
-        return data.get(row)[col];
-    }
-
+    
     @Override
     public Class<?> getColumnClass(int columnIndex) {
-        if (data.size() > 0) {
-            return getValueAt(0, columnIndex).getClass();
+        switch (columnIndex) {
+            case 0: // No
+            case 2: // Trades
+            case 8: // Max Concurrent Trades
+                return Integer.class;
+            case 3: // Win Rate
+            case 4: // Total Profit
+            case 5: // Avg Profit/Trade
+            case 6: // Max Drawdown
+            case 7: // Profit Factor
+            case 9: // Max Concurrent Lots
+            case 10: // Risk Score
+                return Double.class;
+            default:
+                return String.class;
         }
-        return Object.class;
     }
-
-    public void addRow(String providerName, ProviderStats stats) {
-        List<Trade> trades = new ArrayList<>(stats.getTrades());
-        trades.sort(new TradeComparator());
-
-        Object[] row = new Object[] {
-            data.size() + 1,
-            providerName,
-            trades.size(),
-            stats.getWinRate(),
-            stats.getTotalProfit(),
-            stats.getAverageProfitPerTrade(),
-            stats.getMaxDrawdownPercent(),
-            stats.getProfitFactor(),
-            stats.getMaxConcurrentTrades(),
-            stats.getMaxConcurrentLots(),
-            stats.getStartDate().format(dateFormatter),
-            stats.getEndDate().format(dateFormatter)
-        };
-        data.add(row);
-    }
-
-    public void populateData(Map<String, ProviderStats> stats) {
-        data.clear();
-        // Batching für bessere Performance
-        List<Object[]> newData = new ArrayList<>(stats.size());
-        for (Map.Entry<String, ProviderStats> entry : stats.entrySet()) {
-            ProviderStats providerStats = entry.getValue();
-            List<Trade> trades = new ArrayList<>(providerStats.getTrades());
+    
+    public void populateData(Map<String, ProviderStats> statsMap) {
+        setRowCount(0);
+        int rowNum = 1;
+        
+        for (Map.Entry<String, ProviderStats> entry : statsMap.entrySet()) {
+            ProviderStats stats = entry.getValue();
+            int riskScore = RiskAnalysisServ.calculateRiskScore(stats);
             
-            Object[] row = new Object[] {
-                newData.size() + 1,
+            addRow(new Object[]{
+                rowNum++,
                 entry.getKey(),
-                trades.size(),
-                providerStats.getWinRate(),
-                providerStats.getTotalProfit(),
-                providerStats.getAverageProfitPerTrade(),
-                providerStats.getMaxDrawdownPercent(),
-                providerStats.getProfitFactor(),
-                providerStats.getMaxConcurrentTrades(),
-                providerStats.getMaxConcurrentLots(),
-                providerStats.getStartDate().format(dateFormatter),
-                providerStats.getEndDate().format(dateFormatter)
-            };
-            newData.add(row);
+                stats.getTrades().size(),
+                stats.getWinRate(),
+                stats.getTotalProfit(),
+                stats.getAverageProfit(),
+                stats.getMaxDrawdown(),
+                stats.getProfitFactor(),
+                stats.getMaxConcurrentTrades(),
+                stats.getMaxConcurrentLots(),
+                riskScore,
+                stats.getStartDate(),
+                stats.getEndDate()
+            });
         }
-        data.addAll(newData);
-        fireTableDataChanged();
-    }
-
-    public void clear() {
-        data.clear();
         fireTableDataChanged();
     }
 }

@@ -14,11 +14,13 @@ import data.ProviderStats;
 import models.FilterCriteria;
 import models.HighlightTableModel;
 import renderers.HighlightRenderer;
+import renderers.RiskScoreRenderer;
 import ui.DetailFrame;
 
 public class MainTable extends JTable {
     private final HighlightTableModel model;
     private final HighlightRenderer renderer;
+    private final RiskScoreRenderer riskRenderer;
     private final DataManager dataManager;
     private FilterCriteria currentFilter;
     private Consumer<String> statusUpdateCallback;
@@ -27,6 +29,7 @@ public class MainTable extends JTable {
         this.dataManager = dataManager;
         this.model = new HighlightTableModel();
         this.renderer = new HighlightRenderer();
+        this.riskRenderer = new RiskScoreRenderer();
         initialize();
         setupMouseListener();
         setupModelListener();
@@ -36,9 +39,13 @@ public class MainTable extends JTable {
         setModel(model);
         setRowSorter(new TableRowSorter<>(model));
         
-        // Set renderer for all columns
+        // Set renderer for all columns except Risk Score
         for (int i = 0; i < getColumnCount(); i++) {
-            getColumnModel().getColumn(i).setCellRenderer(renderer);
+            if (i == 10) { // Risk Score column
+                getColumnModel().getColumn(i).setCellRenderer(riskRenderer);
+            } else {
+                getColumnModel().getColumn(i).setCellRenderer(renderer);
+            }
         }
         
         // Populate data
@@ -54,16 +61,20 @@ public class MainTable extends JTable {
                     if (row != -1) {
                         row = convertRowIndexToModel(row);
                         String providerName = (String) model.getValueAt(row, 1);
+                        ProviderStats stats = dataManager.getStats().get(providerName);
                         String providerId = providerName.substring(providerName.lastIndexOf("_") + 1).replace(".csv", "");
-                        new DetailFrame(providerName,
-                                      dataManager.getStats().get(providerName),
-                                      providerId).setVisible(true);
+                        
+                        if (stats != null) {
+                            DetailFrame detailFrame = new DetailFrame(providerName, stats, providerId);
+                            detailFrame.setVisible(true);
+                        }
                     }
                 }
             }
         });
     }
     
+ 
     private void setupModelListener() {
         model.addTableModelListener(e -> updateStatus());
     }
