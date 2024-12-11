@@ -13,11 +13,16 @@ public class ProviderStats {
     private final List<Trade> trades;
     private final List<Double> profits;
     private double initialBalance;
+    private int userCount;
+    private double investedCapital;
+    private String currency = "USD"; // Default-Währung
     
     public ProviderStats() {
         this.trades = new ArrayList<>();
         this.profits = new ArrayList<>();
         this.initialBalance = 0.0;
+        this.userCount = 0;
+        this.investedCapital = 0.0;
     }
     
     public void setInitialBalance(double balance) {
@@ -140,5 +145,27 @@ public class ProviderStats {
 
     public double getAverageProfit() {
         return getAverageProfitPerTrade();
+    }
+    public void setUserCount(int userCount) {
+        this.userCount = userCount;
+    }
+    
+    public int getUserCount() {
+        return userCount;
+    }
+    
+    public void setInvestedCapital(double investedCapital) {
+        this.investedCapital = investedCapital;
+    }
+    
+    public double getInvestedCapital() {
+        return investedCapital;
+    }
+    public void setCurrency(String currency) {
+        this.currency = currency;
+    }
+
+    public String getCurrency() {
+        return currency;
     }
 }
