@@ -11,6 +11,8 @@ public class ProviderStats {
     private final List<Trade> trades;
     private final List<Double> profits;
     private double initialBalance;
+    private boolean hasStopLoss = false;    // Neu
+    private boolean hasTakeProfit = false;  // Neu
     
     public ProviderStats() {
         this.trades = new ArrayList<>();
@@ -29,11 +31,16 @@ public class ProviderStats {
     public void addTrade(LocalDateTime openTime, LocalDateTime closeTime,
                         String type, String symbol, double lots,
                         double openPrice, double closePrice,
+                        double stopLoss, double takeProfit,
                         double commission, double swap, double profit) {
         Trade trade = new Trade(openTime, closeTime, type, symbol, lots,
-                              openPrice, closePrice, commission, swap, profit);
+                              openPrice, closePrice, stopLoss, takeProfit,
+                              commission, swap, profit);
         trades.add(trade);
         profits.add(profit);
+        
+        if (stopLoss != 0.0) hasStopLoss = true;
+        if (takeProfit != 0.0) hasTakeProfit = true;
     }
     
     public List<Trade> getTrades() {
@@ -88,6 +95,14 @@ public class ProviderStats {
     public LocalDate getEndDate() {
         return trades.isEmpty() ? LocalDate.now() : 
                trades.get(trades.size() - 1).getCloseTime().toLocalDate();
+    }
+    
+    public boolean hasStopLoss() {
+        return hasStopLoss;
+    }
+    
+    public boolean hasTakeProfit() {
+        return hasTakeProfit;
     }
     
     public int getMaxConcurrentTrades() {
