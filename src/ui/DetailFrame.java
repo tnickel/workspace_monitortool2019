@@ -28,8 +28,8 @@ import javax.swing.border.EmptyBorder;
 import org.jfree.chart.ChartPanel;
 
 import charts.DrawdownChart;
-import charts.TradeStackingChart;
 import charts.SymbolDistributionChart;
+import charts.TradeStackingChart;
 import data.ProviderStats;
 import utils.ChartFactoryUtil;
 
@@ -97,8 +97,7 @@ public class DetailFrame extends JFrame {
         mainPanel.add(stackingChart);
         mainPanel.add(javax.swing.Box.createRigidArea(new Dimension(0, 20)));
         
-        // Drawdown Chart
-        DrawdownChart drawdownChart = new DrawdownChart(stats.getTrades());
+        DrawdownChart drawdownChart = new DrawdownChart(stats.getTrades(), stats.getInitialBalance());
         drawdownChart.setPreferredSize(chartSize);
         drawdownChart.setAlignmentX(LEFT_ALIGNMENT);
         mainPanel.add(drawdownChart);
