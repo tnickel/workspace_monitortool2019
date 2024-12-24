@@ -19,7 +19,7 @@ import javax.swing.table.TableRowSorter;
 import data.ProviderStats;
 import data.Trade;
 import data.TradeComparator;
-import utils.TradeUtils;  // TradeTracker durch TradeUtils ersetzt
+import utils.TradeUtils;
 
 public class TradeListTable extends JTable {
     private final DecimalFormat df = new DecimalFormat("#,##0.00");
@@ -41,7 +41,7 @@ public class TradeListTable extends JTable {
         String[] columnNames = { 
             "No.", "Open Time", "Close Time", "Type", "Symbol", "Lots", 
             "Open Price", "Close Price", "Profit/Loss", "Commission", "Swap", 
-            "Total", "Running Profit", "Open Trades", "Open Lots" 
+            "Total", "Running Profit", "Open Trades", "Open Lots", "Open Equity" 
         };
 
         DefaultTableModel model = new DefaultTableModel(columnNames, 0) {
@@ -65,6 +65,7 @@ public class TradeListTable extends JTable {
                     case 12: // Running Profit
                     case 13: // Open Trades
                     case 14: // Open Lots
+                    case 15: // Open Equity
                         return Double.class;
                     default:
                         return String.class;
@@ -87,10 +88,12 @@ public class TradeListTable extends JTable {
             double totalProfit = trade.getTotalProfit();
             runningProfit += totalProfit;
 
-            // TradeTracker durch TradeUtils ersetzt
             List<Trade> activeTrades = TradeUtils.getActiveTradesAt(sortedTrades, trade.getOpenTime());
             int openTradesCount = activeTrades.size();
             double openLotsCount = activeTrades.stream().mapToDouble(Trade::getLots).sum();
+            
+            // Open Equity Berechnung
+            double openEquity = estimateOpenEquity(activeTrades, trade.getOpenTime());
 
             model.addRow(new Object[] {
                 i + 1,
@@ -107,7 +110,8 @@ public class TradeListTable extends JTable {
                 totalProfit,
                 runningProfit,
                 openTradesCount,
-                openLotsCount
+                openLotsCount,
+                openEquity
             });
         }
     }
@@ -136,7 +140,10 @@ public class TradeListTable extends JTable {
         setRowSorter(sorter);
         setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
 
-        int[] preferredWidths = { 50, 140, 140, 60, 80, 70, 90, 90, 90, 90, 90, 90, 100, 90, 90 };
+        int[] preferredWidths = { 
+            50, 140, 140, 60, 80, 70, 90, 90, 90, 90, 90, 
+            90, 100, 90, 90, 90  // Letzte 90 für Open Equity
+        };
         for (int i = 0; i < preferredWidths.length; i++) {
             getColumnModel().getColumn(i).setPreferredWidth(preferredWidths[i]);
         }
@@ -160,12 +167,61 @@ public class TradeListTable extends JTable {
             }
         };
 
-        getColumnModel().getColumn(8).setCellRenderer(moneyRenderer);  // Profit/Loss
-        getColumnModel().getColumn(9).setCellRenderer(moneyRenderer);  // Commission
-        getColumnModel().getColumn(10).setCellRenderer(moneyRenderer); // Swap
-        getColumnModel().getColumn(11).setCellRenderer(moneyRenderer); // Total
-        getColumnModel().getColumn(12).setCellRenderer(moneyRenderer); // Running Profit
-        getColumnModel().getColumn(13).setCellRenderer(moneyRenderer); // Open Trades
-        getColumnModel().getColumn(14).setCellRenderer(moneyRenderer); // Open Lots
+        // Money Columns
+        int[] moneyColumns = {8, 9, 10, 11, 12, 13, 14, 15}; // 15 für Open Equity
+        for (int column : moneyColumns) {
+            getColumnModel().getColumn(column).setCellRenderer(moneyRenderer);
+        }
+    }
+
+    private double estimateOpenEquity(List<Trade> activeTrades, LocalDateTime currentTime) {
+        double totalEquity = 0.0;
+        
+        for (Trade trade : activeTrades) {
+            double progress = calculateTradeProgress(trade, currentTime);
+            double estimatedProfit = interpolateProfit(trade, progress);
+            
+            // Aggressivere Abschätzung:
+            // 1. Wenn der Trade am Ende Verlust macht, nehmen wir an dass der Verlust früher eintritt
+            // 2. Wenn der Trade am Ende Gewinn macht, nehmen wir an dass der Gewinn später eintritt
+            if (trade.getProfit() < 0) {
+                // Bei Verlust-Trades: Verlust schneller eintreten lassen
+                estimatedProfit *= 1.5; // 50% mehr Verlust
+                
+                // Progress beschleunigen für Verlust-Trades
+                double acceleratedProgress = Math.pow(progress, 0.7); // Verluste treten früher ein
+                estimatedProfit = trade.getProfit() * acceleratedProgress;
+            } else {
+                // Bei Gewinn-Trades: Gewinne verzögern
+                double delayedProgress = Math.pow(progress, 1.3); // Gewinne treten später ein
+                estimatedProfit = trade.getProfit() * delayedProgress;
+            }
+            
+            // Zusätzlicher Risiko-Faktor basierend auf der Lot-Größe
+            double lotRiskFactor = 1.0 + (trade.getLots() * 0.2); // Größere Positionen = mehr Risiko
+            if (estimatedProfit < 0) {
+                estimatedProfit *= lotRiskFactor;
+            }
+            
+            totalEquity += estimatedProfit;
+        }
+        
+        // Gesamtrisiko-Faktor basierend auf Anzahl offener Trades
+        double totalRiskFactor = 1.0 + (activeTrades.size() * 0.1); // Mehr offene Trades = mehr Risiko
+        if (totalEquity < 0) {
+            totalEquity *= totalRiskFactor;
+        }
+        
+        return totalEquity;
+    }
+
+    private double calculateTradeProgress(Trade trade, LocalDateTime currentTime) {
+        long totalDuration = java.time.Duration.between(trade.getOpenTime(), trade.getCloseTime()).toMillis();
+        long currentDuration = java.time.Duration.between(trade.getOpenTime(), currentTime).toMillis();
+        return Math.min(1.0, Math.max(0.0, (double) currentDuration / totalDuration));
+    }
+
+    private double interpolateProfit(Trade trade, double progress) {
+        return trade.getProfit() * progress;
     }
 }
