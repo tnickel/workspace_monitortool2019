@@ -1,7 +1,6 @@
 package ui;
 
 import java.awt.BorderLayout;
-import ui.RiskScoreExplanationDialog;
 import java.awt.Color;
 import java.awt.FlowLayout;
 import java.awt.Font;
@@ -10,8 +9,12 @@ import java.awt.event.KeyEvent;
 import java.util.logging.Logger;
 
 import javax.swing.JButton;
+import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
+import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -24,7 +27,7 @@ import javax.swing.border.EmptyBorder;
 import components.MainTable;
 import data.DataManager;
 import models.FilterCriteria;
-import ui.CompareDialog;
+import utils.MqlAnalyserConf;
 
 public class MainFrame extends JFrame {
     private static final Logger LOGGER = Logger.getLogger(MainFrame.class.getName());
@@ -32,17 +35,18 @@ public class MainFrame extends JFrame {
     private final JLabel statusLabel;
     private final JTextField searchField;
     private final DataManager dataManager;
+    private final MqlAnalyserConf config;
     private int[] currentSearchIndex = {-1};
-    private String rootPath_glob=null;
+    private String rootPath_glob = null;
 
-    public MainFrame(DataManager dataManager, String rootPath) {
+    public MainFrame(DataManager dataManager, String rootPath, MqlAnalyserConf config) {
         super("Signal Providers Performance Analysis");
         this.dataManager = dataManager;
+        this.config = config;
         this.statusLabel = new JLabel();
         this.searchField = new JTextField(20);
-        rootPath_glob=rootPath;
+        rootPath_glob = rootPath;
         
-        // Create components
         mainTable = new MainTable(dataManager);
         mainTable.setStatusUpdateCallback(text -> statusLabel.setText(text));
         
@@ -50,32 +54,77 @@ public class MainFrame extends JFrame {
         setupSearch();
         setupStatusBar();
     }
+
+    private void setDownloadPath() {
+        String currentPath = config.getDownloadPath();
+        JFileChooser chooser = new JFileChooser(currentPath);
+        chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        
+        if (chooser.showDialog(this, "Select Download Directory") == JFileChooser.APPROVE_OPTION) {
+            String newPath = chooser.getSelectedFile().getAbsolutePath();
+            config.setDownloadPath(newPath);
+            rootPath_glob = newPath;
+            
+            if (JOptionPane.showConfirmDialog(this, 
+                "Download path updated. Reload data?", 
+                "Reload", 
+                JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
+                reloadData(newPath);
+            }
+        }
+    }
+  
     
     private void setupUI() {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         
-        // Main layout
+        // Menüleiste hinzufügen
+        setupMenuBar();
+        
         JPanel contentPane = new JPanel(new BorderLayout(5, 5));
         contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
         setContentPane(contentPane);
         
-        // Toolbar
         createToolBar();
         
-        // Main table
         JScrollPane scrollPane = new JScrollPane(mainTable);
         contentPane.add(scrollPane, BorderLayout.CENTER);
         
-        // Set initial size
         setSize(1200, 800);
         setLocationRelativeTo(null);
+    }
+
+    private void setupMenuBar() {
+        JMenuBar menuBar = new JMenuBar();
+        JMenu configMenu = new JMenu("Config");
+        
+        JMenuItem pathMenuItem = new JMenuItem("Set Download Path");
+        pathMenuItem.addActionListener(e -> setDownloadPath());
+        
+        configMenu.add(pathMenuItem);
+        menuBar.add(configMenu);
+        setJMenuBar(menuBar);
+    }
+
+   
+
+    private void reloadData(String newPath) {
+        try {
+            dataManager.loadData(newPath);
+            mainTable.updateStatus();
+        } catch (Exception e) {
+            LOGGER.severe("Error reloading data: " + e.getMessage());
+            JOptionPane.showMessageDialog(this, 
+                "Error loading data from new path", 
+                "Error", 
+                JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     private void createToolBar() {
         JToolBar toolBar = new JToolBar();
         toolBar.setFloatable(false);
         
-        // Search panel
         JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         searchPanel.add(new JLabel("Search: "));
         searchPanel.add(searchField);
@@ -87,27 +136,23 @@ public class MainFrame extends JFrame {
         toolBar.add(searchPanel);
         toolBar.addSeparator();
         
-        // Filter button
         JButton filterButton = new JButton("Filter");
         filterButton.addActionListener(e -> showFilterDialog());
         toolBar.add(filterButton);
         
-        // Show Favorites button
         JButton showFavoritesButton = new JButton("Show Favorites");
         toolBar.add(showFavoritesButton);
         
-        // Compare Equity Curves button
         JButton compareButton = new JButton("Compare Equity Curves");
         compareButton.addActionListener(e -> showCompareDialog());
         toolBar.add(compareButton);
         
-        // Compare Open Trades button
         JButton compareOpenTradesButton = new JButton("Compare Open Trades");
         compareOpenTradesButton.addActionListener(e -> {
             OpenTradesDialog dialog = new OpenTradesDialog(this, mainTable.getCurrentProviderStats());
             dialog.setVisible(true);
         });
-        // Risk Score Explanation Button
+
         JButton riskScoreButton = new JButton("Risk Score Explanation");
         riskScoreButton.addActionListener(e -> {
             RiskScoreExplanationDialog dialog = new RiskScoreExplanationDialog(this);
@@ -126,7 +171,7 @@ public class MainFrame extends JFrame {
         statusLabel.setBorder(new EmptyBorder(2, 5, 2, 5));
         statusLabel.setFont(new Font("SansSerif", Font.PLAIN, 12));
         statusLabel.setOpaque(true);
-        statusLabel.setBackground(new Color(240, 240, 240));  // Hellgrauer Hintergrund
+        statusLabel.setBackground(new Color(240, 240, 240));
         
         statusBar.add(statusLabel, BorderLayout.CENTER);
         add(statusBar, BorderLayout.SOUTH);
@@ -177,19 +222,14 @@ public class MainFrame extends JFrame {
     }
     
     private void showCompareDialog() {
-        CompareDialog dialog = new CompareDialog(this, mainTable.getCurrentProviderStats(),rootPath_glob);
+        CompareDialog dialog = new CompareDialog(this, mainTable.getCurrentProviderStats(), rootPath_glob);
         dialog.setVisible(true);
     }
     
     public void display() {
         SwingUtilities.invokeLater(() -> {
             setVisible(true);
-            mainTable.updateStatus(); // Direkt aufrufen, keine weitere Verzögerung nötig
-            
-            // Optional: Erst nach kurzer Verzögerung updaten falls nötig
-            // Timer timer = new Timer(100, e -> mainTable.updateStatus());
-            // timer.setRepeats(false);
-            // timer.start();
+            mainTable.updateStatus();
         });
     }
 }

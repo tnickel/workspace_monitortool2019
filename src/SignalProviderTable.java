@@ -1,15 +1,16 @@
-import javax.swing.SwingUtilities;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.logging.Logger;
+
+import javax.swing.SwingUtilities;
+
 import data.DataManager;
 import ui.MainFrame;
+import utils.MqlAnalyserConf;
 
 public class SignalProviderTable {
     private static final Logger LOGGER = Logger.getLogger(SignalProviderTable.class.getName());
     private final MainFrame mainFrame;
     private final DataManager dataManager;
-    private final Path rootPath;
+    private final MqlAnalyserConf config;
     
     public static void main(String[] args) {
         String rootPath = args.length > 0 ? args[0] : "c:\\tmp\\mql5";
@@ -17,21 +18,21 @@ public class SignalProviderTable {
     }
     
     public SignalProviderTable(String rootPathStr) {
-        this.rootPath = Paths.get(rootPathStr);
+        this.config = new MqlAnalyserConf(rootPathStr);
         this.dataManager = new DataManager();
         
-        Path downloadPath = rootPath.resolve("download");
         LOGGER.info("Starting application...");
+        String downloadPath = config.getDownloadPath();
         LOGGER.info("Loading data from: " + downloadPath);
         
         try {
-            dataManager.loadData(downloadPath.toString());
+            dataManager.loadData(downloadPath);
         } catch (Exception e) {
             LOGGER.severe("Error loading data: " + e.getMessage());
             throw new RuntimeException("Failed to initialize application", e);
         }
         
-        this.mainFrame = new MainFrame(dataManager, rootPathStr);
+        this.mainFrame = new MainFrame(dataManager, rootPathStr, config);
     }
     
     public void start() {
