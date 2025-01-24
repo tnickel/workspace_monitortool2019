@@ -39,7 +39,7 @@ public class TradeListTable extends JTable {
 
     private DefaultTableModel createTableModel(ProviderStats stats) {
         String[] columnNames = { 
-            "No.", "Open Time", "Close Time", "Type", "Symbol", "Lots", 
+            "No.", "Open Time", "Close Time", "Duration (h)", "Type", "Symbol", "Lots", 
             "Open Price", "Close Price", "Profit/Loss", "Commission", "Swap", 
             "Total", "Running Profit", "Open Trades", "Open Lots", "Open Equity" 
         };
@@ -53,19 +53,20 @@ public class TradeListTable extends JTable {
             @Override
             public Class<?> getColumnClass(int columnIndex) {
                 switch (columnIndex) {
-                    case 0:
+                    case 0:  // No
+                    case 14: // Open Trades
                         return Integer.class;
-                    case 5: // Lots
-                    case 6: // Open Price
-                    case 7: // Close Price
-                    case 8: // Profit/Loss
-                    case 9: // Commission
-                    case 10: // Swap
-                    case 11: // Total
-                    case 12: // Running Profit
-                    case 13: // Open Trades
-                    case 14: // Open Lots
-                    case 15: // Open Equity
+                    case 3:  // Duration
+                    case 6:  // Lots
+                    case 7:  // Open Price
+                    case 8:  // Close Price
+                    case 9:  // Profit/Loss
+                    case 10: // Commission
+                    case 11: // Swap
+                    case 12: // Total
+                    case 13: // Running Profit
+                    case 15: // Open Lots
+                    case 16: // Open Equity
                         return Double.class;
                     default:
                         return String.class;
@@ -88,17 +89,18 @@ public class TradeListTable extends JTable {
             double totalProfit = trade.getTotalProfit();
             runningProfit += totalProfit;
 
+            long durationHours = java.time.Duration.between(trade.getOpenTime(), trade.getCloseTime()).toHours();
+
             List<Trade> activeTrades = TradeUtils.getActiveTradesAt(sortedTrades, trade.getOpenTime());
             int openTradesCount = activeTrades.size();
             double openLotsCount = activeTrades.stream().mapToDouble(Trade::getLots).sum();
-            
-            // Open Equity Berechnung
             double openEquity = estimateOpenEquity(activeTrades, trade.getOpenTime());
 
             model.addRow(new Object[] {
                 i + 1,
                 trade.getOpenTime().format(dateFormatter),
                 trade.getCloseTime().format(dateFormatter),
+                durationHours,
                 trade.getType(),
                 trade.getSymbol(),
                 trade.getLots(),
@@ -118,7 +120,6 @@ public class TradeListTable extends JTable {
 
     private void initializeTable() {
         setModel(model);
-
         TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(model);
 
         Comparator<String> dateComparator = new Comparator<String>() {
@@ -136,14 +137,31 @@ public class TradeListTable extends JTable {
 
         sorter.setComparator(1, dateComparator); // Open Time
         sorter.setComparator(2, dateComparator); // Close Time
+        sorter.setComparator(3, Comparator.comparingLong(v -> ((Long) v))); // Duration
 
         setRowSorter(sorter);
         setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
 
         int[] preferredWidths = { 
-            50, 140, 140, 60, 80, 70, 90, 90, 90, 90, 90, 
-            90, 100, 90, 90, 90  // Letzte 90 für Open Equity
+            50,  // No
+            140, // Open Time
+            140, // Close Time
+            70,  // Duration
+            60,  // Type
+            80,  // Symbol
+            70,  // Lots
+            90,  // Open Price
+            90,  // Close Price
+            90,  // Profit/Loss
+            90,  // Commission
+            90,  // Swap
+            90,  // Total
+            100, // Running Profit
+            90,  // Open Trades
+            90,  // Open Lots
+            90   // Open Equity
         };
+
         for (int i = 0; i < preferredWidths.length; i++) {
             getColumnModel().getColumn(i).setPreferredWidth(preferredWidths[i]);
         }
@@ -153,7 +171,7 @@ public class TradeListTable extends JTable {
         TableCellRenderer moneyRenderer = new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
-                                                           boolean hasFocus, int row, int column) {
+                                                         boolean hasFocus, int row, int column) {
                 Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
                 if (value instanceof Double) {
                     double amount = (Double) value;
@@ -168,7 +186,7 @@ public class TradeListTable extends JTable {
         };
 
         // Money Columns
-        int[] moneyColumns = {8, 9, 10, 11, 12, 13, 14, 15}; // 15 für Open Equity
+        int[] moneyColumns = {8, 9, 10, 11, 12, 13, 14, 15, 16}; 
         for (int column : moneyColumns) {
             getColumnModel().getColumn(column).setCellRenderer(moneyRenderer);
         }
@@ -181,24 +199,16 @@ public class TradeListTable extends JTable {
             double progress = calculateTradeProgress(trade, currentTime);
             double estimatedProfit = interpolateProfit(trade, progress);
             
-            // Aggressivere Abschätzung:
-            // 1. Wenn der Trade am Ende Verlust macht, nehmen wir an dass der Verlust früher eintritt
-            // 2. Wenn der Trade am Ende Gewinn macht, nehmen wir an dass der Gewinn später eintritt
             if (trade.getProfit() < 0) {
-                // Bei Verlust-Trades: Verlust schneller eintreten lassen
-                estimatedProfit *= 1.5; // 50% mehr Verlust
-                
-                // Progress beschleunigen für Verlust-Trades
-                double acceleratedProgress = Math.pow(progress, 0.7); // Verluste treten früher ein
+                estimatedProfit *= 1.5;
+                double acceleratedProgress = Math.pow(progress, 0.7);
                 estimatedProfit = trade.getProfit() * acceleratedProgress;
             } else {
-                // Bei Gewinn-Trades: Gewinne verzögern
-                double delayedProgress = Math.pow(progress, 1.3); // Gewinne treten später ein
+                double delayedProgress = Math.pow(progress, 1.3);
                 estimatedProfit = trade.getProfit() * delayedProgress;
             }
             
-            // Zusätzlicher Risiko-Faktor basierend auf der Lot-Größe
-            double lotRiskFactor = 1.0 + (trade.getLots() * 0.2); // Größere Positionen = mehr Risiko
+            double lotRiskFactor = 1.0 + (trade.getLots() * 0.2);
             if (estimatedProfit < 0) {
                 estimatedProfit *= lotRiskFactor;
             }
@@ -206,8 +216,7 @@ public class TradeListTable extends JTable {
             totalEquity += estimatedProfit;
         }
         
-        // Gesamtrisiko-Faktor basierend auf Anzahl offener Trades
-        double totalRiskFactor = 1.0 + (activeTrades.size() * 0.1); // Mehr offene Trades = mehr Risiko
+        double totalRiskFactor = 1.0 + (activeTrades.size() * 0.1);
         if (totalEquity < 0) {
             totalEquity *= totalRiskFactor;
         }
