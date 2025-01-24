@@ -73,18 +73,31 @@ public class ProviderStats {
     public double getMaxDrawdownPercent() {
         if (profits.isEmpty()) return 0.0;
         
-        double peak = initialBalance;
-        double maxDrawdown = 0.0;
+        // Prüfen auf 100% Win Rate
+        boolean allProfitable = profits.stream().allMatch(profit -> profit > 0);
+        if (allProfitable) {
+            return 99.99; // Warnsignal für unrealistisch perfekte Performance
+        }
+        
         double currentBalance = initialBalance;
+        double highWaterMark = initialBalance;
+        double maxDrawdownPercent = 0.0;
         
         for (double profit : profits) {
             currentBalance += profit;
-            peak = Math.max(currentBalance, peak);
-            double drawdown = (peak - currentBalance) / peak * 100.0;
-            maxDrawdown = Math.max(maxDrawdown, drawdown);
+            
+            if (currentBalance < highWaterMark) {
+                double drawdownPercent = (highWaterMark - currentBalance) / highWaterMark * 100;
+                maxDrawdownPercent = Math.max(maxDrawdownPercent, drawdownPercent);
+            } else {
+                highWaterMark = currentBalance;
+            }
         }
         
-        return maxDrawdown;
+        return maxDrawdownPercent;
+    }
+    public double getMaxDrawdown() {
+        return getMaxDrawdownPercent();
     }
     
     public LocalDate getStartDate() {
@@ -137,9 +150,7 @@ public class ProviderStats {
         return trades.size();
     }
 
-    public double getMaxDrawdown() {
-        return getMaxDrawdownPercent();
-    }
+  
 
     public double getAverageProfit() {
         return getAverageProfitPerTrade();

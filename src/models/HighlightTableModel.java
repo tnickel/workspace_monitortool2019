@@ -10,7 +10,7 @@ public class HighlightTableModel extends DefaultTableModel {
     private static final String[] COLUMN_NAMES = {
         "No.", "Signal Provider", "Trades", "Win Rate %", "Total Profit",
         "Avg Profit/Trade", "Max Drawdown %", "Profit Factor", 
-        "Max Concurrent Trades", "Max Concurrent Lots", "Risk Score",
+        "Max Trades", "Max Lots", "Risk Score",
         "S/L", "T/P",  // Neue Spalten
         "Start Date", "End Date"
     };
