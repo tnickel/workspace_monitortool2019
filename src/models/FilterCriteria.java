@@ -3,25 +3,15 @@ package models;
 import data.ProviderStats;
 
 public class FilterCriteria {
-    private int minTradeDays;
-    private double minProfit;
-    private double minTotalProfit;
-    private double minProfitFactor;
-    private double minWinRate;
-    private double maxDrawdown;
-    private int maxConcurrentTrades;
-    private double maxConcurrentLots;
-
-    public FilterCriteria() {
-        this.minTradeDays = 0;
-        this.minProfit = 0.0;
-        this.minTotalProfit = 0.0;
-        this.minProfitFactor = 0.0;
-        this.minWinRate = 0.0;
-        this.maxDrawdown = 100.0;
-        this.maxConcurrentTrades = Integer.MAX_VALUE;
-        this.maxConcurrentLots = Double.MAX_VALUE;
-    }
+    private int minTradeDays = 0;
+    private double minProfit = 0;
+    private double minTotalProfit = 0;
+    private double minProfitFactor = 0;
+    private double minWinRate = 0;
+    private double maxDrawdown = 100;
+    private int maxConcurrentTrades = Integer.MAX_VALUE;
+    private double maxConcurrentLots = Double.MAX_VALUE;
+    private long maxDuration = Long.MAX_VALUE;
 
     public int getMinTradeDays() {
         return minTradeDays;
@@ -87,24 +77,25 @@ public class FilterCriteria {
         this.maxConcurrentLots = maxConcurrentLots;
     }
 
-    public boolean matches(ProviderStats stats) {
-        return stats.getTrades().size() >= minTradeDays &&
-               stats.getTotalProfit() >= minTotalProfit &&
-               stats.getAverageProfitPerTrade() >= minProfit &&
-               stats.getProfitFactor() >= minProfitFactor &&
-               stats.getWinRate() >= minWinRate &&
-               stats.getMaxDrawdownPercent() <= maxDrawdown &&
-               stats.getMaxConcurrentTrades() <= maxConcurrentTrades &&
-               stats.getMaxConcurrentLots() <= maxConcurrentLots;
+    public long getMaxDuration() {
+        return maxDuration;
     }
 
-    @Override
-    public String toString() {
-        return String.format("FilterCriteria{minTradeDays=%d, minProfit=%.2f, minTotalProfit=%.2f, " +
-                           "minProfitFactor=%.2f, minWinRate=%.2f, maxDrawdown=%.2f, " +
-                           "maxConcurrentTrades=%d, maxConcurrentLots=%.2f}",
-                           minTradeDays, minProfit, minTotalProfit,
-                           minProfitFactor, minWinRate, maxDrawdown,
-                           maxConcurrentTrades, maxConcurrentLots);
+    public void setMaxDuration(long maxDuration) {
+        this.maxDuration = maxDuration;
+    }
+
+    public boolean matches(ProviderStats stats) {
+        if (stats.getTrades().size() < minTradeDays) return false;
+        if (stats.getAverageProfit() < minProfit) return false;
+        if (stats.getTotalProfit() < minTotalProfit) return false;
+        if (stats.getProfitFactor() < minProfitFactor) return false;
+        if (stats.getWinRate() < minWinRate) return false;
+        if (stats.getMaxDrawdown() > maxDrawdown) return false;
+        if (stats.getMaxConcurrentTrades() > maxConcurrentTrades) return false;
+        if (stats.getMaxConcurrentLots() > maxConcurrentLots) return false;
+        if (stats.getMaxDuration() > maxDuration) return false;
+        
+        return true;
     }
 }

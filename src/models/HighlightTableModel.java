@@ -10,9 +10,8 @@ public class HighlightTableModel extends DefaultTableModel {
     private static final String[] COLUMN_NAMES = {
         "No.", "Signal Provider", "Trades", "Win Rate %", "Total Profit",
         "Avg Profit/Trade", "Max Drawdown %", "Profit Factor", 
-        "Max Trades", "Max Lots", "Risk Score",
-        "S/L", "T/P",  // Neue Spalten
-        "Start Date", "End Date"
+        "MaxTrades", "MaxLots", "Max Duration (h)", "Risk Score",
+        "S/L", "T/P", "Start Date", "End Date"
     };
     
     public HighlightTableModel() {
@@ -21,7 +20,7 @@ public class HighlightTableModel extends DefaultTableModel {
     
     @Override
     public boolean isCellEditable(int row, int column) {
-        return false; // Verhindert das Editieren aller Zellen
+        return false;
     }
     
     @Override
@@ -29,19 +28,20 @@ public class HighlightTableModel extends DefaultTableModel {
         switch (columnIndex) {
             case 0:  // No
             case 2:  // Trades
-            case 8:  // Max Concurrent Trades
+            case 8:  // MaxTrades
+            case 10: // Max Duration
                 return Integer.class;
             case 3:  // Win Rate
             case 4:  // Total Profit
             case 5:  // Avg Profit/Trade
             case 6:  // Max Drawdown
             case 7:  // Profit Factor
-            case 9:  // Max Concurrent Lots
-            case 10: // Risk Score
+            case 9:  // MaxLots
                 return Double.class;
-            case 11: // S/L
-            case 12: // T/P
-                return Integer.class;  // Für 0/1 Darstellung
+            case 11: // Risk Score
+            case 12: // S/L
+            case 13: // T/P
+                return Integer.class;
             default:
                 return String.class;
         }
@@ -66,9 +66,10 @@ public class HighlightTableModel extends DefaultTableModel {
                 stats.getProfitFactor(),
                 stats.getMaxConcurrentTrades(),
                 stats.getMaxConcurrentLots(),
+                stats.getMaxDuration(),
                 riskScore,
-                stats.hasStopLoss() ? 1 : 0,    // Neue Spalte
-                stats.hasTakeProfit() ? 1 : 0,  // Neue Spalte
+                stats.hasStopLoss() ? 1 : 0,    
+                stats.hasTakeProfit() ? 1 : 0,  
                 stats.getStartDate(),
                 stats.getEndDate()
             });

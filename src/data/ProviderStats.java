@@ -155,4 +155,11 @@ public class ProviderStats {
     public double getAverageProfit() {
         return getAverageProfitPerTrade();
     }
+    public long getMaxDuration() {
+        return trades.stream()
+            .mapToLong(trade -> 
+                java.time.Duration.between(trade.getOpenTime(), trade.getCloseTime()).toHours())
+            .max()
+            .orElse(0);
+    }
 }

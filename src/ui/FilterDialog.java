@@ -15,6 +15,7 @@ public class FilterDialog extends JDialog {
     private final JTextField minTotalProfitField = new JTextField(10);
     private final JTextField maxConcurrentTradesField = new JTextField(10);
     private final JTextField maxConcurrentLotsField = new JTextField(10);
+    private final JTextField maxDurationField = new JTextField(10);  // Neu
     
     public FilterDialog(JFrame parent) {
         super(parent, "Filter Signal Providers", true);
@@ -72,7 +73,11 @@ public class FilterDialog extends JDialog {
         filterPanel.add(new JLabel("Max Concurrent Lots:"), gbc);
         gbc.gridx = 1;
         filterPanel.add(maxConcurrentLotsField, gbc);
-        
+        // Zeile 9: Max Duration
+        gbc.gridx = 0; gbc.gridy = 8;
+        filterPanel.add(new JLabel("Max Duration (h):"), gbc);
+        gbc.gridx = 1;
+        filterPanel.add(maxDurationField, gbc);
         // Button Panel
         JPanel buttonPanel = new JPanel();
         JButton okButton = new JButton("OK");
@@ -131,6 +136,9 @@ public class FilterDialog extends JDialog {
             if (lastCriteria.getMaxConcurrentLots() < Double.MAX_VALUE) {
                 maxConcurrentLotsField.setText(String.valueOf(lastCriteria.getMaxConcurrentLots()));
             }
+            if (lastCriteria.getMaxDuration() < Long.MAX_VALUE) {
+                maxDurationField.setText(String.valueOf(lastCriteria.getMaxDuration()));
+            }
         }
     }
     
@@ -169,7 +177,9 @@ public class FilterDialog extends JDialog {
             if (!maxConcurrentLotsField.getText().isEmpty()) {
                 criteria.setMaxConcurrentLots(Double.parseDouble(maxConcurrentLotsField.getText().trim()));
             }
-            
+            if (!maxDurationField.getText().isEmpty()) {
+                criteria.setMaxDuration(Long.parseLong(maxDurationField.getText().trim()));
+            }
             result = criteria;
             return true;
             
