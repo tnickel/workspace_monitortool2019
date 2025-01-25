@@ -1,35 +1,58 @@
 package ui;
 
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Cursor;
+import java.awt.Desktop;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.net.URI;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
-import javax.swing.*;
-import javax.swing.border.TitledBorder;
+import javax.swing.AbstractAction;
+import javax.swing.Action;
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JComponent;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JToggleButton;
+import javax.swing.KeyStroke;
 
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
-import org.jfree.data.time.*;
+import org.jfree.data.time.Day;
+import org.jfree.data.time.TimeSeries;
+import org.jfree.data.time.TimeSeriesCollection;
 
+import data.FavoritesManager;
 import data.ProviderStats;
 import data.Trade;
-import data.FavoritesManager;
 
-
-public class CompareDialog extends JDialog {
+public class CompareDialog extends JFrame {
     private final Map<String, ProviderStats> providerStats;
     private final JPanel detailPanel;
     private final String rootPath;
     private final FavoritesManager favoritesManager;
 
     public CompareDialog(JFrame parent, Map<String, ProviderStats> stats, String rootPath) {
-        super(parent, "Compare Equity Curves", true);
+        super("Compare Equity Curves");
         this.providerStats = stats;
         this.rootPath = rootPath;
         this.favoritesManager = new FavoritesManager(rootPath);
@@ -56,20 +79,56 @@ public class CompareDialog extends JDialog {
         add(scrollPane, BorderLayout.CENTER);
         setSize(1000, 800);
         setLocationRelativeTo(parent);
+        
+        // ESC zum Schließen
+        KeyStroke escapeKeyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0, false);
+        Action escapeAction = new AbstractAction() {
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                dispose();
+            }
+        };
+        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(escapeKeyStroke, "ESCAPE");
+        getRootPane().getActionMap().put("ESCAPE", escapeAction);
     }
 
     private void setupProviderPanel(String providerName, ProviderStats stats, JPanel mainPanel, GridBagConstraints gbc) {
         JPanel providerPanel = new JPanel(new BorderLayout());
+        providerPanel.setBorder(BorderFactory.createEtchedBorder());
         
-        // Header Panel mit Titel und Favorite Toggle
         JPanel headerPanel = new JPanel(new BorderLayout());
         JToggleButton favoriteToggle = createFavoriteToggle(providerName);
         
-        // Title Panel
+        // Title Panel mit Link und Button
         JPanel titlePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         JLabel titleLabel = new JLabel(providerName);
         titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD, 16));
         titlePanel.add(titleLabel);
+        
+        // MQL5 Link
+        String providerId = providerName.substring(providerName.lastIndexOf("_") + 1).replace(".csv", "");
+        JLabel linkLabel = new JLabel("<html><u>https://www.mql5.com/de/signals/" + providerId + "?source=Site+Signals+Subscriptions#!tab=account</u></html>");
+        linkLabel.setForeground(Color.BLUE);
+        linkLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        linkLabel.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                try {
+                    Desktop.getDesktop().browse(new URI("https://www.mql5.com/de/signals/" + providerId + 
+                        "?source=Site+Signals+Subscriptions#!tab=account"));
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+            }
+        });
+        titlePanel.add(linkLabel);
+        
+        // Show Trade List Button
+        JButton showTradeListButton = new JButton("Show Trade List");
+        showTradeListButton.addActionListener(e -> {
+            TradeListFrame tradeListFrame = new TradeListFrame(providerName, stats);
+            tradeListFrame.setVisible(true);
+        });
+        titlePanel.add(showTradeListButton);
         
         headerPanel.add(titlePanel, BorderLayout.CENTER);
         headerPanel.add(favoriteToggle, BorderLayout.EAST);
@@ -81,7 +140,6 @@ public class CompareDialog extends JDialog {
         
         providerPanel.add(headerPanel, BorderLayout.NORTH);
         providerPanel.add(chartPanel, BorderLayout.CENTER);
-        providerPanel.setBorder(BorderFactory.createEtchedBorder());
         
         mainPanel.add(providerPanel, gbc);
     }
