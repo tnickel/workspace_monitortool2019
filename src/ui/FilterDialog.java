@@ -8,6 +8,7 @@ public class FilterDialog extends JDialog {
     private FilterCriteria result = null;
     private static FilterCriteria lastCriteria = null;
     private final JTextField minTradeDaysField = new JTextField(10);
+    private final JTextField minTradesField = new JTextField(10);
     private final JTextField minProfitField = new JTextField(10);
     private final JTextField minProfitFactorField = new JTextField(10);
     private final JTextField minWinRateField = new JTextField(10);
@@ -15,69 +16,39 @@ public class FilterDialog extends JDialog {
     private final JTextField minTotalProfitField = new JTextField(10);
     private final JTextField maxConcurrentTradesField = new JTextField(10);
     private final JTextField maxConcurrentLotsField = new JTextField(10);
-    private final JTextField maxDurationField = new JTextField(10);  // Neu
+    private final JTextField maxDurationField = new JTextField(10);
     
     public FilterDialog(JFrame parent) {
         super(parent, "Filter Signal Providers", true);
         
-        // Panel für die Filter-Kriterien
         JPanel filterPanel = new JPanel(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(5, 5, 5, 5);
         gbc.anchor = GridBagConstraints.WEST;
         
-        // Zeile 1: Minimum Trade Days
-        gbc.gridx = 0; gbc.gridy = 0;
-        filterPanel.add(new JLabel("Min. Trade Days:"), gbc);
+        int row = 0;
+        
+        // Min Trading Days
+        gbc.gridx = 0; gbc.gridy = row++;
+        filterPanel.add(new JLabel("Min. Trading Days:"), gbc);
         gbc.gridx = 1;
         filterPanel.add(minTradeDaysField, gbc);
         
-        // Zeile 2: Minimum Profit
-        gbc.gridx = 0; gbc.gridy = 1;
-        filterPanel.add(new JLabel("Min. Profit:"), gbc);
+        // Min Trades
+        gbc.gridx = 0; gbc.gridy = row++;
+        filterPanel.add(new JLabel("Min. Trades:"), gbc);
         gbc.gridx = 1;
-        filterPanel.add(minProfitField, gbc);
+        filterPanel.add(minTradesField, gbc);
         
-        // Zeile 3: Minimum Total Profit
-        gbc.gridx = 0; gbc.gridy = 2;
-        filterPanel.add(new JLabel("Min. Total Profit:"), gbc);
-        gbc.gridx = 1;
-        filterPanel.add(minTotalProfitField, gbc);
-        
-        // Zeile 4: Minimum Profit Factor
-        gbc.gridx = 0; gbc.gridy = 3;
-        filterPanel.add(new JLabel("Min. Profit Factor:"), gbc);
-        gbc.gridx = 1;
-        filterPanel.add(minProfitFactorField, gbc);
-        
-        // Zeile 5: Minimum Win Rate
-        gbc.gridx = 0; gbc.gridy = 4;
-        filterPanel.add(new JLabel("Min. Win Rate (%):"), gbc);
-        gbc.gridx = 1;
-        filterPanel.add(minWinRateField, gbc);
-        
-        // Zeile 6: Maximum Drawdown
-        gbc.gridx = 0; gbc.gridy = 5;
-        filterPanel.add(new JLabel("Max. Drawdown (%):"), gbc);
-        gbc.gridx = 1;
-        filterPanel.add(maxDrawdownField, gbc);
-        
-        // Zeile 7: Max Concurrent Trades
-        gbc.gridx = 0; gbc.gridy = 6;
-        filterPanel.add(new JLabel("Max Concurrent Trades:"), gbc);
-        gbc.gridx = 1;
-        filterPanel.add(maxConcurrentTradesField, gbc);
-        
-        // Zeile 8: Max Concurrent Lots
-        gbc.gridx = 0; gbc.gridy = 7;
-        filterPanel.add(new JLabel("Max Concurrent Lots:"), gbc);
-        gbc.gridx = 1;
-        filterPanel.add(maxConcurrentLotsField, gbc);
-        // Zeile 9: Max Duration
-        gbc.gridx = 0; gbc.gridy = 8;
-        filterPanel.add(new JLabel("Max Duration (h):"), gbc);
-        gbc.gridx = 1;
-        filterPanel.add(maxDurationField, gbc);
+        addField(filterPanel, gbc, row++, "Min. Profit:", minProfitField);
+        addField(filterPanel, gbc, row++, "Min. Total Profit:", minTotalProfitField);
+        addField(filterPanel, gbc, row++, "Min. Profit Factor:", minProfitFactorField);
+        addField(filterPanel, gbc, row++, "Min. Win Rate (%):", minWinRateField);
+        addField(filterPanel, gbc, row++, "Max. Drawdown (%):", maxDrawdownField);
+        addField(filterPanel, gbc, row++, "Max Concurrent Trades:", maxConcurrentTradesField);
+        addField(filterPanel, gbc, row++, "Max Concurrent Lots:", maxConcurrentLotsField);
+        addField(filterPanel, gbc, row, "Max Duration (h):", maxDurationField);
+
         // Button Panel
         JPanel buttonPanel = new JPanel();
         JButton okButton = new JButton("OK");
@@ -85,7 +56,7 @@ public class FilterDialog extends JDialog {
         
         okButton.addActionListener(e -> {
             if (validateAndSetResult()) {
-                lastCriteria = result;  // Speichern der letzten Werte
+                lastCriteria = result;
                 dispose();
             }
         });
@@ -98,22 +69,31 @@ public class FilterDialog extends JDialog {
         buttonPanel.add(okButton);
         buttonPanel.add(cancelButton);
         
-        // Main Layout
+        // Layout
         setLayout(new BorderLayout());
         add(filterPanel, BorderLayout.CENTER);
         add(buttonPanel, BorderLayout.SOUTH);
         
-        // Letzte Werte setzen, falls vorhanden
         restoreLastValues();
         
         pack();
         setLocationRelativeTo(parent);
     }
     
+    private void addField(JPanel panel, GridBagConstraints gbc, int row, String label, JTextField field) {
+        gbc.gridx = 0; gbc.gridy = row;
+        panel.add(new JLabel(label), gbc);
+        gbc.gridx = 1;
+        panel.add(field, gbc);
+    }
+    
     private void restoreLastValues() {
         if (lastCriteria != null) {
             if (lastCriteria.getMinTradeDays() > 0) {
                 minTradeDaysField.setText(String.valueOf(lastCriteria.getMinTradeDays()));
+            }
+            if (lastCriteria.getMinTrades() > 0) {
+                minTradesField.setText(String.valueOf(lastCriteria.getMinTrades()));
             }
             if (lastCriteria.getMinProfit() > 0) {
                 minProfitField.setText(String.valueOf(lastCriteria.getMinProfit()));
@@ -148,6 +128,10 @@ public class FilterDialog extends JDialog {
             
             if (!minTradeDaysField.getText().isEmpty()) {
                 criteria.setMinTradeDays(Integer.parseInt(minTradeDaysField.getText().trim()));
+            }
+            
+            if (!minTradesField.getText().isEmpty()) {
+                criteria.setMinTrades(Integer.parseInt(minTradesField.getText().trim()));
             }
             
             if (!minProfitField.getText().isEmpty()) {
@@ -193,6 +177,6 @@ public class FilterDialog extends JDialog {
     
     public FilterCriteria showDialog() {
         setVisible(true);
-        return result;  // Will be null if cancelled
+        return result;
     }
 }

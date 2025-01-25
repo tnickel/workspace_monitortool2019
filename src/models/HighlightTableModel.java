@@ -8,7 +8,7 @@ import services.RiskAnalysisServ;
 public class HighlightTableModel extends DefaultTableModel {
     
     private static final String[] COLUMN_NAMES = {
-        "No.", "Signal Provider", "Trades", "Win Rate %", "Total Profit",
+        "No.", "Signal Provider", "Trades", "Trade Days", "Win Rate %", "Total Profit",
         "Avg Profit/Trade", "Max Drawdown %", "Profit Factor", 
         "MaxTrades", "MaxLots", "Max Duration (h)", "Risk Score",
         "S/L", "T/P", "Start Date", "End Date"
@@ -28,20 +28,20 @@ public class HighlightTableModel extends DefaultTableModel {
         switch (columnIndex) {
             case 0:  // No
             case 2:  // Trades
-            case 8:  // MaxTrades
-            case 10: // Max Duration
+            case 3:  // Trade Days
+            case 9:  // MaxTrades
+            case 11: // Max Duration
+            case 12: // Risk Score
+            case 13: // S/L
+            case 14: // T/P
                 return Integer.class;
-            case 3:  // Win Rate
-            case 4:  // Total Profit
-            case 5:  // Avg Profit/Trade
-            case 6:  // Max Drawdown
-            case 7:  // Profit Factor
-            case 9:  // MaxLots
+            case 4:  // Win Rate
+            case 5:  // Total Profit
+            case 6:  // Avg Profit/Trade
+            case 7:  // Max Drawdown
+            case 8:  // Profit Factor
+            case 10: // MaxLots
                 return Double.class;
-            case 11: // Risk Score
-            case 12: // S/L
-            case 13: // T/P
-                return Integer.class;
             default:
                 return String.class;
         }
@@ -59,6 +59,7 @@ public class HighlightTableModel extends DefaultTableModel {
                 rowNum++,
                 entry.getKey(),
                 stats.getTrades().size(),
+                stats.getTradeDays(),
                 stats.getWinRate(),
                 stats.getTotalProfit(),
                 stats.getAverageProfit(),

@@ -19,7 +19,14 @@ public class ProviderStats {
         this.profits = new ArrayList<>();
         this.initialBalance = 0.0;
     }
-    
+    public int getTradeDays() {
+        if (trades.isEmpty()) return 0;
+        
+        return (int) trades.stream()
+            .map(trade -> trade.getOpenTime().toLocalDate())
+            .distinct()
+            .count();
+    }
     public void setInitialBalance(double balance) {
         this.initialBalance = balance;
     }
