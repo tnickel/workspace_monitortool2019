@@ -74,7 +74,6 @@ public class MainTable extends JTable {
         });
     }
     
- 
     private void setupModelListener() {
         model.addTableModelListener(e -> updateStatus());
     }
@@ -128,6 +127,11 @@ public class MainTable extends JTable {
     
     public void applyFilter(FilterCriteria criteria) {
         this.currentFilter = criteria;
+        refreshTableData();
+    }
+    
+    public void resetFilter() {
+        this.currentFilter = null;
         refreshTableData();
     }
     

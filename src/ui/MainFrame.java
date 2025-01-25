@@ -74,11 +74,17 @@ public class MainFrame extends JFrame {
         }
     }
   
+    private void resetAll() {
+        searchField.setText("");
+        mainTable.clearHighlight();
+        currentSearchIndex[0] = -1;
+        mainTable.resetFilter();
+        mainTable.updateStatus();
+    }
     
     private void setupUI() {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         
-        // Menüleiste hinzufügen
         setupMenuBar();
         
         JPanel contentPane = new JPanel(new BorderLayout(5, 5));
@@ -105,8 +111,6 @@ public class MainFrame extends JFrame {
         menuBar.add(configMenu);
         setJMenuBar(menuBar);
     }
-
-   
 
     private void reloadData(String newPath) {
         try {
@@ -135,6 +139,10 @@ public class MainFrame extends JFrame {
         
         toolBar.add(searchPanel);
         toolBar.addSeparator();
+        
+        JButton resetButton = new JButton("Reset");
+        resetButton.addActionListener(e -> resetAll());
+        toolBar.add(resetButton);
         
         JButton filterButton = new JButton("Filter");
         filterButton.addActionListener(e -> showFilterDialog());
