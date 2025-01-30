@@ -14,7 +14,7 @@ public class FavoritesManager {
     
     public FavoritesManager(String rootPath) {
         this.favorites = new HashSet<>();
-        this.favoritesFile = Paths.get(rootPath, "conv", "favorites.txt");
+        this.favoritesFile = Paths.get(rootPath, "config", "favorites.txt");
         loadFavorites();
     }
     

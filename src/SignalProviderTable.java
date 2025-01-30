@@ -13,7 +13,7 @@ public class SignalProviderTable {
     private final MqlAnalyserConf config;
     
     public static void main(String[] args) {
-        String rootPath = args.length > 0 ? args[0] : "c:\\tmp\\mql5";
+        String rootPath = args.length > 0 ? args[0] : "c:\\Forex\\MqlAnalyzer";
         SwingUtilities.invokeLater(() -> new SignalProviderTable(rootPath).start());
     }
     

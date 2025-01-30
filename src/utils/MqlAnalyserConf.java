@@ -12,7 +12,7 @@ public class MqlAnalyserConf {
     private final Path configPath;
     
     public MqlAnalyserConf(String rootPath) {
-        this.configPath = Paths.get(rootPath, "conf", "conf.txt");
+        this.configPath = Paths.get(rootPath, "config", "MqlAnalyzerConfig.txt");
         this.properties = new Properties();
         loadConfig();
     }
@@ -27,7 +27,7 @@ public class MqlAnalyserConf {
     }
     
     private void setDefaultValues() {
-        properties.setProperty("downloadPath", "c:\\tmp\\mql5\\download");
+        properties.setProperty("downloadPath", "c:\\Forex\\MqlAnalyzer\\download");
         properties.setProperty("baseUrl", "https://www.mql5.com/en/signals");
         saveConfig();
     }
@@ -41,7 +41,7 @@ public class MqlAnalyserConf {
     }
     
     public String getDownloadPath() {
-        return properties.getProperty("downloadPath", "c:\\tmp\\mql5\\download");
+        return properties.getProperty("downloadPath", "c:\\Forex\\MqlAnalyzer\\download");
     }
     
     public void setDownloadPath(String path) {
