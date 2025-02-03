@@ -9,10 +9,10 @@ import utils.HtmlParser;
 public class HighlightTableModel extends DefaultTableModel {
     
     private static final String[] COLUMN_NAMES = {
-        "No.", "Signal Provider", "Trades", "Trade Days", "Win Rate %", "Total Profit",
-        "Avg Profit/Trade", "Max Drawdown %", "Equity Drawdown %", "Profit Factor", 
-        "MaxTrades", "MaxLots", "Max Duration (h)", "Risk Score",
-        "S/L", "T/P", "Start Date", "End Date"
+        "No.", "Signal Provider", "Balance", "3MonProfit", "3MPDD", "Trades", "Trade Days", 
+        "Win Rate %", "Total Profit", "Avg Profit/Trade", "Max Drawdown %", 
+        "Equity Drawdown %", "Profit Factor", "MaxTrades", "MaxLots", 
+        "Max Duration (h)", "Risk Score", "S/L", "T/P", "Start Date", "End Date"
     };
     
     private final HtmlParser htmlParser;
@@ -31,25 +31,37 @@ public class HighlightTableModel extends DefaultTableModel {
     public Class<?> getColumnClass(int columnIndex) {
         switch (columnIndex) {
             case 0:  // No
-            case 2:  // Trades
-            case 3:  // Trade Days
-            case 10: // MaxTrades
-            case 12: // Max Duration
-            case 13: // Risk Score
-            case 14: // S/L
-            case 15: // T/P
+            case 5:  // Trades
+            case 6:  // Trade Days
+            case 13: // MaxTrades
+            case 15: // Max Duration
+            case 16: // Risk Score
+            case 17: // S/L
+            case 18: // T/P
                 return Integer.class;
-            case 4:  // Win Rate
-            case 5:  // Total Profit
-            case 6:  // Avg Profit/Trade
-            case 7:  // Max Drawdown
-            case 8:  // Equity Drawdown
-            case 9:  // Profit Factor
-            case 11: // MaxLots
+            case 2:  // Balance
+            case 3:  // 3MonProfit
+            case 4:  // 3MPDD
+            case 7:  // Win Rate
+            case 8:  // Total Profit
+            case 9:  // Avg Profit/Trade
+            case 10: // Max Drawdown
+            case 11: // Equity Drawdown
+            case 12: // Profit Factor
+            case 14: // MaxLots
                 return Double.class;
             default:
                 return String.class;
         }
+    }
+    
+    private double calculate3MPDD(double threeMonthProfit, double balance, double equityDrawdown) {
+        if (balance <= 0 || equityDrawdown <= 0) {
+            return 0.0;
+        }
+        
+        // Berechnung: 3MonProfit / (Balance * (EquityDrawdown/100))
+        return threeMonthProfit / (balance * (equityDrawdown/100));
     }
     
     public void populateData(Map<String, ProviderStats> statsMap) {
@@ -61,26 +73,32 @@ public class HighlightTableModel extends DefaultTableModel {
             ProviderStats stats = entry.getValue();
             int riskScore = RiskAnalysisServ.calculateRiskScore(stats);
             double equityDrawdown = htmlParser.getEquityDrawdown(providerName);
+            double balance = htmlParser.getBalance(providerName);
+            double threeMonthProfit = stats.getLastThreeMonthsProfit();
+            double mpdd = calculate3MPDD(threeMonthProfit, balance, equityDrawdown);
             
             addRow(new Object[]{
-                rowNum++,
-                providerName,
-                stats.getTrades().size(),
-                stats.getTradeDays(),
-                stats.getWinRate(),
-                stats.getTotalProfit(),
-                stats.getAverageProfit(),
-                stats.getMaxDrawdown(),
-                equityDrawdown,
-                stats.getProfitFactor(),
-                stats.getMaxConcurrentTrades(),
-                stats.getMaxConcurrentLots(),
-                stats.getMaxDuration(),
-                riskScore,
-                stats.hasStopLoss() ? 1 : 0,    
-                stats.hasTakeProfit() ? 1 : 0,  
-                stats.getStartDate(),
-                stats.getEndDate()
+                rowNum++,                         // No.
+                providerName,                     // Signal Provider
+                balance,                          // Balance
+                threeMonthProfit,                 // 3MonProfit
+                mpdd,                             // 3MPDD
+                stats.getTrades().size(),         // Trades
+                stats.getTradeDays(),             // Trade Days
+                stats.getWinRate(),               // Win Rate %
+                stats.getTotalProfit(),           // Total Profit
+                stats.getAverageProfit(),         // Avg Profit/Trade
+                stats.getMaxDrawdown(),           // Max Drawdown %
+                equityDrawdown,                   // Equity Drawdown %
+                stats.getProfitFactor(),          // Profit Factor
+                stats.getMaxConcurrentTrades(),   // MaxTrades
+                stats.getMaxConcurrentLots(),     // MaxLots
+                stats.getMaxDuration(),           // Max Duration (h)
+                riskScore,                        // Risk Score
+                stats.hasStopLoss() ? 1 : 0,     // S/L
+                stats.hasTakeProfit() ? 1 : 0,   // T/P
+                stats.getStartDate(),             // Start Date
+                stats.getEndDate()                // End Date
             });
         }
         fireTableDataChanged();

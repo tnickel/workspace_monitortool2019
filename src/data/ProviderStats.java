@@ -11,22 +11,15 @@ public class ProviderStats {
     private final List<Trade> trades;
     private final List<Double> profits;
     private double initialBalance;
-    private boolean hasStopLoss = false;    // Neu
-    private boolean hasTakeProfit = false;  // Neu
+    private boolean hasStopLoss = false;
+    private boolean hasTakeProfit = false;
     
     public ProviderStats() {
         this.trades = new ArrayList<>();
         this.profits = new ArrayList<>();
         this.initialBalance = 0.0;
     }
-    public int getTradeDays() {
-        if (trades.isEmpty()) return 0;
-        
-        return (int) trades.stream()
-            .map(trade -> trade.getOpenTime().toLocalDate())
-            .distinct()
-            .count();
-    }
+
     public void setInitialBalance(double balance) {
         this.initialBalance = balance;
     }
@@ -62,6 +55,14 @@ public class ProviderStats {
         return profits.stream().mapToDouble(Double::doubleValue).sum();
     }
     
+    public double getLastThreeMonthsProfit() {
+        LocalDateTime threeMonthsAgo = LocalDateTime.now().minusMonths(3);
+        return trades.stream()
+            .filter(trade -> trade.getCloseTime().isAfter(threeMonthsAgo))
+            .mapToDouble(Trade::getProfit)
+            .sum();
+    }
+    
     public double getWinRate() {
         long winningTrades = profits.stream().filter(p -> p > 0).count();
         return profits.isEmpty() ? 0.0 : (winningTrades * 100.0) / profits.size();
@@ -80,10 +81,9 @@ public class ProviderStats {
     public double getMaxDrawdownPercent() {
         if (profits.isEmpty()) return 0.0;
         
-        // Prüfen auf 100% Win Rate
         boolean allProfitable = profits.stream().allMatch(profit -> profit > 0);
         if (allProfitable) {
-            return 99.99; // Warnsignal für unrealistisch perfekte Performance
+            return 99.99;
         }
         
         double currentBalance = initialBalance;
@@ -103,6 +103,7 @@ public class ProviderStats {
         
         return maxDrawdownPercent;
     }
+
     public double getMaxDrawdown() {
         return getMaxDrawdownPercent();
     }
@@ -133,10 +134,25 @@ public class ProviderStats {
         return TradeUtils.findMaxConcurrentLots(trades);
     }
     
-    public DefaultCategoryDataset getMonthlyProfitData() {
-        DefaultCategoryDataset dataset = new DefaultCategoryDataset();
-        // Implementation...
-        return dataset;
+    public int getTradeDays() {
+        if (trades.isEmpty()) return 0;
+        
+        return (int) trades.stream()
+            .map(trade -> trade.getOpenTime().toLocalDate())
+            .distinct()
+            .count();
+    }
+    
+    public double getAverageProfit() {
+        return getAverageProfitPerTrade();
+    }
+    
+    public long getMaxDuration() {
+        return trades.stream()
+            .mapToLong(trade -> 
+                java.time.Duration.between(trade.getOpenTime(), trade.getCloseTime()).toHours())
+            .max()
+            .orElse(0);
     }
     
     public double getMaxProfit() {
@@ -155,18 +171,5 @@ public class ProviderStats {
 
     public int getTradeCount() {
         return trades.size();
-    }
-
-  
-
-    public double getAverageProfit() {
-        return getAverageProfitPerTrade();
-    }
-    public long getMaxDuration() {
-        return trades.stream()
-            .mapToLong(trade -> 
-                java.time.Duration.between(trade.getOpenTime(), trade.getCloseTime()).toHours())
-            .max()
-            .orElse(0);
     }
 }

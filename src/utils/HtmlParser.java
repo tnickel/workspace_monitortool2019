@@ -15,29 +15,37 @@ import java.util.logging.Logger;
 public class HtmlParser {
     private static final Logger LOGGER = Logger.getLogger(HtmlParser.class.getName());
     
-    // Pattern für SVG Text Element
     private static final Pattern SVG_TEXT_PATTERN = Pattern.compile(
         "<text[^>]*>\\s*<tspan[^>]*>Maximaler R.ckgang:</tspan>\\s*<tspan[^>]*>([0-9]+[.,][0-9]+)%</tspan></text>"
+    );
+    
+    private static final Pattern BALANCE_PATTERN = Pattern.compile(
+        "<div class=\"s-list-info__item\">\\s*" +
+        "<div class=\"s-list-info__label\">(Balance|Kontostand):\\s*</div>\\s*" +
+        "<div class=\"s-list-info__value\">([\\.\\d\\s]+)\\s*USD</div>\\s*" +
+        "</div>"
     );
 
     private final String rootPath;
     private final Map<String, Double> equityDrawdownCache;
+    private final Map<String, Double> balanceCache;
 
     public HtmlParser(String rootPath) {
         this.rootPath = rootPath;
         this.equityDrawdownCache = new HashMap<>();
+        this.balanceCache = new HashMap<>();
         LOGGER.info("HtmlParser initialized with root path: " + rootPath);
     }
 
-    public double getEquityDrawdown(String csvFileName) {
-        if (equityDrawdownCache.containsKey(csvFileName)) {
-            return equityDrawdownCache.get(csvFileName);
+    public double getBalance(String csvFileName) {
+        if (balanceCache.containsKey(csvFileName)) {
+            return balanceCache.get(csvFileName);
         }
 
         String htmlFileName = csvFileName.replace(".csv", "_root.html");
         File htmlFile = new File(rootPath, htmlFileName);
 
-        LOGGER.info("Trying to read HTML file: " + htmlFile.getAbsolutePath());
+        LOGGER.info("Trying to read HTML file for balance: " + htmlFile.getAbsolutePath());
         
         if (!htmlFile.exists()) {
             LOGGER.warning("HTML file not found: " + htmlFile.getAbsolutePath());
@@ -54,45 +62,29 @@ public class HtmlParser {
             String htmlContent = content.toString();
             LOGGER.info("HTML content length: " + htmlContent.length());
 
-            // Alle SVG text Elemente mit "Maximaler Rückgang" finden
-            Matcher matcher = SVG_TEXT_PATTERN.matcher(htmlContent);
-            List<Double> foundValues = new ArrayList<>();
-            
-            while (matcher.find()) {
-                String drawdownStr = matcher.group(1).replace(",", ".");
-                LOGGER.info("Found potential drawdown value: " + drawdownStr);
+            Matcher matcher = BALANCE_PATTERN.matcher(htmlContent);
+            if (matcher.find()) {
+                String balanceStr = matcher.group(2)
+                    .replaceAll("\\s+", "")  // Remove all whitespace
+                    .replace(",", ".");       // Replace comma with dot
+                LOGGER.info("Found balance value: " + balanceStr);
                 try {
-                    double drawdown = Double.parseDouble(drawdownStr);
-                    foundValues.add(drawdown);
-                    // Debug: Kontext um den Fund herum ausgeben
-                    int start = Math.max(0, matcher.start() - 100);
-                    int end = Math.min(htmlContent.length(), matcher.end() + 100);
-                    LOGGER.info("Context for " + drawdown + "%:\n" + 
-                              htmlContent.substring(start, end));
+                    double balance = Double.parseDouble(balanceStr);
+                    balanceCache.put(csvFileName, balance);
+                    return balance;
                 } catch (NumberFormatException e) {
-                    LOGGER.warning("Could not parse number: " + drawdownStr);
+                    LOGGER.warning("Could not parse balance number: " + balanceStr);
                 }
             }
 
-            // Wenn mehrere Werte gefunden wurden, nehmen wir den größten
-            if (!foundValues.isEmpty()) {
-                double maxDrawdown = foundValues.stream()
-                    .mapToDouble(Double::doubleValue)
-                    .max()
-                    .getAsDouble();
-                LOGGER.info("Using maximum drawdown value: " + maxDrawdown);
-                equityDrawdownCache.put(csvFileName, maxDrawdown);
-                return maxDrawdown;
-            }
-
-            // Wenn nichts gefunden wurde, suche nach dem Text um zu debuggen
-            LOGGER.warning("No drawdown value found in SVG, searching for text snippets...");
+            // Debug-Informationen bei nicht gefundener Balance
+            LOGGER.warning("No balance value found, searching for debug info...");
             String[] searchTerms = {
-                "Maximaler Rückgang",
-                "Maximaler R&#252;ckgang",
-                "ckgang",
-                "<text",
-                "<tspan"
+                "Balance:",
+                "Kontostand:",
+                "s-list-info__item",
+                "s-list-info__label",
+                "s-list-info__value"
             };
             for (String term : searchTerms) {
                 int idx = htmlContent.indexOf(term);
@@ -106,6 +98,57 @@ public class HtmlParser {
                 }
             }
 
+        } catch (IOException e) {
+            LOGGER.severe("Error reading HTML file: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        return 0.0;
+    }
+
+    public double getEquityDrawdown(String csvFileName) {
+        if (equityDrawdownCache.containsKey(csvFileName)) {
+            return equityDrawdownCache.get(csvFileName);
+        }
+
+        String htmlFileName = csvFileName.replace(".csv", "_root.html");
+        File htmlFile = new File(rootPath, htmlFileName);
+        
+        if (!htmlFile.exists()) {
+            LOGGER.warning("HTML file not found: " + htmlFile.getAbsolutePath());
+            return 0.0;
+        }
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(htmlFile))) {
+            StringBuilder content = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                content.append(line).append("\n");
+            }
+
+            String htmlContent = content.toString();
+            
+            Matcher matcher = SVG_TEXT_PATTERN.matcher(htmlContent);
+            List<Double> foundValues = new ArrayList<>();
+            
+            while (matcher.find()) {
+                String drawdownStr = matcher.group(1).replace(",", ".");
+                try {
+                    double drawdown = Double.parseDouble(drawdownStr);
+                    foundValues.add(drawdown);
+                } catch (NumberFormatException e) {
+                    LOGGER.warning("Could not parse drawdown number: " + drawdownStr);
+                }
+            }
+
+            if (!foundValues.isEmpty()) {
+                double maxDrawdown = foundValues.stream()
+                    .mapToDouble(Double::doubleValue)
+                    .max()
+                    .getAsDouble();
+                equityDrawdownCache.put(csvFileName, maxDrawdown);
+                return maxDrawdown;
+            }
         } catch (IOException e) {
             LOGGER.severe("Error reading HTML file: " + e.getMessage());
             e.printStackTrace();
