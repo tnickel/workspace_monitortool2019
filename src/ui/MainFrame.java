@@ -47,7 +47,8 @@ public class MainFrame extends JFrame {
         this.searchField = new JTextField(20);
         rootPath_glob = rootPath;
         
-        mainTable = new MainTable(dataManager);
+        // Hier wird jetzt der downloadPath an MainTable übergeben
+        mainTable = new MainTable(dataManager, config.getDownloadPath());
         mainTable.setStatusUpdateCallback(text -> statusLabel.setText(text));
         
         setupUI();

@@ -2,6 +2,7 @@ package components;
 
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.io.File;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -22,12 +23,14 @@ public class MainTable extends JTable {
     private final HighlightRenderer renderer;
     private final RiskScoreRenderer riskRenderer;
     private final DataManager dataManager;
+    private String rootPath;
     private FilterCriteria currentFilter;
     private Consumer<String> statusUpdateCallback;
     
-    public MainTable(DataManager dataManager) {
+    public MainTable(DataManager dataManager, String downloadPath) {
         this.dataManager = dataManager;
-        this.model = new HighlightTableModel();
+        this.rootPath = downloadPath;
+        this.model = new HighlightTableModel(rootPath);
         this.renderer = new HighlightRenderer();
         this.riskRenderer = new RiskScoreRenderer();
         initialize();
@@ -41,7 +44,7 @@ public class MainTable extends JTable {
         
         // Set renderer for all columns except Risk Score
         for (int i = 0; i < getColumnCount(); i++) {
-            if (i == 10) { // Risk Score column
+            if (i == 13) { // Risk Score column (new index after adding Equity Drawdown)
                 getColumnModel().getColumn(i).setCellRenderer(riskRenderer);
             } else {
                 getColumnModel().getColumn(i).setCellRenderer(renderer);

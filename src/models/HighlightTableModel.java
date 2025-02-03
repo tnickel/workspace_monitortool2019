@@ -4,18 +4,22 @@ import javax.swing.table.DefaultTableModel;
 import java.util.Map;
 import data.ProviderStats;
 import services.RiskAnalysisServ;
+import utils.HtmlParser;
 
 public class HighlightTableModel extends DefaultTableModel {
     
     private static final String[] COLUMN_NAMES = {
         "No.", "Signal Provider", "Trades", "Trade Days", "Win Rate %", "Total Profit",
-        "Avg Profit/Trade", "Max Drawdown %", "Profit Factor", 
+        "Avg Profit/Trade", "Max Drawdown %", "Equity Drawdown %", "Profit Factor", 
         "MaxTrades", "MaxLots", "Max Duration (h)", "Risk Score",
         "S/L", "T/P", "Start Date", "End Date"
     };
     
-    public HighlightTableModel() {
+    private final HtmlParser htmlParser;
+    
+    public HighlightTableModel(String rootPath) {
         super(COLUMN_NAMES, 0);
+        this.htmlParser = new HtmlParser(rootPath);
     }
     
     @Override
@@ -29,18 +33,19 @@ public class HighlightTableModel extends DefaultTableModel {
             case 0:  // No
             case 2:  // Trades
             case 3:  // Trade Days
-            case 9:  // MaxTrades
-            case 11: // Max Duration
-            case 12: // Risk Score
-            case 13: // S/L
-            case 14: // T/P
+            case 10: // MaxTrades
+            case 12: // Max Duration
+            case 13: // Risk Score
+            case 14: // S/L
+            case 15: // T/P
                 return Integer.class;
             case 4:  // Win Rate
             case 5:  // Total Profit
             case 6:  // Avg Profit/Trade
             case 7:  // Max Drawdown
-            case 8:  // Profit Factor
-            case 10: // MaxLots
+            case 8:  // Equity Drawdown
+            case 9:  // Profit Factor
+            case 11: // MaxLots
                 return Double.class;
             default:
                 return String.class;
@@ -52,18 +57,21 @@ public class HighlightTableModel extends DefaultTableModel {
         int rowNum = 1;
         
         for (Map.Entry<String, ProviderStats> entry : statsMap.entrySet()) {
+            String providerName = entry.getKey();
             ProviderStats stats = entry.getValue();
             int riskScore = RiskAnalysisServ.calculateRiskScore(stats);
+            double equityDrawdown = htmlParser.getEquityDrawdown(providerName);
             
             addRow(new Object[]{
                 rowNum++,
-                entry.getKey(),
+                providerName,
                 stats.getTrades().size(),
                 stats.getTradeDays(),
                 stats.getWinRate(),
                 stats.getTotalProfit(),
                 stats.getAverageProfit(),
                 stats.getMaxDrawdown(),
+                equityDrawdown,
                 stats.getProfitFactor(),
                 stats.getMaxConcurrentTrades(),
                 stats.getMaxConcurrentLots(),
