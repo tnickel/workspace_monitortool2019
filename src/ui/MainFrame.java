@@ -47,13 +47,18 @@ public class MainFrame extends JFrame {
         this.searchField = new JTextField(20);
         rootPath_glob = rootPath;
         
-        // Hier wird jetzt der downloadPath an MainTable übergeben
         mainTable = new MainTable(dataManager, config.getDownloadPath());
-        mainTable.setStatusUpdateCallback(text -> statusLabel.setText(text));
+        mainTable.setStatusUpdateCallback(text -> updateStatusBar());
         
         setupUI();
         setupSearch();
         setupStatusBar();
+    }
+
+    private void updateStatusBar() {
+        String providerCount = mainTable.getStatusText();
+        String downloadPath = "Download Path: " + config.getDownloadPath();
+        statusLabel.setText(providerCount + " | " + downloadPath);
     }
 
     private void setDownloadPath() {
@@ -80,7 +85,7 @@ public class MainFrame extends JFrame {
         mainTable.clearHighlight();
         currentSearchIndex[0] = -1;
         mainTable.resetFilter();
-        mainTable.updateStatus();
+        updateStatusBar();
     }
     
     private void setupUI() {
@@ -116,7 +121,7 @@ public class MainFrame extends JFrame {
     private void reloadData(String newPath) {
         try {
             dataManager.loadData(newPath);
-            mainTable.updateStatus();
+            updateStatusBar();
         } catch (Exception e) {
             LOGGER.severe("Error reloading data: " + e.getMessage());
             JOptionPane.showMessageDialog(this, 
@@ -238,7 +243,7 @@ public class MainFrame extends JFrame {
     public void display() {
         SwingUtilities.invokeLater(() -> {
             setVisible(true);
-            mainTable.updateStatus();
+            updateStatusBar();
         });
     }
 }
