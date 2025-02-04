@@ -2,12 +2,14 @@ package components;
 
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.io.File;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import javax.swing.JTable;
+import javax.swing.ToolTipManager;
 import javax.swing.table.TableRowSorter;
 
 import data.DataManager;
@@ -17,6 +19,7 @@ import models.HighlightTableModel;
 import renderers.HighlightRenderer;
 import renderers.RiskScoreRenderer;
 import ui.DetailFrame;
+import utils.HtmlParser;
 
 public class MainTable extends JTable {
    private final HighlightTableModel model;
@@ -26,6 +29,7 @@ public class MainTable extends JTable {
    private String rootPath;
    private FilterCriteria currentFilter;
    private Consumer<String> statusUpdateCallback;
+   private final HtmlParser htmlParser;
    
    public MainTable(DataManager dataManager, String downloadPath) {
        this.dataManager = dataManager;
@@ -33,6 +37,7 @@ public class MainTable extends JTable {
        this.model = new HighlightTableModel(rootPath);
        this.renderer = new HighlightRenderer();
        this.riskRenderer = new RiskScoreRenderer();
+       this.htmlParser = new HtmlParser(rootPath);
        initialize();
        setupMouseListener();
        setupModelListener();
@@ -41,6 +46,8 @@ public class MainTable extends JTable {
    private void initialize() {
        setModel(model);
        setRowSorter(new TableRowSorter<>(model));
+       
+       ToolTipManager.sharedInstance().registerComponent(this);
        
        for (int i = 0; i < getColumnCount(); i++) {
            if (i == 13) {
@@ -66,7 +73,7 @@ public class MainTable extends JTable {
                        String providerId = providerName.substring(providerName.lastIndexOf("_") + 1).replace(".csv", "");
                        
                        if (stats != null) {
-                           DetailFrame detailFrame = new DetailFrame(providerName, stats, providerId);
+                           DetailFrame detailFrame = new DetailFrame(providerName, stats, providerId, htmlParser);
                            detailFrame.setVisible(true);
                        }
                    }
@@ -81,6 +88,54 @@ public class MainTable extends JTable {
    
    public void setStatusUpdateCallback(Consumer<String> callback) {
        this.statusUpdateCallback = callback;
+   }
+   
+   @Override
+   public String getToolTipText(MouseEvent e) {
+       int row = rowAtPoint(e.getPoint());
+       int col = columnAtPoint(e.getPoint());
+       
+       if (row >= 0 && col >= 0) {
+           row = convertRowIndexToModel(row);
+           col = convertColumnIndexToModel(col);
+           
+           if (col == 3) { // 3MonProfit column
+               String providerName = (String) model.getValueAt(row, 1);
+               ProviderStats stats = dataManager.getStats().get(providerName);
+               return getThreeMonthTradesToolTip(stats);
+           }
+       }
+       return null;
+   }
+
+   private String getThreeMonthTradesToolTip(ProviderStats stats) {
+       LocalDateTime threeMonthsAgo = LocalDateTime.now().minusMonths(3);
+       
+       long tradesCount = stats.getTrades().stream()
+           .filter(trade -> trade.getCloseTime().isAfter(threeMonthsAgo))
+           .count();
+           
+       LocalDateTime firstTradeDate = stats.getTrades().stream()
+           .filter(trade -> trade.getCloseTime().isAfter(threeMonthsAgo))
+           .map(trade -> trade.getCloseTime())
+           .min(LocalDateTime::compareTo)
+           .orElse(null);
+           
+       LocalDateTime lastTradeDate = stats.getTrades().stream()
+           .filter(trade -> trade.getCloseTime().isAfter(threeMonthsAgo))
+           .map(trade -> trade.getCloseTime())
+           .max(LocalDateTime::compareTo)
+           .orElse(null);
+           
+       DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+       
+       return String.format("<html><b>3-Monats Übersicht:</b><br>" +
+                          "Anzahl Trades: %d<br>" +
+                          "Erster Trade: %s<br>" +
+                          "Letzter Trade: %s</html>",
+                          tradesCount,
+                          firstTradeDate != null ? firstTradeDate.format(formatter) : "N/A",
+                          lastTradeDate != null ? lastTradeDate.format(formatter) : "N/A");
    }
    
    public String getStatusText() {

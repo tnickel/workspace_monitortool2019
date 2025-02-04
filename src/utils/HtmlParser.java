@@ -20,11 +20,11 @@ public class HtmlParser {
     );
     
     private static final Pattern BALANCE_PATTERN = Pattern.compile(
-        "<div class=\"s-list-info__item\">\\s*" +
-        "<div class=\"s-list-info__label\">(Balance|Kontostand):\\s*</div>\\s*" +
-        "<div class=\"s-list-info__value\">([\\.\\d\\s]+)\\s*USD</div>\\s*" +
-        "</div>"
-    );
+    	    "<div class=\"s-list-info__item\">\\s*" +
+    	    "<div class=\"s-list-info__label\">(Balance|Kontostand):\\s*</div>\\s*" +
+    	    "<div class=\"s-list-info__value\">([\\d\\s\\.]+)\\s*[A-Z]{3}</div>\\s*" +
+    	    "</div>"
+    	);
 
     private final String rootPath;
     private final Map<String, Double> equityDrawdownCache;

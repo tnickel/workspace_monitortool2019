@@ -56,13 +56,13 @@ public class HighlightTableModel extends DefaultTableModel {
     }
     
     private double calculate3MPDD(double threeMonthProfit, double balance, double equityDrawdown) {
-        if (balance <= 0 || equityDrawdown <= 0) {
-            return 0.0;
-        }
-        
-        // Berechnung: 3MonProfit / (Balance * (EquityDrawdown/100))
-        return threeMonthProfit / (balance * (equityDrawdown/100));
-    }
+    	   if (balance <= 0 || equityDrawdown <= 0) {
+    	       return 0.0;
+    	   }
+    	   
+    	   // Berechnung: (3MonProfit/3) / (Balance * (EquityDrawdown/100))
+    	   return (threeMonthProfit/3) / (balance * (equityDrawdown/100));
+    	}
     
     public void populateData(Map<String, ProviderStats> statsMap) {
         setRowCount(0);

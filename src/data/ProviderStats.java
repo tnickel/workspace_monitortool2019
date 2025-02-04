@@ -172,4 +172,22 @@ public class ProviderStats {
     public int getTradeCount() {
         return trades.size();
     }
+    public double getEquityDrawdown() {
+        if (trades.isEmpty()) return 0.0;
+        
+        double currentBalance = initialBalance;
+        double highWaterMark = initialBalance;
+        double maxDrawdownPercent = 0.0;
+        
+        for (double profit : profits) {
+            currentBalance += profit;
+            highWaterMark = Math.max(currentBalance, highWaterMark);
+            
+            if (currentBalance < highWaterMark) {
+                double drawdownPercent = (highWaterMark - currentBalance) / highWaterMark * 100;
+                maxDrawdownPercent = Math.max(maxDrawdownPercent, drawdownPercent);
+            }
+        }
+        return maxDrawdownPercent;
+    }
 }
