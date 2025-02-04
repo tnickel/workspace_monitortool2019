@@ -34,7 +34,7 @@ public class HtmlParser {
         this.rootPath = rootPath;
         this.equityDrawdownCache = new HashMap<>();
         this.balanceCache = new HashMap<>();
-        LOGGER.info("HtmlParser initialized with root path: " + rootPath);
+        //LOGGER.info("HtmlParser initialized with root path: " + rootPath);
     }
 
     public double getBalance(String csvFileName) {
@@ -45,7 +45,7 @@ public class HtmlParser {
         String htmlFileName = csvFileName.replace(".csv", "_root.html");
         File htmlFile = new File(rootPath, htmlFileName);
 
-        LOGGER.info("Trying to read HTML file for balance: " + htmlFile.getAbsolutePath());
+        //LOGGER.info("Trying to read HTML file for balance: " + htmlFile.getAbsolutePath());
         
         if (!htmlFile.exists()) {
             LOGGER.warning("HTML file not found: " + htmlFile.getAbsolutePath());
@@ -60,14 +60,14 @@ public class HtmlParser {
             }
 
             String htmlContent = content.toString();
-            LOGGER.info("HTML content length: " + htmlContent.length());
+            //LOGGER.info("HTML content length: " + htmlContent.length());
 
             Matcher matcher = BALANCE_PATTERN.matcher(htmlContent);
             if (matcher.find()) {
                 String balanceStr = matcher.group(2)
                     .replaceAll("\\s+", "")  // Remove all whitespace
                     .replace(",", ".");       // Replace comma with dot
-                LOGGER.info("Found balance value: " + balanceStr);
+                //LOGGER.info("Found balance value: " + balanceStr);
                 try {
                     double balance = Double.parseDouble(balanceStr);
                     balanceCache.put(csvFileName, balance);
@@ -89,12 +89,12 @@ public class HtmlParser {
             for (String term : searchTerms) {
                 int idx = htmlContent.indexOf(term);
                 if (idx > 0) {
-                    LOGGER.info("Found '" + term + "' at index " + idx);
+                    //LOGGER.info("Found '" + term + "' at index " + idx);
                     String context = htmlContent.substring(
                         Math.max(0, idx - 200),
                         Math.min(htmlContent.length(), idx + 500)
                     );
-                    LOGGER.info("Context:\n" + context);
+                    //LOGGER.info("Context:\n" + context);
                 }
             }
 
