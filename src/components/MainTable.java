@@ -4,6 +4,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -99,7 +100,10 @@ public class MainTable extends JTable {
            row = convertRowIndexToModel(row);
            col = convertColumnIndexToModel(col);
            
-           if (col == 3) { // 3MonProfit column
+           if (col == 5) { // 3MProfProz column
+               String providerName = (String) model.getValueAt(row, 1);
+               return getThreeMonthProfitCalculationToolTip(providerName);
+           } else if (col == 3) { // Original 3MonProfit tooltip
                String providerName = (String) model.getValueAt(row, 1);
                ProviderStats stats = dataManager.getStats().get(providerName);
                return getThreeMonthTradesToolTip(stats);
@@ -107,6 +111,39 @@ public class MainTable extends JTable {
        }
        return null;
    }
+   
+   private String getThreeMonthProfitCalculationToolTip(String providerName) {
+	    // Hole die letzten drei Profite vom HtmlParser
+	    List<String> profits = htmlParser.getLastThreeMonthsDetails(providerName);
+	    
+	    if (profits.isEmpty()) {
+	        return "Keine Profitdaten verfügbar";
+	    }
+
+	    // Berechne die Summe
+	    double sum = profits.stream()
+	        .mapToDouble(s -> {
+	            String valueStr = s.split(":")[1].trim()
+	                             .replace("%", "")
+	                             .replace(",", ".");  // Ersetze Komma durch Punkt
+	            return Double.parseDouble(valueStr);
+	        })
+	        .sum();
+	    
+	    // Erstelle den Tooltip mit HTML-Formatierung
+	    StringBuilder tooltip = new StringBuilder("<html><b>3-Monats Profit Berechnung:</b><br><br>");
+	    
+	    // Füge jeden Monat einzeln hinzu
+	    profits.forEach(profit -> tooltip.append(profit).append("<br>"));
+	    
+	    // Füge die Berechnung hinzu
+	    tooltip.append("<br>Summe: ").append(String.format("%.2f%%", sum))
+	           .append("<br>Durchschnitt: ").append(String.format("%.2f%%", sum / profits.size()))
+	           .append(" (").append(profits.size()).append(" Monate)")
+	           .append("</html>");
+	    
+	    return tooltip.toString();
+	}
 
    private String getThreeMonthTradesToolTip(ProviderStats stats) {
        LocalDateTime threeMonthsAgo = LocalDateTime.now().minusMonths(3);
