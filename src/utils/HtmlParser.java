@@ -17,11 +17,13 @@ public class HtmlParser {
     private static final Logger LOGGER = Logger.getLogger(HtmlParser.class.getName());
     
     private static final Pattern DRAWNDOWN_PATTERN = Pattern.compile(
-    	    "<div class=\"s-data-columns__item\"[^>]*title=\"Maximaler R(?:ü|ue)ckgang des Kapitals[^\"]*\">\\s*" +  // Findet den richtigen Bereich
-    	    "<div class=\"s-data-columns__label\">Kapital:\\s*</div>\\s*" +  // Stellt sicher, dass es der Kapital-Drawdown ist
-    	    "<div class=\"s-data-columns__value\">\\s*([-−]?[0-9]+[.,][0-9]+)%\\s*" // Extrahiert den Prozentwert
+    	    // Pattern für SVG text-Struktur
+    	    "<text[^>]*>\\s*" +
+    	    "<tspan[^>]*>Maximaler\\s*R(?:[üue])ckgang:?</tspan>\\s*" +
+    	    "<tspan[^>]*>([-−]?[0-9]+[.,][0-9]+)%</tspan>\\s*" +
+    	    "</text>",
+    	    Pattern.CASE_INSENSITIVE | Pattern.DOTALL
     	);
-
 
     
     private static final Pattern BALANCE_PATTERN = Pattern.compile(
@@ -121,7 +123,6 @@ public class HtmlParser {
 
         return 0.0;
     }
-
     public double getEquityDrawdown(String csvFileName) {
         if (equityDrawdownCache.containsKey(csvFileName)) {
             return equityDrawdownCache.get(csvFileName);
@@ -131,7 +132,7 @@ public class HtmlParser {
         File htmlFile = new File(rootPath, htmlFileName);
         
         if (!htmlFile.exists()) {
-            LOGGER.warning("HTML file not found: " + htmlFile.getAbsolutePath());
+            LOGGER.warning("HTML-Datei nicht gefunden: " + htmlFile.getAbsolutePath());
             return 0.0;
         }
 
@@ -143,35 +144,48 @@ public class HtmlParser {
             }
 
             String htmlContent = content.toString();
-            LOGGER.info("Loaded HTML content for " + csvFileName);
-
-            // Debugging: Zeige die ersten 1000 Zeichen der HTML-Datei
-            LOGGER.info("HTML Preview: " + htmlContent.substring(0, Math.min(1000, htmlContent.length())));
-
-            // Suche nach Drawdown mit dem neuen Regex-Muster
             Matcher matcher = DRAWNDOWN_PATTERN.matcher(htmlContent);
             
             if (matcher.find()) {
-                String drawdownStr = matcher.group(1).replace(",", ".");
+                String drawdownStr = matcher.group(1);
+                drawdownStr = drawdownStr.replace(",", ".")
+                                       .replace("−", "-")
+                                       .trim();
                 try {
                     double drawdown = Double.parseDouble(drawdownStr);
-                    LOGGER.info("Found Equity Drawdown for " + csvFileName + ": " + drawdown);
+                    LOGGER.info("Equity Drawdown gefunden für " + csvFileName + ": " + drawdown);
+                    
+                    // Debug-Ausgabe des gefundenen Matches
+                    int matchStart = matcher.start();
+                    String context = htmlContent.substring(
+                        Math.max(0, matchStart - 50),
+                        Math.min(htmlContent.length(), matchStart + 150)
+                    );
+                    LOGGER.info("Gefundener Text-Match: " + context);
+                    
                     equityDrawdownCache.put(csvFileName, drawdown);
                     return drawdown;
                 } catch (NumberFormatException e) {
-                    LOGGER.warning("Could not parse drawdown number: " + drawdownStr);
+                    LOGGER.warning("Konnte Drawdown-Zahl nicht parsen: " + drawdownStr);
                 }
             } else {
-                LOGGER.warning("No equity drawdown found in HTML for " + csvFileName);
+                LOGGER.warning("Kein Equity Drawdown in HTML gefunden für " + csvFileName);
+                // Zeige den relevanten Teil des HTML-Inhalts für Debugging
+                int idx = htmlContent.indexOf("Maximaler");
+                if (idx > -1) {
+                    String context = htmlContent.substring(
+                        Math.max(0, idx - 100),
+                        Math.min(htmlContent.length(), idx + 200)
+                    );
+                    LOGGER.info("Gefundener Kontext um 'Maximaler': " + context);
+                }
             }
         } catch (IOException e) {
-            LOGGER.severe("Error reading HTML file: " + e.getMessage());
+            LOGGER.severe("Fehler beim Lesen der HTML-Datei: " + e.getMessage());
         }
 
         return 0.0;
     }
-
-
     public double getAvr3MonthProfit(String csvFileName) {
         if (averageProfitCache.containsKey(csvFileName)) {
             return averageProfitCache.get(csvFileName);
