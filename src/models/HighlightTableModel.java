@@ -8,12 +8,12 @@ import utils.HtmlParser;
 
 public class HighlightTableModel extends DefaultTableModel {
     
-    private static final String[] COLUMN_NAMES = {
-        "No.", "Signal Provider", "Balance", "3MonProfit", "3MPDD", "3MProfProz", "Trades", "Trade Days", 
-        "Win Rate %", "Total Profit", "Avg Profit/Trade", "Max Drawdown %", 
-        "Equity Drawdown %", "Profit Factor", "MaxTrades", "MaxLots", 
-        "Max Duration (h)", "Risk Score", "S/L", "T/P", "Start Date", "End Date"
-    };
+	private static final String[] COLUMN_NAMES = {
+		    "No.", "Signal Provider", "Balance", "3MPDD", "3MProfProz", "Trades", "Trade Days", 
+		    "Win Rate %", "Total Profit", "Avg Profit/Trade", "Max Drawdown %", 
+		    "Equity Drawdown %", "Profit Factor", "MaxTrades", "MaxLots", 
+		    "Max Duration (h)", "Risk Score", "S/L", "T/P", "Start Date", "End Date"
+		};
     
     private final HtmlParser htmlParser;
     
@@ -85,15 +85,15 @@ public class HighlightTableModel extends DefaultTableModel {
                                " | 3MPDD: " + mpdd);
 
             addRow(new Object[]{
-                rowNum++, providerName, balance, threeMonthProfit, mpdd, // 3MPDD mit neuer Formel
-                threeMonthProfitPercent, 
-                stats.getTrades().size(), stats.getTradeDays(), stats.getWinRate(), 
-                stats.getTotalProfit(), stats.getAverageProfit(), stats.getMaxDrawdown(), 
-                equityDrawdown, stats.getProfitFactor(), stats.getMaxConcurrentTrades(), 
-                stats.getMaxConcurrentLots(), stats.getMaxDuration(), riskScore, 
-                stats.hasStopLoss() ? 1 : 0, stats.hasTakeProfit() ? 1 : 0, 
-                stats.getStartDate(), stats.getEndDate()
-            });
+            	    rowNum++, providerName, balance, mpdd, // 3MonProfit entfernt
+            	    threeMonthProfitPercent, 
+            	    stats.getTrades().size(), stats.getTradeDays(), stats.getWinRate(), 
+            	    stats.getTotalProfit(), stats.getAverageProfit(), stats.getMaxDrawdown(), 
+            	    equityDrawdown, stats.getProfitFactor(), stats.getMaxConcurrentTrades(), 
+            	    stats.getMaxConcurrentLots(), stats.getMaxDuration(), riskScore, 
+            	    stats.hasStopLoss() ? 1 : 0, stats.hasTakeProfit() ? 1 : 0, 
+            	    stats.getStartDate(), stats.getEndDate()
+            	});
         }
         fireTableDataChanged();
     }

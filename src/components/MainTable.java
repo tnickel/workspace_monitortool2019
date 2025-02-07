@@ -100,13 +100,9 @@ public class MainTable extends JTable {
            row = convertRowIndexToModel(row);
            col = convertColumnIndexToModel(col);
            
-           if (col == 5) { // 3MProfProz column
+           if (col == 4) { // 3MProfProz column (vorher 5)
                String providerName = (String) model.getValueAt(row, 1);
                return getThreeMonthProfitCalculationToolTip(providerName);
-           } else if (col == 3) { // Original 3MonProfit tooltip
-               String providerName = (String) model.getValueAt(row, 1);
-               ProviderStats stats = dataManager.getStats().get(providerName);
-               return getThreeMonthTradesToolTip(stats);
            }
        }
        return null;

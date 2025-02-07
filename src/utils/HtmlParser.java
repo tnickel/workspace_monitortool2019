@@ -17,36 +17,19 @@ public class HtmlParser {
     private static final Logger LOGGER = Logger.getLogger(HtmlParser.class.getName());
     
     private static final Pattern DRAWNDOWN_PATTERN = Pattern.compile(
-    	    // Pattern für SVG text-Struktur
-    	    "<text[^>]*>\\s*" +
-    	    "<tspan[^>]*>Maximaler\\s*R(?:[üue])ckgang:?</tspan>\\s*" +
-    	    "<tspan[^>]*>([-−]?[0-9]+[.,][0-9]+)%</tspan>\\s*" +
-    	    "</text>",
-    	    Pattern.CASE_INSENSITIVE | Pattern.DOTALL
-    	);
+            "<text[^>]*>\\s*" +
+            "<tspan[^>]*>Maximaler\\s*R(?:[üue])ckgang:?</tspan>\\s*" +
+            "<tspan[^>]*>([-−]?[0-9]+[.,][0-9]+)%</tspan>\\s*" +
+            "</text>",
+            Pattern.CASE_INSENSITIVE | Pattern.DOTALL
+        );
 
-    
     private static final Pattern BALANCE_PATTERN = Pattern.compile(
         "<div class=\"s-list-info__item\">\\s*" +
         "<div class=\"s-list-info__label\">(Balance|Kontostand):\\s*</div>\\s*" +
         "<div class=\"s-list-info__value\">([\\d\\s\\.]+)\\s*[A-Z]{3}</div>\\s*" +
         "</div>"
     );
-
-    // Pattern für die Profittabelle
-    private static final Pattern PROFIT_TABLE_PATTERN = Pattern.compile(
-            "<tbody><tr><td[^>]*>(\\d{4})</td>\\s*" +  // Beliebiges 4-stelliges Jahr
-            "(?:<td[^>]*>([^<]*)</td>\\s*){12}" +      // 12 Monate
-            "<td[^>]*>[^<]+</td></tr>\\s*" +           // Jahrestotal
-            "(?:<tr><td[^>]*>(\\d{4})</td>\\s*" +      // Optionales weiteres Jahr
-            "(?:<td[^>]*>([^<]*)</td>\\s*){12}" +      // 12 weitere Monate
-            "<td[^>]*>[^<]+</td></tr>\\s*)*"           // Jahrestotal, beliebig oft wiederholbar
-        );
-    private static final Pattern ROW_PATTERN = Pattern.compile(
-            "<tr><td[^>]*>(\\d{4})</td>\\s*" +         // Jahr
-            "(?:<td[^>]*>([^<]*)</td>\\s*){12}" +      // 12 Monate
-            "<td[^>]*>[^<]+</td></tr>"                 // Jahrestotal
-        );
 
     private final String rootPath;
     private final Map<String, Double> equityDrawdownCache;
@@ -95,27 +78,6 @@ public class HtmlParser {
                     LOGGER.warning("Could not parse balance number: " + balanceStr);
                 }
             }
-
-            // Debug-Informationen bei nicht gefundener Balance
-            LOGGER.warning("No balance value found, searching for debug info...");
-            String[] searchTerms = {
-                "Balance:",
-                "Kontostand:",
-                "s-list-info__item",
-                "s-list-info__label",
-                "s-list-info__value"
-            };
-            for (String term : searchTerms) {
-                int idx = htmlContent.indexOf(term);
-                if (idx > 0) {
-                    String context = htmlContent.substring(
-                        Math.max(0, idx - 200),
-                        Math.min(htmlContent.length(), idx + 500)
-                    );
-                    //LOGGER.info("Context:\n" + context);
-                }
-            }
-
         } catch (IOException e) {
             LOGGER.severe("Error reading HTML file: " + e.getMessage());
             e.printStackTrace();
@@ -123,6 +85,7 @@ public class HtmlParser {
 
         return 0.0;
     }
+
     public double getEquityDrawdown(String csvFileName) {
         if (equityDrawdownCache.containsKey(csvFileName)) {
             return equityDrawdownCache.get(csvFileName);
@@ -153,31 +116,10 @@ public class HtmlParser {
                                        .trim();
                 try {
                     double drawdown = Double.parseDouble(drawdownStr);
-                    LOGGER.info("Equity Drawdown gefunden für " + csvFileName + ": " + drawdown);
-                    
-                    // Debug-Ausgabe des gefundenen Matches
-                    int matchStart = matcher.start();
-                    String context = htmlContent.substring(
-                        Math.max(0, matchStart - 50),
-                        Math.min(htmlContent.length(), matchStart + 150)
-                    );
-                    LOGGER.info("Gefundener Text-Match: " + context);
-                    
                     equityDrawdownCache.put(csvFileName, drawdown);
                     return drawdown;
                 } catch (NumberFormatException e) {
                     LOGGER.warning("Konnte Drawdown-Zahl nicht parsen: " + drawdownStr);
-                }
-            } else {
-                LOGGER.warning("Kein Equity Drawdown in HTML gefunden für " + csvFileName);
-                // Zeige den relevanten Teil des HTML-Inhalts für Debugging
-                int idx = htmlContent.indexOf("Maximaler");
-                if (idx > -1) {
-                    String context = htmlContent.substring(
-                        Math.max(0, idx - 100),
-                        Math.min(htmlContent.length(), idx + 200)
-                    );
-                    LOGGER.info("Gefundener Kontext um 'Maximaler': " + context);
                 }
             }
         } catch (IOException e) {
@@ -186,6 +128,7 @@ public class HtmlParser {
 
         return 0.0;
     }
+
     public double getAvr3MonthProfit(String csvFileName) {
         if (averageProfitCache.containsKey(csvFileName)) {
             return averageProfitCache.get(csvFileName);
@@ -203,8 +146,8 @@ public class HtmlParser {
         for (String detail : lastThreeMonthsDetails) {
             try {
                 String valueStr = detail.split(":")[1].trim()
-                                        .replace("%", "")
-                                        .replace(",", ".");
+                                      .replace("%", "")
+                                      .replace(",", ".");
                 double profit = Double.parseDouble(valueStr);
                 sum += profit;
                 count++;
@@ -219,10 +162,10 @@ public class HtmlParser {
         }
 
         double average = sum / count;
-        LOGGER.info("Calculated 3MProfProz for " + csvFileName + ": " + average);
         averageProfitCache.put(csvFileName, average);
         return average;
     }
+
     public List<String> getLastThreeMonthsDetails(String csvFileName) {
         List<String> details = new ArrayList<>();
         
@@ -230,78 +173,89 @@ public class HtmlParser {
             String htmlContent = readHtmlFile(csvFileName);
             if (htmlContent == null) return details;
 
+            // Finde die relevante Tabelle
             Pattern tablePattern = Pattern.compile(
-                "<tbody>\\s*" +
-                "(?:<tr>\\s*<td[^>]*>[^<]+</td>\\s*" +
-                "(?:<td[^>]*>([^<]*)</td>\\s*){12}" +
-                "<td[^>]*>[^<]+</td>\\s*</tr>\\s*)*" +
-                "</tbody>"
+                "<table class=\"svg-chart__ui-table svg-chart__table\">.*?<tbody>(.*?)</tbody>",
+                Pattern.DOTALL
             );
             
             Matcher tableMatcher = tablePattern.matcher(htmlContent);
             if (tableMatcher.find()) {
-                String tableContent = tableMatcher.group(0);
+                String tableBody = tableMatcher.group(1);
                 List<MonthValue> allMonths = new ArrayList<>();
                 
-                // Extrahiere alle Zeilen
+                // Extrahiere die Zeilen
                 Pattern rowPattern = Pattern.compile(
-                    "<tr>\\s*<td[^>]*>(\\d{4})</td>\\s*" +
-                    "((?:<td[^>]*>([^<]*)</td>\\s*){12})"
+                    "<tr>\\s*" +
+                    "<td class=\"svg-chart__main\">(\\d{4})</td>\\s*" +  // Jahr
+                    "<td[^>]*>([^<]*)</td>\\s*" +    // Jan
+                    "<td[^>]*>([^<]*)</td>\\s*" +    // Feb
+                    "<td[^>]*>([^<]*)</td>\\s*" +    // Mar
+                    "<td[^>]*>([^<]*)</td>\\s*" +    // Apr
+                    "<td[^>]*>([^<]*)</td>\\s*" +    // May
+                    "<td[^>]*>([^<]*)</td>\\s*" +    // Jun
+                    "<td[^>]*>([^<]*)</td>\\s*" +    // Jul
+                    "<td[^>]*>([^<]*)</td>\\s*" +    // Aug
+                    "<td[^>]*>([^<]*)</td>\\s*" +    // Sep
+                    "<td[^>]*>([^<]*)</td>\\s*" +    // Oct
+                    "<td[^>]*>([^<]*)</td>\\s*" +    // Nov
+                    "<td[^>]*>([^<]*)</td>",         // Dec
+                    Pattern.DOTALL
                 );
-                
+
                 String[] monthNames = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", 
                                      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
                 
-                Matcher rowMatcher = rowPattern.matcher(tableContent);
+                Matcher rowMatcher = rowPattern.matcher(tableBody);
                 while (rowMatcher.find()) {
                     String year = rowMatcher.group(1);
-                    String monthsContent = rowMatcher.group(2);
                     
-                    Pattern valuePattern = Pattern.compile("<td[^>]*>([^<]+)</td>");
-                    Matcher valueMatcher = valuePattern.matcher(monthsContent);
-                    int monthIndex = 0;
-                    
-                    while (valueMatcher.find() && monthIndex < 12) {
-                        String value = valueMatcher.group(1).trim();
+                    // Füge alle vorhandenen Monatswerte der Liste hinzu
+                    for (int i = 0; i < 12; i++) {
+                        String value = rowMatcher.group(i + 2).trim();
                         if (!value.isEmpty() && !value.equals("-")) {
+                            value = value.replace(",", ".")
+                                       .replace("−", "-")
+                                       .replaceAll("[^0-9.\\-]", "");
                             try {
-                                value = value.replace(",", ".")
-                                           .replace("−", "-")
-                                           .replaceAll("[^0-9.\\-]", "");
-                                if (!value.isEmpty()) {
-                                    double profit = Double.parseDouble(value);
-                                    allMonths.add(new MonthValue(monthNames[monthIndex], year, profit));
-                                }
+                                double profit = Double.parseDouble(value);
+                                allMonths.add(new MonthValue(monthNames[i], year, profit));
                             } catch (NumberFormatException e) {
-                                LOGGER.warning("Could not parse value: " + value);
+                                LOGGER.warning("Konnte Wert nicht parsen: " + value);
                             }
                         }
-                        monthIndex++;
                     }
                 }
                 
-                // Sortiere die Monate in umgekehrter Reihenfolge (neueste zuerst)
+                // Sortiere chronologisch nach Jahr und Monat
                 allMonths.sort((a, b) -> {
-                    int yearCompare = b.year.compareTo(a.year);
+                    int yearCompare = a.year.compareTo(b.year);
                     if (yearCompare != 0) return yearCompare;
                     
                     int aIndex = Arrays.asList(monthNames).indexOf(a.month);
                     int bIndex = Arrays.asList(monthNames).indexOf(b.month);
-                    return Integer.compare(bIndex, aIndex);
+                    return Integer.compare(aIndex, bIndex);
                 });
+
+                // Debug-Ausgabe der sortierten Liste
+                LOGGER.info("Chronologisch sortierte Monate für " + csvFileName + ":");
+                for (MonthValue mv : allMonths) {
+                    LOGGER.info(String.format("%s %s: %.2f%%", mv.month, mv.year, mv.value));
+                }
                 
-                // Der aktuelle Monat ist der erste in der sortierten Liste
-                if (allMonths.size() > 1) {  // Mindestens aktueller Monat + 1 weiterer Monat
-                    // Nehme bis zu 3 Monate VOR dem aktuellen Monat
-                    int monthsToUse = Math.min(3, allMonths.size() - 1);
-                    for (int i = 1; i <= monthsToUse; i++) {
+                // Nimm die letzten 3 Monate VOR dem letzten Monat
+                int size = allMonths.size();
+                if (size > 4) {  // Wir brauchen mindestens 4 Monate (letzter + 3 davor)
+                    for (int i = size - 4; i < size - 1; i++) {
                         MonthValue mv = allMonths.get(i);
                         details.add(String.format("%s %s: %.2f%%", mv.month, mv.year, mv.value));
                     }
                 }
             }
+            
         } catch (Exception e) {
             LOGGER.severe("Error processing HTML: " + e.getMessage());
+            e.printStackTrace();
         }
         
         return details;
@@ -318,6 +272,7 @@ public class HtmlParser {
             this.value = value;
         }
     }
+
     private String readHtmlFile(String csvFileName) {
         String htmlFileName = csvFileName.replace(".csv", "_root.html");
         File htmlFile = new File(rootPath, htmlFileName);
