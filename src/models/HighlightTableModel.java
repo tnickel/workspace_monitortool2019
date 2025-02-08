@@ -97,5 +97,36 @@ public class HighlightTableModel extends DefaultTableModel {
         }
         fireTableDataChanged();
     }
-   
+    public Object[] createRowDataForProvider(String providerName, ProviderStats stats) {
+        // Die gleiche Logik wie in populateData, aber nur für einen Provider
+        double equityDrawdown = htmlParser.getEquityDrawdown(providerName);
+        double balance = htmlParser.getBalance(providerName);
+        double threeMonthProfitPercent = htmlParser.getAvr3MonthProfit(providerName);
+        double mpdd = calculate3MPDD(threeMonthProfitPercent, equityDrawdown);
+        int riskScore = RiskAnalysisServ.calculateRiskScore(stats);
+
+        return new Object[]{
+            0, // Platzhalter für die Nummer, wird in populateData gesetzt
+            providerName,
+            balance,
+            mpdd,
+            threeMonthProfitPercent,
+            stats.getTrades().size(),
+            stats.getTradeDays(),
+            stats.getWinRate(),
+            stats.getTotalProfit(),
+            stats.getAverageProfit(),
+            stats.getMaxDrawdown(),
+            equityDrawdown,
+            stats.getProfitFactor(),
+            stats.getMaxConcurrentTrades(),
+            stats.getMaxConcurrentLots(),
+            stats.getMaxDuration(),
+            riskScore,
+            stats.hasStopLoss() ? 1 : 0,
+            stats.hasTakeProfit() ? 1 : 0,
+            stats.getStartDate(),
+            stats.getEndDate()
+        };
+    }
 }

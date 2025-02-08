@@ -36,17 +36,23 @@ public class MainTable extends JTable {
   private final HtmlParser htmlParser;
   
   public MainTable(DataManager dataManager, String downloadPath) {
-      this.dataManager = dataManager;
-      this.rootPath = downloadPath;
-      this.model = new HighlightTableModel(rootPath);
-      this.renderer = new HighlightRenderer();
-      this.riskRenderer = new RiskScoreRenderer();
-      this.htmlParser = new HtmlParser(rootPath);
-      initialize();
-      setupMouseListener();
-      setupModelListener();
-  }
-  
+	    this.dataManager = dataManager;
+	    this.rootPath = downloadPath;
+	    this.model = new HighlightTableModel(rootPath);
+	    this.renderer = new HighlightRenderer();
+	    this.riskRenderer = new RiskScoreRenderer();
+	    this.htmlParser = new HtmlParser(rootPath);
+	    this.currentFilter = new FilterCriteria();
+
+	    loadSavedFilter(); // Filter beim Start laden
+
+	    initialize();
+	    setupMouseListener();
+	    setupModelListener();
+	}
+  public FilterCriteria getCurrentFilter() {
+	    return currentFilter != null ? currentFilter : new FilterCriteria();
+	}
   private void initialize() {
       setModel(model);
       setRowSorter(new TableRowSorter<>(model));
@@ -221,41 +227,42 @@ public class MainTable extends JTable {
       return false;
   }
   
-  public void applyFilter(FilterCriteria criteria) {
-      this.currentFilter = criteria;
-      refreshTableData();
-  }
   
-  public void resetFilter() {
-      this.currentFilter = null;
-      refreshTableData();
-  }
   
   public void refreshTableData() {
-       if (currentFilter == null) {
-           model.populateData(dataManager.getStats());
-       } else {
-           Map<String, ProviderStats> filteredStats = dataManager.getStats().entrySet().stream()
-               .filter(entry -> currentFilter.matches(entry.getValue()))
-               .collect(Collectors.toMap(
-                   Map.Entry::getKey,
-                   Map.Entry::getValue
-               ));
-           model.populateData(filteredStats);
-       }
-       updateStatus();
-   }
+	    if (currentFilter == null) {
+	        model.populateData(dataManager.getStats());
+	    } else {
+	        Map<String, ProviderStats> filteredStats = dataManager.getStats().entrySet().stream()
+	            .filter(entry -> {
+	                Object[] rowData = model.createRowDataForProvider(
+	                    entry.getKey(), 
+	                    entry.getValue()
+	                );
+	                return currentFilter.matches(entry.getValue(), rowData);
+	            })
+	            .collect(Collectors.toMap(
+	                Map.Entry::getKey,
+	                Map.Entry::getValue
+	            ));
+	        model.populateData(filteredStats);
+	    }
+	    updateStatus();
+	}
   
   public Map<String, ProviderStats> getCurrentProviderStats() {
       if (currentFilter == null) {
           return dataManager.getStats();
       }
       return dataManager.getStats().entrySet().stream()
-          .filter(entry -> currentFilter.matches(entry.getValue()))
-          .collect(Collectors.toMap(
-              Map.Entry::getKey,
-              Map.Entry::getValue
-          ));
+    		    .filter(entry -> currentFilter.matches(
+    		        entry.getValue(),
+    		        model.createRowDataForProvider(entry.getKey(), entry.getValue()) // Zweiter Parameter hinzugefügt
+    		    ))
+    		    .collect(Collectors.toMap(
+    		        Map.Entry::getKey,
+    		        Map.Entry::getValue
+    		    ));
   }
 
   // Neue Methoden für das Löschen von Providern
@@ -282,4 +289,22 @@ public class MainTable extends JTable {
       }
       return selectedStats;
   }
+  public void applyFilter(FilterCriteria criteria) {
+	    this.currentFilter = criteria;
+	    currentFilter.saveFilters(); // Speichert die Filterwerte nach Anwendung
+	    refreshTableData();
+	}
+
+	public void resetFilter() {
+	    this.currentFilter = new FilterCriteria();
+	    currentFilter.saveFilters(); // Speichert den leeren Filter
+	    refreshTableData();
+	}
+
+	public void loadSavedFilter() {
+	    if (currentFilter == null) {
+	        currentFilter = new FilterCriteria();
+	    }
+	    currentFilter.loadFilters();
+	}
 }

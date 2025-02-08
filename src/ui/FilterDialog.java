@@ -1,182 +1,145 @@
 package ui;
 
-import javax.swing.*;
 import java.awt.*;
+import java.util.HashMap;
+import java.util.Map;
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
 import models.FilterCriteria;
+import models.FilterCriteria.FilterRange;
 
 public class FilterDialog extends JDialog {
-    private FilterCriteria result = null;
-    private static FilterCriteria lastCriteria = null;
-    private final JTextField minTradeDaysField = new JTextField(10);
-    private final JTextField minTradesField = new JTextField(10);
-    private final JTextField minProfitField = new JTextField(10);
-    private final JTextField minProfitFactorField = new JTextField(10);
-    private final JTextField minWinRateField = new JTextField(10);
-    private final JTextField maxDrawdownField = new JTextField(10);
-    private final JTextField minTotalProfitField = new JTextField(10);
-    private final JTextField maxConcurrentTradesField = new JTextField(10);
-    private final JTextField maxConcurrentLotsField = new JTextField(10);
-    private final JTextField maxDurationField = new JTextField(10);
+    private final JTable filterTable;
+    private FilterCriteria currentFilters;
     
-    public FilterDialog(JFrame parent) {
-        super(parent, "Filter Signal Providers", true);
-        
-        JPanel filterPanel = new JPanel(new GridBagLayout());
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(5, 5, 5, 5);
-        gbc.anchor = GridBagConstraints.WEST;
-        
-        int row = 0;
-        
-        // Min Trading Days
-        gbc.gridx = 0; gbc.gridy = row++;
-        filterPanel.add(new JLabel("Min. Trading Days:"), gbc);
-        gbc.gridx = 1;
-        filterPanel.add(minTradeDaysField, gbc);
-        
-        // Min Trades
-        gbc.gridx = 0; gbc.gridy = row++;
-        filterPanel.add(new JLabel("Min. Trades:"), gbc);
-        gbc.gridx = 1;
-        filterPanel.add(minTradesField, gbc);
-        
-        addField(filterPanel, gbc, row++, "Min. Profit:", minProfitField);
-        addField(filterPanel, gbc, row++, "Min. Total Profit:", minTotalProfitField);
-        addField(filterPanel, gbc, row++, "Min. Profit Factor:", minProfitFactorField);
-        addField(filterPanel, gbc, row++, "Min. Win Rate (%):", minWinRateField);
-        addField(filterPanel, gbc, row++, "Max. Drawdown (%):", maxDrawdownField);
-        addField(filterPanel, gbc, row++, "Max Concurrent Trades:", maxConcurrentTradesField);
-        addField(filterPanel, gbc, row++, "Max Concurrent Lots:", maxConcurrentLotsField);
-        addField(filterPanel, gbc, row, "Max Duration (h):", maxDurationField);
+    private static final String[] COLUMN_NAMES = {
+        "Column Name", "Min Value", "Max Value"
+    };
+    
+    private static final String[] TABLE_COLUMNS = {
+        "No.", "Signal Provider", "Balance", "3MPDD", "3MProfProz", 
+        "Trades", "Trade Days", "Win Rate %", "Total Profit", 
+        "Avg Profit/Trade", "Max Drawdown %", "Equity Drawdown %", 
+        "Profit Factor", "MaxTrades", "MaxLots", "Max Duration (h)", 
+        "Risk Score", "S/L", "T/P", "Start Date", "End Date"
+    };
 
-        // Button Panel
-        JPanel buttonPanel = new JPanel();
-        JButton okButton = new JButton("OK");
+    public FilterDialog(JFrame parent, FilterCriteria filters) {
+        super(parent, "Filter Settings", true);
+        this.currentFilters = filters;
+        
+        DefaultTableModel model = new DefaultTableModel(COLUMN_NAMES, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return column > 0; 
+            }
+        };
+        
+        for (int i = 0; i < TABLE_COLUMNS.length; i++) {
+            Object minValue = "";
+            Object maxValue = "";
+            if (filters.getFilters().containsKey(i)) {
+                FilterRange range = filters.getFilters().get(i);
+                minValue = range.getMin() != null ? range.getMin().toString() : "";
+                maxValue = range.getMax() != null ? range.getMax().toString() : "";
+            }
+            model.addRow(new Object[]{TABLE_COLUMNS[i], minValue, maxValue});
+        }
+        
+        filterTable = new JTable(model);
+        filterTable.getColumnModel().getColumn(0).setPreferredWidth(150);
+        filterTable.getColumnModel().getColumn(1).setPreferredWidth(100);
+        filterTable.getColumnModel().getColumn(2).setPreferredWidth(100);
+        
+        setLayout(new BorderLayout(5, 5));
+        
+        JScrollPane scrollPane = new JScrollPane(filterTable);
+        scrollPane.setPreferredSize(new Dimension(400, 500));
+        
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        JButton okButton = new JButton("Apply");
         JButton cancelButton = new JButton("Cancel");
+        JButton resetButton = new JButton("Reset");
         
         okButton.addActionListener(e -> {
-            if (validateAndSetResult()) {
-                lastCriteria = result;
+            if (validateAndSaveFilters()) {
                 dispose();
             }
         });
         
-        cancelButton.addActionListener(e -> {
-            result = null;
-            dispose();
+        cancelButton.addActionListener(e -> dispose());
+        
+        resetButton.addActionListener(e -> {
+            for (int row = 0; row < filterTable.getRowCount(); row++) {
+                filterTable.setValueAt("", row, 1);
+                filterTable.setValueAt("", row, 2);
+            }
         });
         
+        buttonPanel.add(resetButton);
         buttonPanel.add(okButton);
         buttonPanel.add(cancelButton);
         
-        // Layout
-        setLayout(new BorderLayout());
-        add(filterPanel, BorderLayout.CENTER);
+        add(new JLabel("Set min/max values for filtering:"), BorderLayout.NORTH);
+        add(scrollPane, BorderLayout.CENTER);
         add(buttonPanel, BorderLayout.SOUTH);
-        
-        restoreLastValues();
         
         pack();
         setLocationRelativeTo(parent);
     }
     
-    private void addField(JPanel panel, GridBagConstraints gbc, int row, String label, JTextField field) {
-        gbc.gridx = 0; gbc.gridy = row;
-        panel.add(new JLabel(label), gbc);
-        gbc.gridx = 1;
-        panel.add(field, gbc);
-    }
-    
-    private void restoreLastValues() {
-        if (lastCriteria != null) {
-            if (lastCriteria.getMinTradeDays() > 0) {
-                minTradeDaysField.setText(String.valueOf(lastCriteria.getMinTradeDays()));
+    private boolean validateAndSaveFilters() {
+        FilterCriteria criteria = new FilterCriteria();
+        boolean hasAnyFilter = false;
+        
+        for (int row = 0; row < filterTable.getRowCount(); row++) {
+            String minStr = (String) filterTable.getValueAt(row, 1);
+            String maxStr = (String) filterTable.getValueAt(row, 2);
+            
+            if (minStr.isEmpty() && maxStr.isEmpty()) {
+                continue;
             }
-            if (lastCriteria.getMinTrades() > 0) {
-                minTradesField.setText(String.valueOf(lastCriteria.getMinTrades()));
+            
+            if (row == 1 || row == 19 || row == 20) {
+                if (!minStr.isEmpty()) {
+                    criteria.addFilter(row, new FilterRange(minStr));
+                    hasAnyFilter = true;
+                }
+                continue;
             }
-            if (lastCriteria.getMinProfit() > 0) {
-                minProfitField.setText(String.valueOf(lastCriteria.getMinProfit()));
-            }
-            if (lastCriteria.getMinTotalProfit() > 0) {
-                minTotalProfitField.setText(String.valueOf(lastCriteria.getMinTotalProfit()));
-            }
-            if (lastCriteria.getMinProfitFactor() > 0) {
-                minProfitFactorField.setText(String.valueOf(lastCriteria.getMinProfitFactor()));
-            }
-            if (lastCriteria.getMinWinRate() > 0) {
-                minWinRateField.setText(String.valueOf(lastCriteria.getMinWinRate()));
-            }
-            if (lastCriteria.getMaxDrawdown() < 100) {
-                maxDrawdownField.setText(String.valueOf(lastCriteria.getMaxDrawdown()));
-            }
-            if (lastCriteria.getMaxConcurrentTrades() < Integer.MAX_VALUE) {
-                maxConcurrentTradesField.setText(String.valueOf(lastCriteria.getMaxConcurrentTrades()));
-            }
-            if (lastCriteria.getMaxConcurrentLots() < Double.MAX_VALUE) {
-                maxConcurrentLotsField.setText(String.valueOf(lastCriteria.getMaxConcurrentLots()));
-            }
-            if (lastCriteria.getMaxDuration() < Long.MAX_VALUE) {
-                maxDurationField.setText(String.valueOf(lastCriteria.getMaxDuration()));
+            
+            try {
+                Double min = minStr.isEmpty() ? null : Double.parseDouble(minStr);
+                Double max = maxStr.isEmpty() ? null : Double.parseDouble(maxStr);
+                
+                if (min != null || max != null) {
+                    criteria.addFilter(row, new FilterRange(min, max));
+                    hasAnyFilter = true;
+                }
+            } catch (NumberFormatException e) {
+                JOptionPane.showMessageDialog(this,
+                    "Invalid number format in row " + (row + 1),
+                    "Validation Error",
+                    JOptionPane.ERROR_MESSAGE);
+                return false;
             }
         }
-    }
-    
-    private boolean validateAndSetResult() {
-        try {
-            FilterCriteria criteria = new FilterCriteria();
-            
-            if (!minTradeDaysField.getText().isEmpty()) {
-                criteria.setMinTradeDays(Integer.parseInt(minTradeDaysField.getText().trim()));
-            }
-            
-            if (!minTradesField.getText().isEmpty()) {
-                criteria.setMinTrades(Integer.parseInt(minTradesField.getText().trim()));
-            }
-            
-            if (!minProfitField.getText().isEmpty()) {
-                criteria.setMinProfit(Double.parseDouble(minProfitField.getText().trim()));
-            }
-            
-            if (!minTotalProfitField.getText().isEmpty()) {
-                criteria.setMinTotalProfit(Double.parseDouble(minTotalProfitField.getText().trim()));
-            }
-            
-            if (!minProfitFactorField.getText().isEmpty()) {
-                criteria.setMinProfitFactor(Double.parseDouble(minProfitFactorField.getText().trim()));
-            }
-            
-            if (!minWinRateField.getText().isEmpty()) {
-                criteria.setMinWinRate(Double.parseDouble(minWinRateField.getText().trim()));
-            }
-            
-            if (!maxDrawdownField.getText().isEmpty()) {
-                criteria.setMaxDrawdown(Double.parseDouble(maxDrawdownField.getText().trim()));
-            }
-            
-            if (!maxConcurrentTradesField.getText().isEmpty()) {
-                criteria.setMaxConcurrentTrades(Integer.parseInt(maxConcurrentTradesField.getText().trim()));
-            }
-            
-            if (!maxConcurrentLotsField.getText().isEmpty()) {
-                criteria.setMaxConcurrentLots(Double.parseDouble(maxConcurrentLotsField.getText().trim()));
-            }
-            if (!maxDurationField.getText().isEmpty()) {
-                criteria.setMaxDuration(Long.parseLong(maxDurationField.getText().trim()));
-            }
-            result = criteria;
-            return true;
-            
-        } catch (NumberFormatException e) {
+        
+        if (!hasAnyFilter) {
             JOptionPane.showMessageDialog(this,
-                "Please enter valid numbers for all fields.",
-                "Invalid Input", JOptionPane.ERROR_MESSAGE);
+                "Please set at least one filter criteria",
+                "Validation Error",
+                JOptionPane.WARNING_MESSAGE);
             return false;
         }
+        
+        this.currentFilters = criteria;
+        criteria.saveFilters();
+        return true;
     }
     
     public FilterCriteria showDialog() {
         setVisible(true);
-        return result;
+        return currentFilters;
     }
 }

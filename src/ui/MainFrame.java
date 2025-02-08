@@ -265,7 +265,7 @@ public class MainFrame extends JFrame {
     }
     
     private void showFilterDialog() {
-        FilterDialog dialog = new FilterDialog(this);
+        FilterDialog dialog = new FilterDialog(this, mainTable.getCurrentFilter()); // Filterkriterien übergeben
         FilterCriteria criteria = dialog.showDialog();
         if (criteria != null) {
             mainTable.applyFilter(criteria);
