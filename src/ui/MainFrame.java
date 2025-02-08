@@ -6,6 +6,7 @@ import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.util.List;
 import java.util.logging.Logger;
 
 import javax.swing.JButton;
@@ -90,7 +91,6 @@ public class MainFrame extends JFrame {
     
     private void setupUI() {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        
         setupMenuBar();
         
         JPanel contentPane = new JPanel(new BorderLayout(5, 5));
@@ -121,6 +121,7 @@ public class MainFrame extends JFrame {
     private void reloadData(String newPath) {
         try {
             dataManager.loadData(newPath);
+            mainTable.refreshTableData();
             updateStatusBar();
         } catch (Exception e) {
             LOGGER.severe("Error reloading data: " + e.getMessage());
@@ -142,6 +143,11 @@ public class MainFrame extends JFrame {
         JButton searchButton = new JButton("Search");
         searchButton.addActionListener(e -> performSearch());
         searchPanel.add(searchButton);
+        
+        // Neuer Delete Selected Button
+        JButton deleteSelectedButton = new JButton("Delete Selected");
+        deleteSelectedButton.addActionListener(e -> deleteSelectedProviders());
+        searchPanel.add(deleteSelectedButton);
         
         toolBar.add(searchPanel);
         toolBar.addSeparator();
@@ -174,12 +180,39 @@ public class MainFrame extends JFrame {
         });
         toolBar.add(compareOpenTradesButton);
         toolBar.add(riskScoreButton);
-
-        JButton deleteButton = new JButton("DeleteSignalProvider");
-        deleteButton.addActionListener(e -> showDeleteDialog());
-        toolBar.add(deleteButton);
         
         add(toolBar, BorderLayout.NORTH);
+    }
+    
+    private void deleteSelectedProviders() {
+        List<String> selectedProviders = mainTable.getSelectedProviders();
+        if (selectedProviders.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                "Bitte wählen Sie mindestens einen Provider aus.",
+                "Keine Auswahl",
+                JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        int result = JOptionPane.showConfirmDialog(this,
+            "Möchten Sie die " + selectedProviders.size() + " ausgewählten Signal Provider löschen?",
+            "Provider löschen",
+            JOptionPane.YES_NO_OPTION);
+            
+        if (result == JOptionPane.YES_OPTION) {
+            DeleteProviderDialog dialog = new DeleteProviderDialog(
+                this,
+                rootPath_glob,
+                dataManager,
+                mainTable.getSelectedProvidersMap(),
+                () -> {
+                    reloadData(config.getDownloadPath());
+                    mainTable.refreshTableData();
+                    updateStatusBar();
+                }
+            );
+            dialog.setVisible(true);
+        }
     }
     
     private void setupStatusBar() {
@@ -243,21 +276,6 @@ public class MainFrame extends JFrame {
         CompareDialog dialog = new CompareDialog(this, mainTable.getCurrentProviderStats(), rootPath_glob);
         dialog.setVisible(true);
     }
-
-    private void showDeleteDialog() {
-        DeleteProviderDialog dialog = new DeleteProviderDialog(
-            this,
-            rootPath_glob,
-            dataManager,
-            mainTable.getCurrentProviderStats(),
-            () -> {
-                // Refresh-Callback
-                reloadData(rootPath_glob);
-                mainTable.refreshTableData();
-            }
-        );
-        dialog.setVisible(true);
-    }
     
     public void display() {
         SwingUtilities.invokeLater(() -> {
@@ -265,5 +283,4 @@ public class MainFrame extends JFrame {
             updateStatusBar();
         });
     }
-    
 }
