@@ -174,6 +174,10 @@ public class MainFrame extends JFrame {
         });
         toolBar.add(compareOpenTradesButton);
         toolBar.add(riskScoreButton);
+
+        JButton deleteButton = new JButton("DeleteSignalProvider");
+        deleteButton.addActionListener(e -> showDeleteDialog());
+        toolBar.add(deleteButton);
         
         add(toolBar, BorderLayout.NORTH);
     }
@@ -239,6 +243,21 @@ public class MainFrame extends JFrame {
         CompareDialog dialog = new CompareDialog(this, mainTable.getCurrentProviderStats(), rootPath_glob);
         dialog.setVisible(true);
     }
+
+    private void showDeleteDialog() {
+        DeleteProviderDialog dialog = new DeleteProviderDialog(
+            this,
+            rootPath_glob,
+            dataManager,
+            mainTable.getCurrentProviderStats(),
+            () -> {
+                // Refresh-Callback
+                reloadData(rootPath_glob);
+                mainTable.refreshTableData();
+            }
+        );
+        dialog.setVisible(true);
+    }
     
     public void display() {
         SwingUtilities.invokeLater(() -> {
@@ -246,4 +265,5 @@ public class MainFrame extends JFrame {
             updateStatusBar();
         });
     }
+    
 }

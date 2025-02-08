@@ -228,20 +228,20 @@ public class MainTable extends JTable {
        refreshTableData();
    }
    
-   private void refreshTableData() {
-       if (currentFilter == null) {
-           model.populateData(dataManager.getStats());
-       } else {
-           Map<String, ProviderStats> filteredStats = dataManager.getStats().entrySet().stream()
-               .filter(entry -> currentFilter.matches(entry.getValue()))
-               .collect(Collectors.toMap(
-                   Map.Entry::getKey,
-                   Map.Entry::getValue
-               ));
-           model.populateData(filteredStats);
-       }
-       updateStatus();
-   }
+   public void refreshTableData() {
+	    if (currentFilter == null) {
+	        model.populateData(dataManager.getStats());
+	    } else {
+	        Map<String, ProviderStats> filteredStats = dataManager.getStats().entrySet().stream()
+	            .filter(entry -> currentFilter.matches(entry.getValue()))
+	            .collect(Collectors.toMap(
+	                Map.Entry::getKey,
+	                Map.Entry::getValue
+	            ));
+	        model.populateData(filteredStats);
+	    }
+	    updateStatus();
+	}
    
    public Map<String, ProviderStats> getCurrentProviderStats() {
        if (currentFilter == null) {
@@ -254,4 +254,6 @@ public class MainTable extends JTable {
                Map.Entry::getValue
            ));
    }
+ 
+  
 }
