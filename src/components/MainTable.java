@@ -145,35 +145,6 @@ public class MainTable extends JTable {
        return tooltip.toString();
    }
 
-  private String getThreeMonthTradesToolTip(ProviderStats stats) {
-      LocalDateTime threeMonthsAgo = LocalDateTime.now().minusMonths(3);
-      
-      long tradesCount = stats.getTrades().stream()
-          .filter(trade -> trade.getCloseTime().isAfter(threeMonthsAgo))
-          .count();
-          
-      LocalDateTime firstTradeDate = stats.getTrades().stream()
-          .filter(trade -> trade.getCloseTime().isAfter(threeMonthsAgo))
-          .map(trade -> trade.getCloseTime())
-          .min(LocalDateTime::compareTo)
-          .orElse(null);
-          
-      LocalDateTime lastTradeDate = stats.getTrades().stream()
-          .filter(trade -> trade.getCloseTime().isAfter(threeMonthsAgo))
-          .map(trade -> trade.getCloseTime())
-          .max(LocalDateTime::compareTo)
-          .orElse(null);
-          
-      DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd.MM.yyyy");
-      
-      return String.format("<html><b>3-Monats Übersicht:</b><br>" +
-                         "Anzahl Trades: %d<br>" +
-                         "Erster Trade: %s<br>" +
-                         "Letzter Trade: %s</html>",
-                         tradesCount,
-                         firstTradeDate != null ? firstTradeDate.format(formatter) : "N/A",
-                         lastTradeDate != null ? lastTradeDate.format(formatter) : "N/A");
-  }
   
   public String getStatusText() {
 	    // Hole die aktuellen Zahlen direkt aus dem DataManager und Model
