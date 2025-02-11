@@ -1,9 +1,13 @@
 package renderers;
 
+import models.HighlightTableModel;
+import utils.StabilityResult;
+
 import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.*;
 import java.text.DecimalFormat;
+import java.util.List;
 import java.util.regex.Pattern;
 
 public class HighlightRenderer extends DefaultTableCellRenderer {
@@ -23,6 +27,16 @@ public class HighlightRenderer extends DefaultTableCellRenderer {
         // Formatiere Dezimalzahlen
         if (value instanceof Double) {
             setText(df.format((Double)value));
+            
+            // Wenn es die Stabilitätsspalte ist (Index 20)
+            if (column == 20 && table.getModel() instanceof HighlightTableModel) {
+                HighlightTableModel model = (HighlightTableModel)table.getModel();
+                String providerName = (String) table.getValueAt(row, 1);
+                if (providerName != null && model.getHtmlParser() != null) {
+                    StabilityResult stability = model.getHtmlParser().getStabilitaetswertDetails(providerName);
+                    setToolTipText("<html>" + stability.getDetails() + "</html>");
+                }
+            }
         }
         
         // Suchtext-Highlighting

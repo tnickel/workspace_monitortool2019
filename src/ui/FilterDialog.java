@@ -17,12 +17,12 @@ public class FilterDialog extends JDialog {
     };
     
     private static final String[] TABLE_COLUMNS = {
-        "No.", "Signal Provider", "Balance", "3MPDD", "3MProfProz", 
-        "Trades", "Trade Days", "Win Rate %", "Total Profit", 
-        "Avg Profit/Trade", "Max Drawdown %", "Equity Drawdown %", 
-        "Profit Factor", "MaxTrades", "MaxLots", "Max Duration (h)", 
-        "Risk Score", "S/L", "T/P", "Start Date", "End Date"
-    };
+    	    "No.", "Signal Provider", "Balance", "3MPDD", "3MProfProz", 
+    	    "Trades", "Trade Days", "Win Rate %", "Total Profit", 
+    	    "Avg Profit/Trade", "Max Drawdown %", "Equity Drawdown %", 
+    	    "Profit Factor", "MaxTrades", "MaxLots", "Max Duration (h)", 
+    	    "Risk Score", "S/L", "T/P", "Start Date", "End Date", "Stabilitaet"
+    	};
 
     public FilterDialog(JFrame parent, FilterCriteria filters) {
         super(parent, "Filter Settings", true);

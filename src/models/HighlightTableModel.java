@@ -21,7 +21,9 @@ public class HighlightTableModel extends DefaultTableModel {
         super(COLUMN_NAMES, 0);
         this.htmlParser = new HtmlParser(rootPath);
     }
-    
+    public HtmlParser getHtmlParser() {
+        return this.htmlParser;
+    }
     @Override
     public boolean isCellEditable(int row, int column) {
         return false;

@@ -16,38 +16,38 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class HtmlParser {
-  private static final Logger LOGGER = Logger.getLogger(HtmlParser.class.getName());
-  
-  private static final Pattern DRAWNDOWN_PATTERN = Pattern.compile(
-          "<text[^>]*>\\s*" +
-          "<tspan[^>]*>Maximaler\\s*R(?:[üue])ckgang:?</tspan>\\s*" +
-          "<tspan[^>]*>([-−]?[0-9]+[.,][0-9]+)%</tspan>\\s*" +
-          "</text>",
-          Pattern.CASE_INSENSITIVE | Pattern.DOTALL
-      );
+    private static final Logger LOGGER = Logger.getLogger(HtmlParser.class.getName());
+    
+    private static final Pattern DRAWNDOWN_PATTERN = Pattern.compile(
+            "<text[^>]*>\\s*" +
+            "<tspan[^>]*>Maximaler\\s*R(?:[üue])ckgang:?</tspan>\\s*" +
+            "<tspan[^>]*>([-−]?[0-9]+[.,][0-9]+)%</tspan>\\s*" +
+            "</text>",
+            Pattern.CASE_INSENSITIVE | Pattern.DOTALL
+        );
 
-  private static final Pattern BALANCE_PATTERN = Pattern.compile(
-      "<div class=\"s-list-info__item\">\\s*" +
-      "<div class=\"s-list-info__label\">(Balance|Kontostand):\\s*</div>\\s*" +
-      "<div class=\"s-list-info__value\">([\\d\\s\\.]+)\\s*[A-Z]{3}</div>\\s*" +
-      "</div>"
-  );
+    private static final Pattern BALANCE_PATTERN = Pattern.compile(
+        "<div class=\"s-list-info__item\">\\s*" +
+        "<div class=\"s-list-info__label\">(Balance|Kontostand):\\s*</div>\\s*" +
+        "<div class=\"s-list-info__value\">([\\d\\s\\.]+)\\s*[A-Z]{3}</div>\\s*" +
+        "</div>"
+    );
 
- 
+    private final String rootPath;
+    private final Map<String, String> htmlContentCache;
+    private final Map<String, Double> equityDrawdownCache;
+    private final Map<String, Double> balanceCache;
+    private final Map<String, Double> averageProfitCache;
+    private final Map<String, StabilityResult> stabilityCache;
 
-  private final String rootPath;
-  private final Map<String, String> htmlContentCache;
-  private final Map<String, Double> equityDrawdownCache;
-  private final Map<String, Double> balanceCache;
-  private final Map<String, Double> averageProfitCache;
-
-  public HtmlParser(String rootPath) {
-      this.rootPath = rootPath;
-      this.htmlContentCache = new HashMap<>();
-      this.equityDrawdownCache = new HashMap<>();
-      this.balanceCache = new HashMap<>();
-      this.averageProfitCache = new HashMap<>();
-  }
+    public HtmlParser(String rootPath) {
+        this.rootPath = rootPath;
+        this.htmlContentCache = new HashMap<>();
+        this.equityDrawdownCache = new HashMap<>();
+        this.balanceCache = new HashMap<>();
+        this.averageProfitCache = new HashMap<>();
+        this.stabilityCache = new HashMap<>();
+    }
 
   private String getHtmlContent(String csvFileName) {
       if (htmlContentCache.containsKey(csvFileName)) {
@@ -228,89 +228,70 @@ public class HtmlParser {
       
       return details;
   }
-  public double getStabilitaetswert(String csvFileName) {
-	    List<String> months = new ArrayList<>();
-	    Set<String> seenDates = new HashSet<>();
+  public StabilityResult getStabilitaetswertDetails(String csvFileName) {
+	    StringBuilder details = new StringBuilder();
+	    List<String> lastMonths = getLastThreeMonthsDetails(csvFileName);  // Nutze die existierende Methode
 	    List<Double> profitValues = new ArrayList<>();
 	    
 	    try {
-	        String htmlContent = getHtmlContent(csvFileName);
-	        if (htmlContent == null) return 1.0;  // Minimaler Rückgabewert
-
-	        Pattern yearRowPattern = Pattern.compile(
-	            "<tr>\\s*<td[^>]*>(\\d{4})</td>\\s*" +
-	            "((?:<td[^>]*>([^<]*)</td>\\s*){12})"
-	        );
-	        
-	        Matcher rowMatcher = yearRowPattern.matcher(htmlContent);
-	        boolean foundDuplicate = false;
-	        
-	        // Sammle alle verfügbaren Profitwerte
-	        while (rowMatcher.find() && !foundDuplicate) {
-	            String monthsContent = rowMatcher.group(2);
-	            Pattern valuePattern = Pattern.compile("<td[^>]*>([^<]*)</td>");
-	            Matcher valueMatcher = valuePattern.matcher(monthsContent);
-	            
-	            while (valueMatcher.find()) {
-	                String value = valueMatcher.group(1).trim();
-	                if (!value.isEmpty()) {
-	                    try {
-	                        value = value.replace(",", ".")
-	                                   .replace("−", "-")
-	                                   .replaceAll("[^0-9.\\-]", "");
-	                        if (!value.isEmpty()) {
-	                            double profitValue = Double.parseDouble(value);
-	                            profitValues.add(profitValue);
-	                        }
-	                    } catch (NumberFormatException e) {
-	                        continue; // Überspringe ungültige Werte
-	                    }
-	                }
-	            }
+	        // Konvertiere die Monatswerte in Double
+	        for (String monthDetail : lastMonths) {
+	            String valueStr = monthDetail.split(":")[1].trim()
+	                .replace("%", "")
+	                .replace(",", ".");
+	            double profit = Double.parseDouble(valueStr);
+	            profitValues.add(profit);
 	        }
 
-	        // Wenn wir mindestens 2 Werte haben, können wir eine Stabilität berechnen
-	        if (profitValues.size() >= 2) {
-	            // Nehme die letzten verfügbaren Werte (bis zu 3)
-	            int numValues = Math.min(profitValues.size(), 3);
-	            List<Double> lastValues = profitValues.subList(
-	                profitValues.size() - numValues, 
-	                profitValues.size()
-	            );
+	        details.append("Verwendete Monatswerte:<br>");
+	        for (String month : lastMonths) {
+	            details.append("- ").append(month).append("<br>");
+	        }
 
-	            double mean = lastValues.stream()
+	        if (profitValues.size() >= 2) {
+	            double mean = profitValues.stream()
 	                .mapToDouble(Double::doubleValue)
 	                .average()
 	                .orElse(0.0);
 
-	            // Berechne die Standardabweichung
-	            double variance = lastValues.stream()
+	            details.append("<br>Mittelwert: ").append(String.format("%.2f%%", mean)).append("<br>");
+
+	            double variance = profitValues.stream()
 	                .mapToDouble(v -> Math.pow(v - mean, 2))
 	                .average()
 	                .orElse(0.0);
 	            double stdDeviation = Math.sqrt(variance);
 
-	            // Berechne die Stabilität basierend auf Standardabweichung und Mittelwert
+	            details.append("Standardabweichung: ").append(String.format("%.2f", stdDeviation)).append("<br>");
+
 	            double relativeStdDev = Math.abs(mean) < 0.0001 ? 1.0 : 
 	                                  stdDeviation / (Math.abs(mean) + 0.0001);
 	            
-	            // Wandle die relative Standardabweichung in einen Stabilitätswert um
+	            details.append("Relative Standardabweichung: ")
+	                   .append(String.format("%.2f", relativeStdDev)).append("<br>");
+
 	            double baseStability = Math.max(1.0, 100.0 * (1.0 - relativeStdDev));
-	            
-	            // Zusätzlicher Faktor basierend auf der Anzahl der verfügbaren Werte
-	            double dataQualityFactor = numValues / 3.0;
-	            
-	            // Kombiniere Stabilität und Datenqualität
-	            return Math.max(1.0, Math.min(100.0, baseStability * (0.7 + 0.3 * dataQualityFactor)));
+	            details.append("Basis-Stabilitätswert: ").append(String.format("%.2f", baseStability)).append("<br>");
+
+	            double dataQualityFactor = profitValues.size() / 3.0;
+	            details.append("Datenqualitätsfaktor: ").append(String.format("%.2f", dataQualityFactor)).append("<br>");
+
+	            double finalStability = Math.max(1.0, Math.min(100.0, 
+	                baseStability * (0.7 + 0.3 * dataQualityFactor)));
+
+	            return new StabilityResult(finalStability, details.toString());
 	        }
 	        
+	        return new StabilityResult(1.0, "Nicht genügend Monatswerte verfügbar<br>Gefundene Werte:<br>" + 
+	            String.join("<br>", lastMonths));
+	        
 	    } catch (Exception e) {
-	        LOGGER.warning("Error calculating stability for " + csvFileName + ": " + e.getMessage());
+	        return new StabilityResult(1.0, "Fehler bei der Berechnung: " + e.getMessage());
 	    }
-	    
-	    // Fallback: Minimaler Stabilitätswert wenn keine Berechnung möglich war
-	    return 1.0;
 	}
 
-
+  public double getStabilitaetswert(String csvFileName) {
+      return getStabilitaetswertDetails(csvFileName).getValue();
+  }
 }
+
