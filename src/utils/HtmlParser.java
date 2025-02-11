@@ -33,14 +33,7 @@ public class HtmlParser {
       "</div>"
   );
 
-  private static final Pattern PROFIT_TABLE_PATTERN = Pattern.compile(
-          "<tbody><tr><td[^>]*>(\\d{4})</td>\\s*" +  // Beliebiges 4-stelliges Jahr
-          "(?:<td[^>]*>([^<]*)</td>\\s*){12}" +      // 12 Monate
-          "<td[^>]*>[^<]+</td></tr>\\s*" +           // Jahrestotal
-          "(?:<tr><td[^>]*>(\\d{4})</td>\\s*" +      // Optionales weiteres Jahr
-          "(?:<td[^>]*>([^<]*)</td>\\s*){12}" +      // 12 weitere Monate
-          "<td[^>]*>[^<]+</td></tr>\\s*)*"           // Jahrestotal, beliebig oft wiederholbar
-      );
+ 
 
   private final String rootPath;
   private final Map<String, String> htmlContentCache;
@@ -235,4 +228,89 @@ public class HtmlParser {
       
       return details;
   }
+  public double getStabilitaetswert(String csvFileName) {
+	    List<String> months = new ArrayList<>();
+	    Set<String> seenDates = new HashSet<>();
+	    List<Double> profitValues = new ArrayList<>();
+	    
+	    try {
+	        String htmlContent = getHtmlContent(csvFileName);
+	        if (htmlContent == null) return 1.0;  // Minimaler Rückgabewert
+
+	        Pattern yearRowPattern = Pattern.compile(
+	            "<tr>\\s*<td[^>]*>(\\d{4})</td>\\s*" +
+	            "((?:<td[^>]*>([^<]*)</td>\\s*){12})"
+	        );
+	        
+	        Matcher rowMatcher = yearRowPattern.matcher(htmlContent);
+	        boolean foundDuplicate = false;
+	        
+	        // Sammle alle verfügbaren Profitwerte
+	        while (rowMatcher.find() && !foundDuplicate) {
+	            String monthsContent = rowMatcher.group(2);
+	            Pattern valuePattern = Pattern.compile("<td[^>]*>([^<]*)</td>");
+	            Matcher valueMatcher = valuePattern.matcher(monthsContent);
+	            
+	            while (valueMatcher.find()) {
+	                String value = valueMatcher.group(1).trim();
+	                if (!value.isEmpty()) {
+	                    try {
+	                        value = value.replace(",", ".")
+	                                   .replace("−", "-")
+	                                   .replaceAll("[^0-9.\\-]", "");
+	                        if (!value.isEmpty()) {
+	                            double profitValue = Double.parseDouble(value);
+	                            profitValues.add(profitValue);
+	                        }
+	                    } catch (NumberFormatException e) {
+	                        continue; // Überspringe ungültige Werte
+	                    }
+	                }
+	            }
+	        }
+
+	        // Wenn wir mindestens 2 Werte haben, können wir eine Stabilität berechnen
+	        if (profitValues.size() >= 2) {
+	            // Nehme die letzten verfügbaren Werte (bis zu 3)
+	            int numValues = Math.min(profitValues.size(), 3);
+	            List<Double> lastValues = profitValues.subList(
+	                profitValues.size() - numValues, 
+	                profitValues.size()
+	            );
+
+	            double mean = lastValues.stream()
+	                .mapToDouble(Double::doubleValue)
+	                .average()
+	                .orElse(0.0);
+
+	            // Berechne die Standardabweichung
+	            double variance = lastValues.stream()
+	                .mapToDouble(v -> Math.pow(v - mean, 2))
+	                .average()
+	                .orElse(0.0);
+	            double stdDeviation = Math.sqrt(variance);
+
+	            // Berechne die Stabilität basierend auf Standardabweichung und Mittelwert
+	            double relativeStdDev = Math.abs(mean) < 0.0001 ? 1.0 : 
+	                                  stdDeviation / (Math.abs(mean) + 0.0001);
+	            
+	            // Wandle die relative Standardabweichung in einen Stabilitätswert um
+	            double baseStability = Math.max(1.0, 100.0 * (1.0 - relativeStdDev));
+	            
+	            // Zusätzlicher Faktor basierend auf der Anzahl der verfügbaren Werte
+	            double dataQualityFactor = numValues / 3.0;
+	            
+	            // Kombiniere Stabilität und Datenqualität
+	            return Math.max(1.0, Math.min(100.0, baseStability * (0.7 + 0.3 * dataQualityFactor)));
+	        }
+	        
+	    } catch (Exception e) {
+	        LOGGER.warning("Error calculating stability for " + csvFileName + ": " + e.getMessage());
+	    }
+	    
+	    // Fallback: Minimaler Stabilitätswert wenn keine Berechnung möglich war
+	    return 1.0;
+	}
+
+
 }

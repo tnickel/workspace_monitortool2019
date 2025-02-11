@@ -8,12 +8,12 @@ import utils.HtmlParser;
 
 public class HighlightTableModel extends DefaultTableModel {
     
-	private static final String[] COLUMN_NAMES = {
-		    "No.", "Signal Provider", "Balance", "3MPDD", "3MProfProz", "Trades", "Trade Days", 
-		    "Win Rate %", "Total Profit", "Avg Profit/Trade", "Max Drawdown %", 
-		    "Equity Drawdown %", "Profit Factor", "MaxTrades", "MaxLots", 
-		    "Max Duration (h)", "Risk Score", "S/L", "T/P", "Start Date", "End Date"
-		};
+    private static final String[] COLUMN_NAMES = {
+        "No.", "Signal Provider", "Balance", "3MPDD", "3MProfProz", "Trades", "Trade Days", 
+        "Win Rate %", "Total Profit", "Avg Profit/Trade", "Max Drawdown %", 
+        "Equity Drawdown %", "Profit Factor", "MaxTrades", "MaxLots", 
+        "Max Duration (h)", "Risk Score", "S/L", "T/P", "Start Date", "End Date", "Stabilitaet"
+    };
     
     private final HtmlParser htmlParser;
     
@@ -50,7 +50,8 @@ public class HighlightTableModel extends DefaultTableModel {
             case 12: // Equity Drawdown
             case 13: // Profit Factor
             case 15: // MaxLots
-                return Double.class;
+            case 20: // Stabilität
+               return Double.class; 
             default:
                 return String.class;
         }
@@ -63,7 +64,6 @@ public class HighlightTableModel extends DefaultTableModel {
         return threeMonthProfitPercent / maxEquityDrawdown;
     }
 
-    
     public void populateData(Map<String, ProviderStats> statsMap) {
         setRowCount(0);
         int rowNum = 1;
@@ -77,33 +77,29 @@ public class HighlightTableModel extends DefaultTableModel {
             double threeMonthProfit = stats.getLastThreeMonthsProfit();
             double threeMonthProfitPercent = htmlParser.getAvr3MonthProfit(providerName); // Holt den 3MProfProz-Wert
             double mpdd = calculate3MPDD(threeMonthProfitPercent, equityDrawdown);  // NEUE FORMEL
-
-            // Debugging-Ausgabe zur Kontrolle
-            System.out.println("Provider: " + providerName + 
-                               " | 3MProfProz: " + threeMonthProfitPercent + 
-                               " | Max Equity Drawdown: " + equityDrawdown + 
-                               " | 3MPDD: " + mpdd);
+            double trendwert = htmlParser.getStabilitaetswert(providerName);  // Holt den Trendwert
 
             addRow(new Object[]{
-            	    rowNum++, providerName, balance, mpdd, // 3MonProfit entfernt
-            	    threeMonthProfitPercent, 
-            	    stats.getTrades().size(), stats.getTradeDays(), stats.getWinRate(), 
-            	    stats.getTotalProfit(), stats.getAverageProfit(), stats.getMaxDrawdown(), 
-            	    equityDrawdown, stats.getProfitFactor(), stats.getMaxConcurrentTrades(), 
-            	    stats.getMaxConcurrentLots(), stats.getMaxDuration(), riskScore, 
-            	    stats.hasStopLoss() ? 1 : 0, stats.hasTakeProfit() ? 1 : 0, 
-            	    stats.getStartDate(), stats.getEndDate()
-            	});
+                rowNum++, providerName, balance, mpdd, 
+                threeMonthProfitPercent, 
+                stats.getTrades().size(), stats.getTradeDays(), stats.getWinRate(), 
+                stats.getTotalProfit(), stats.getAverageProfit(), stats.getMaxDrawdown(), 
+                equityDrawdown, stats.getProfitFactor(), stats.getMaxConcurrentTrades(), 
+                stats.getMaxConcurrentLots(), stats.getMaxDuration(), riskScore, 
+                stats.hasStopLoss() ? 1 : 0, stats.hasTakeProfit() ? 1 : 0, 
+                stats.getStartDate(), stats.getEndDate(), trendwert
+            });
         }
         fireTableDataChanged();
     }
+
     public Object[] createRowDataForProvider(String providerName, ProviderStats stats) {
-        // Die gleiche Logik wie in populateData, aber nur für einen Provider
         double equityDrawdown = htmlParser.getEquityDrawdown(providerName);
         double balance = htmlParser.getBalance(providerName);
         double threeMonthProfitPercent = htmlParser.getAvr3MonthProfit(providerName);
         double mpdd = calculate3MPDD(threeMonthProfitPercent, equityDrawdown);
         int riskScore = RiskAnalysisServ.calculateRiskScore(stats);
+        double stabilitaet = htmlParser.getStabilitaetswert(providerName);  // Holt den Trendwert
 
         return new Object[]{
             0, // Platzhalter für die Nummer, wird in populateData gesetzt
@@ -126,7 +122,8 @@ public class HighlightTableModel extends DefaultTableModel {
             stats.hasStopLoss() ? 1 : 0,
             stats.hasTakeProfit() ? 1 : 0,
             stats.getStartDate(),
-            stats.getEndDate()
+            stats.getEndDate(),
+            stabilitaet
         };
     }
 }
