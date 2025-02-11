@@ -193,7 +193,7 @@ return true; </property>
                       <string>${installer:sys.installationDir}/bin/StartMqlAnalyzer.bat</string>
                     </object>
                   </property>
-                  <property name="name" type="string">$MqlAnalyzer</property>
+                  <property name="name" type="string">MqlAnalyzer</property>
                 </serializedBean>
               </action>
               <action name="MqlDownloaderApp" id="753" beanClass="com.install4j.runtime.beans.actions.desktop.CreateDesktopLinkAction" actionElevationType="elevated" rollbackBarrierExitCode="0" multiExec="true">
