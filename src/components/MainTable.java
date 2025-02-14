@@ -21,8 +21,7 @@ import models.HighlightTableModel;
 import renderers.HighlightRenderer;
 import renderers.RiskScoreRenderer;
 import ui.DetailFrame;
-import utils.HtmlParser;
-import utils.StabilityResult;
+import utils.HtmlDatabase;
 
 public class MainTable extends JTable {
     private final HighlightTableModel model;
@@ -32,7 +31,7 @@ public class MainTable extends JTable {
     private String rootPath;
     private FilterCriteria currentFilter;
     private Consumer<String> statusUpdateCallback;
-    private final HtmlParser htmlParser;
+    private final HtmlDatabase htmlDatabase;
     
     public MainTable(DataManager dataManager, String downloadPath) {
         this.dataManager = dataManager;
@@ -40,7 +39,7 @@ public class MainTable extends JTable {
         this.model = new HighlightTableModel(rootPath);
         this.renderer = new HighlightRenderer();
         this.riskRenderer = new RiskScoreRenderer();
-        this.htmlParser = new HtmlParser(rootPath);
+        this.htmlDatabase = new HtmlDatabase(rootPath);
         this.currentFilter = new FilterCriteria();
 
         loadSavedFilter(); // Filter beim Start laden
@@ -54,45 +53,45 @@ public class MainTable extends JTable {
         return currentFilter != null ? currentFilter : new FilterCriteria();
     }
 
-    	private void initialize() {
-    	    setModel(model);
-    	    TableRowSorter<HighlightTableModel> sorter = new TableRowSorter<>(model);
-    	    
-    	    // Setze spezifische Comparatoren für jede Spalte
-    	    for (int i = 0; i < model.getColumnCount(); i++) {
-    	        final int column = i;
-    	        sorter.setComparator(column, (Comparator<Object>) (o1, o2) -> {
-    	            if (o1 == null && o2 == null) return 0;
-    	            if (o1 == null) return -1;
-    	            if (o2 == null) return 1;
-    	            
-    	            // Behandle numerische Spalten
-    	            if (o1 instanceof Number && o2 instanceof Number) {
-    	                double d1 = ((Number) o1).doubleValue();
-    	                double d2 = ((Number) o2).doubleValue();
-    	                return Double.compare(d1, d2);
-    	            }
-    	            
-    	            // String Vergleich für alle anderen Fälle
-    	            return o1.toString().compareTo(o2.toString());
-    	        });
-    	    }
-    	    setRowSorter(sorter);
-    	    
-    	    ToolTipManager.sharedInstance().setInitialDelay(200);
-    	    ToolTipManager.sharedInstance().setDismissDelay(8000);
-    	    ToolTipManager.sharedInstance().registerComponent(this);
-    	    
-    	    for (int i = 0; i < getColumnCount(); i++) {
-    	        if (i == 13) {
-    	            getColumnModel().getColumn(i).setCellRenderer(riskRenderer);
-    	        } else {
-    	            getColumnModel().getColumn(i).setCellRenderer(renderer);
-    	        }
-    	    }
-    	    
-    	    model.populateData(dataManager.getStats());
-    	}
+    private void initialize() {
+        setModel(model);
+        TableRowSorter<HighlightTableModel> sorter = new TableRowSorter<>(model);
+        
+        // Setze spezifische Comparatoren für jede Spalte
+        for (int i = 0; i < model.getColumnCount(); i++) {
+            final int column = i;
+            sorter.setComparator(column, (Comparator<Object>) (o1, o2) -> {
+                if (o1 == null && o2 == null) return 0;
+                if (o1 == null) return -1;
+                if (o2 == null) return 1;
+                
+                // Behandle numerische Spalten
+                if (o1 instanceof Number && o2 instanceof Number) {
+                    double d1 = ((Number) o1).doubleValue();
+                    double d2 = ((Number) o2).doubleValue();
+                    return Double.compare(d1, d2);
+                }
+                
+                // String Vergleich für alle anderen Fälle
+                return o1.toString().compareTo(o2.toString());
+            });
+        }
+        setRowSorter(sorter);
+        
+        ToolTipManager.sharedInstance().setInitialDelay(200);
+        ToolTipManager.sharedInstance().setDismissDelay(8000);
+        ToolTipManager.sharedInstance().registerComponent(this);
+        
+        for (int i = 0; i < getColumnCount(); i++) {
+            if (i == 13) {
+                getColumnModel().getColumn(i).setCellRenderer(riskRenderer);
+            } else {
+                getColumnModel().getColumn(i).setCellRenderer(renderer);
+            }
+        }
+        
+        model.populateData(dataManager.getStats());
+    }
     
     private void setupMouseListener() {
         addMouseListener(new MouseAdapter() {
@@ -107,7 +106,7 @@ public class MainTable extends JTable {
                         String providerId = providerName.substring(providerName.lastIndexOf("_") + 1).replace(".csv", "");
                         
                         if (stats != null) {
-                            DetailFrame detailFrame = new DetailFrame(providerName, stats, providerId, htmlParser);
+                            DetailFrame detailFrame = new DetailFrame(providerName, stats, providerId, htmlDatabase);
                             detailFrame.setVisible(true);
                         }
                     }
@@ -136,11 +135,10 @@ public class MainTable extends JTable {
             if (col == 4) { // 3MProfProz column
                 String providerName = (String) model.getValueAt(row, 1);
                 return getThreeMonthProfitCalculationToolTip(providerName);
-            } else if (col == 21) { // Stabilitaet column - Index korrigiert von 20 auf 21
+            } else if (col == 21) { // Stabilitaet column
                 String providerName = (String) model.getValueAt(row, 1);
-                if (providerName != null && htmlParser != null) {
-                    StabilityResult stability = htmlParser.getStabilitaetswertDetails(providerName);
-                    return "<html>" + stability.getDetails() + "</html>";
+                if (providerName != null && htmlDatabase != null) {
+                    return "<html>" + htmlDatabase.getStabilitaetswertDetails(providerName) + "</html>";
                 }
             }
         }
@@ -148,7 +146,7 @@ public class MainTable extends JTable {
     }
     
     private String getThreeMonthProfitCalculationToolTip(String providerName) {
-        List<String> profits = htmlParser.getLastThreeMonthsDetails(providerName);
+        List<String> profits = htmlDatabase.getLastThreeMonthsDetails(providerName);
         
         if (profits.isEmpty()) {
             return "Keine Profitdaten verfügbar";

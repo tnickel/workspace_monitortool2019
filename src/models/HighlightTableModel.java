@@ -4,7 +4,7 @@ import javax.swing.table.DefaultTableModel;
 import java.util.Map;
 import data.ProviderStats;
 import services.RiskAnalysisServ;
-import utils.HtmlParser;
+import utils.HtmlDatabase;
 
 public class HighlightTableModel extends DefaultTableModel {
     
@@ -15,15 +15,17 @@ public class HighlightTableModel extends DefaultTableModel {
         "Max Duration (h)", "Risk Score", "S/L", "T/P", "Start Date", "End Date", "Stabilitaet"
     };
     
-    private final HtmlParser htmlParser;
+    private final HtmlDatabase htmlDatabase;
     
     public HighlightTableModel(String rootPath) {
         super(COLUMN_NAMES, 0);
-        this.htmlParser = new HtmlParser(rootPath);
+        this.htmlDatabase = new HtmlDatabase(rootPath);
     }
-    public HtmlParser getHtmlParser() {
-        return this.htmlParser;
+
+    public HtmlDatabase getHtmlDatabase() {
+        return this.htmlDatabase;
     }
+
     @Override
     public boolean isCellEditable(int row, int column) {
         return false;
@@ -74,12 +76,12 @@ public class HighlightTableModel extends DefaultTableModel {
             String providerName = entry.getKey();
             ProviderStats stats = entry.getValue();
             int riskScore = RiskAnalysisServ.calculateRiskScore(stats);
-            double equityDrawdown = htmlParser.getEquityDrawdown(providerName);  // Holt den maximalen Drawdown
-            double balance = htmlParser.getBalance(providerName);
+            double equityDrawdown = htmlDatabase.getEquityDrawdown(providerName);
+            double balance = htmlDatabase.getBalance(providerName);
             double threeMonthProfit = stats.getLastThreeMonthsProfit();
-            double threeMonthProfitPercent = htmlParser.getAvr3MonthProfit(providerName); // Holt den 3MProfProz-Wert
-            double mpdd = calculate3MPDD(threeMonthProfitPercent, equityDrawdown);  // NEUE FORMEL
-            double trendwert = htmlParser.getStabilitaetswert(providerName);  // Holt den Trendwert
+            double threeMonthProfitPercent = htmlDatabase.getAvr3MonthProfit(providerName);
+            double mpdd = calculate3MPDD(threeMonthProfitPercent, equityDrawdown);
+            double stabilitaet = htmlDatabase.getStabilitaetswert(providerName);
 
             addRow(new Object[]{
                 rowNum++, providerName, balance, mpdd, 
@@ -89,19 +91,19 @@ public class HighlightTableModel extends DefaultTableModel {
                 equityDrawdown, stats.getProfitFactor(), stats.getMaxConcurrentTrades(), 
                 stats.getMaxConcurrentLots(), stats.getMaxDuration(), riskScore, 
                 stats.hasStopLoss() ? 1 : 0, stats.hasTakeProfit() ? 1 : 0, 
-                stats.getStartDate(), stats.getEndDate(), trendwert
+                stats.getStartDate(), stats.getEndDate(), stabilitaet
             });
         }
         fireTableDataChanged();
     }
 
     public Object[] createRowDataForProvider(String providerName, ProviderStats stats) {
-        double equityDrawdown = htmlParser.getEquityDrawdown(providerName);
-        double balance = htmlParser.getBalance(providerName);
-        double threeMonthProfitPercent = htmlParser.getAvr3MonthProfit(providerName);
+        double equityDrawdown = htmlDatabase.getEquityDrawdown(providerName);
+        double balance = htmlDatabase.getBalance(providerName);
+        double threeMonthProfitPercent = htmlDatabase.getAvr3MonthProfit(providerName);
         double mpdd = calculate3MPDD(threeMonthProfitPercent, equityDrawdown);
         int riskScore = RiskAnalysisServ.calculateRiskScore(stats);
-        double stabilitaet = htmlParser.getStabilitaetswert(providerName);  // Holt den Trendwert
+        double stabilitaet = htmlDatabase.getStabilitaetswert(providerName);
 
         return new Object[]{
             0, // Platzhalter für die Nummer, wird in populateData gesetzt

@@ -32,7 +32,7 @@ import charts.SymbolDistributionChart;
 import charts.TradeStackingChart;
 import data.ProviderStats;
 import utils.ChartFactoryUtil;
-import utils.HtmlParser;
+import utils.HtmlDatabase;
 
 public class DetailFrame extends JFrame {
    private final ProviderStats stats;
@@ -41,14 +41,14 @@ public class DetailFrame extends JFrame {
    private final DecimalFormat df = new DecimalFormat("#,##0.00");
    private final DecimalFormat pf = new DecimalFormat("#,##0.00'%'");
    private final ChartFactoryUtil chartFactory;
-   private final HtmlParser htmlParser;
+   private final HtmlDatabase htmlDatabase;
 
-   public DetailFrame(String providerName, ProviderStats stats, String providerId, HtmlParser htmlParser) {
+   public DetailFrame(String providerName, ProviderStats stats, String providerId, HtmlDatabase htmlDatabase) {
        super("Performance Analysis: " + providerName);
        this.stats = stats;
        this.providerId = providerId;
        this.providerName = providerName;
-       this.htmlParser = htmlParser;
+       this.htmlDatabase = htmlDatabase;
        this.chartFactory = new ChartFactoryUtil();
        
        initializeUI();
@@ -125,7 +125,7 @@ public class DetailFrame extends JFrame {
        addStatField(statsGrid, "Profit Factor: ", df.format(stats.getProfitFactor()));
        addStatField(statsGrid, "Avg Profit/Trade: ", df.format(stats.getAverageProfit()));
        addStatField(statsGrid, "Max Drawdown: ", pf.format(stats.getMaxDrawdown()));
-       addStatField(statsGrid, "Equity Drawdown: ", pf.format(htmlParser.getEquityDrawdown(providerName)));
+       addStatField(statsGrid, "Equity Drawdown: ", pf.format(htmlDatabase.getEquityDrawdown(providerName)));
        addStatField(statsGrid, "Max Concurrent Lots: ", df.format(stats.getMaxConcurrentLots()));
 
        JPanel urlPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
