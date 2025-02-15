@@ -17,12 +17,12 @@ public class FilterDialog extends JDialog {
     };
     
     private static final String[] TABLE_COLUMNS = {
-    	    "No.", "Signal Provider", "Balance", "3MPDD", "3MProfProz", 
-    	    "Trades", "Trade Days", "Win Rate %", "Total Profit", 
-    	    "Avg Profit/Trade", "Max Drawdown %", "Equity Drawdown %", 
-    	    "Profit Factor", "MaxTrades", "MaxLots", "Max Duration (h)", 
-    	    "Risk Score", "S/L", "T/P", "Start Date", "End Date", "Stabilitaet"
-    	};
+        "No.", "Signal Provider", "Balance", "3MPDD", "6MPDD", "9MPDD", "12MPDD", 
+        "3MProfProz", "Trades", "Trade Days", "Win Rate %", "Total Profit", 
+        "Avg Profit/Trade", "Max Drawdown %", "Equity Drawdown %", 
+        "Profit Factor", "MaxTrades", "MaxLots", "Max Duration (h)", 
+        "Risk Score", "S/L", "T/P", "Start Date", "End Date", "Stabilitaet"
+    };
 
     public FilterDialog(JFrame parent, FilterCriteria filters) {
         super(parent, "Filter Settings", true);
@@ -100,7 +100,8 @@ public class FilterDialog extends JDialog {
                 continue;
             }
             
-            if (row == 1 || row == 19 || row == 20) {
+            // Textfilter für Signal Provider, Start Date und End Date
+            if (row == 1 || row == 22 || row == 23) {
                 if (!minStr.isEmpty()) {
                     criteria.addFilter(row, new FilterRange(minStr));
                     hasAnyFilter = true;
