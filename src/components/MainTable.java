@@ -82,8 +82,11 @@ public class MainTable extends JTable {
         ToolTipManager.sharedInstance().setDismissDelay(8000);
         ToolTipManager.sharedInstance().registerComponent(this);
         
+        // Setze die Renderer für die Spalten
         for (int i = 0; i < getColumnCount(); i++) {
-            if (i == 13) {
+            String columnName = getColumnModel().getColumn(i).getHeaderValue().toString();
+            // Finde die Risk Score Spalte basierend auf dem Index
+            if (i == 19) { // Risk Score ist an Position 19 im COLUMN_NAMES Array
                 getColumnModel().getColumn(i).setCellRenderer(riskRenderer);
             } else {
                 getColumnModel().getColumn(i).setCellRenderer(renderer);
@@ -121,56 +124,6 @@ public class MainTable extends JTable {
     
     public void setStatusUpdateCallback(Consumer<String> callback) {
         this.statusUpdateCallback = callback;
-    }
-    
-    @Override
-    public String getToolTipText(MouseEvent e) {
-        int row = rowAtPoint(e.getPoint());
-        int col = columnAtPoint(e.getPoint());
-        
-        if (row >= 0 && col >= 0) {
-            row = convertRowIndexToModel(row);
-            col = convertColumnIndexToModel(col);
-            
-            if (col == 4) { // 3MProfProz column
-                String providerName = (String) model.getValueAt(row, 1);
-                return getThreeMonthProfitCalculationToolTip(providerName);
-            } else if (col == 21) { // Stabilitaet column
-                String providerName = (String) model.getValueAt(row, 1);
-                if (providerName != null && htmlDatabase != null) {
-                    return "<html>" + htmlDatabase.getStabilitaetswertDetails(providerName) + "</html>";
-                }
-            }
-        }
-        return null;
-    }
-    
-    private String getThreeMonthProfitCalculationToolTip(String providerName) {
-        List<String> profits = htmlDatabase.getLastThreeMonthsDetails(providerName);
-        
-        if (profits.isEmpty()) {
-            return "Keine Profitdaten verfügbar";
-        }
-
-        double sum = profits.stream()
-            .mapToDouble(s -> {
-                String valueStr = s.split(":")[1].trim()
-                                 .replace("%", "")
-                                 .replace(",", ".");
-                return Double.parseDouble(valueStr);
-            })
-            .sum();
-        
-        StringBuilder tooltip = new StringBuilder("<html><b>3-Monats Profit Berechnung:</b><br><br>");
-        
-        profits.forEach(profit -> tooltip.append(profit).append("<br>"));
-        
-        tooltip.append("<br>Summe: ").append(String.format("%.2f%%", sum))
-               .append("<br>Durchschnitt: ").append(String.format("%.2f%%", sum / profits.size()))
-               .append(" (").append(profits.size()).append(" Monate)")
-               .append("</html>");
-        
-        return tooltip.toString();
     }
     
     public String getStatusText() {
