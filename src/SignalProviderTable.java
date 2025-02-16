@@ -6,6 +6,15 @@ import data.DataManager;
 import ui.MainFrame;
 import utils.MqlAnalyserConf;
 
+import java.awt.Dimension;
+import java.util.logging.Logger;
+import javax.swing.SwingUtilities;
+import javax.swing.JFrame;
+
+import data.DataManager;
+import ui.MainFrame;
+import utils.MqlAnalyserConf;
+
 public class SignalProviderTable {
     private static final Logger LOGGER = Logger.getLogger(SignalProviderTable.class.getName());
     private final MainFrame mainFrame;
@@ -33,6 +42,18 @@ public class SignalProviderTable {
         }
         
         this.mainFrame = new MainFrame(dataManager, rootPathStr, config);
+        
+        // Hole aktuelle Größe und setze neue Breite (30% breiter)
+        Dimension currentSize = mainFrame.getSize();
+        int newWidth = (int)(currentSize.getWidth() * 1.3);
+        mainFrame.setSize(newWidth, currentSize.height);
+        mainFrame.setPreferredSize(new Dimension(newWidth, currentSize.height));
+        
+        // Zentriere das Fenster
+        mainFrame.setLocationRelativeTo(null);
+        
+        // Setze Minimalgröße
+        mainFrame.setMinimumSize(new Dimension(newWidth, currentSize.height));
     }
     
     public void start() {

@@ -92,7 +92,8 @@ public class MainTable extends JTable {
                 getColumnModel().getColumn(i).setCellRenderer(renderer);
             }
         }
-        
+        getColumnModel().getColumn(1).setPreferredWidth(300);  // Signal Provider ist Spalte 1
+        getColumnModel().getColumn(1).setMinWidth(250);      
         model.populateData(dataManager.getStats());
     }
     
