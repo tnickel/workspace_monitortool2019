@@ -23,6 +23,7 @@ import org.jfree.data.time.Millisecond;
 import org.jfree.data.time.TimeSeries;
 import org.jfree.data.time.TimeSeriesCollection;
 
+import components.WebViewPanel;
 import data.ProviderStats;
 import data.Trade;
 import utils.ChartFactoryUtil;
@@ -37,7 +38,7 @@ public class OpenTradesDialog extends JFrame {
        this.chartFactory = new ChartFactoryUtil();
        
        initializeUI();
-       setSize(1500, 800);
+       setSize(1800, 800);  // Breiter für 4 Spalten
        setLocationRelativeTo(parent);
        
        // ESC zum Schließen
@@ -67,21 +68,10 @@ public class OpenTradesDialog extends JFrame {
            JPanel headerPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
            
            String providerId = providerName.substring(providerName.lastIndexOf("_") + 1).replace(".csv", "");
-           JLabel linkLabel = new JLabel("<html><u>https://www.mql5.com/de/signals/" + providerId + 
-               "?source=Site+Signals+Subscriptions#!tab=account</u></html>");
+           String providerUrl = "https://www.mql5.com/de/signals/" + providerId + "?source=Site+Signals+Subscriptions#!tab=account";
+           JLabel linkLabel = new JLabel("<html><u>" + providerUrl + "</u></html>");
            linkLabel.setForeground(Color.BLUE);
            linkLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-           linkLabel.addMouseListener(new MouseAdapter() {
-               @Override
-               public void mouseClicked(MouseEvent e) {
-                   try {
-                       Desktop.getDesktop().browse(new URI("https://www.mql5.com/de/signals/" + providerId + 
-                           "?source=Site+Signals+Subscriptions#!tab=account"));
-                   } catch (Exception ex) {
-                       ex.printStackTrace();
-                   }
-               }
-           });
            headerPanel.add(linkLabel);
            
            JButton showTradeListButton = new JButton("Show Trade List");
@@ -91,22 +81,22 @@ public class OpenTradesDialog extends JFrame {
            });
            headerPanel.add(showTradeListButton);
            
-           // Charts Panel
-           JPanel chartsPanel = new JPanel(new GridLayout(1, 3, 10, 0));
+           // Charts Panel mit 4 Spalten
+           JPanel chartsPanel = new JPanel(new GridLayout(1, 4, 10, 0));
            
            // 1. Equity Curve Chart
            ChartPanel equityChart = chartFactory.createEquityCurveChart(stats);
-           equityChart.setPreferredSize(new Dimension(450, 300));
+           equityChart.setPreferredSize(new Dimension(400, 300));
            chartsPanel.add(equityChart);
            
-           // 2. Open Trades Chart (nur Trades, ohne Lots)
+           // 2. Open Trades Chart
            TimeSeriesCollection tradeDataset = new TimeSeriesCollection();
            TimeSeries tradeSeries = new TimeSeries("Trades");
            fillTradesSeries(tradeSeries, stats.getTrades());
            tradeDataset.addSeries(tradeSeries);
            JFreeChart tradesChart = createTimeSeriesChart("Open Trades", "Trades", tradeDataset);
            ChartPanel tradesPanel = new ChartPanel(tradesChart);
-           tradesPanel.setPreferredSize(new Dimension(450, 300));
+           tradesPanel.setPreferredSize(new Dimension(400, 300));
            chartsPanel.add(tradesPanel);
            
            // 3. Open Lots Chart
@@ -116,8 +106,27 @@ public class OpenTradesDialog extends JFrame {
            lotsDataset.addSeries(lotsSeries);
            JFreeChart lotsChart = createTimeSeriesChart("Open Lots", "Lots", lotsDataset);
            ChartPanel lotsPanel = new ChartPanel(lotsChart);
-           lotsPanel.setPreferredSize(new Dimension(450, 300));
+           lotsPanel.setPreferredSize(new Dimension(400, 300));
            chartsPanel.add(lotsPanel);
+           
+           // 4. WebView Panel
+           WebViewPanel webViewPanel = new WebViewPanel();
+           JPanel webViewContainer = new JPanel(new BorderLayout());
+           webViewContainer.setBorder(BorderFactory.createTitledBorder("Signal Provider Website"));
+           webViewContainer.add(webViewPanel, BorderLayout.CENTER);
+           webViewContainer.setPreferredSize(new Dimension(400, 300));
+           chartsPanel.add(webViewContainer);
+           
+           // URL in WebView laden
+           webViewPanel.loadURL(providerUrl);
+           
+           // Link-Klick Handler aktualisieren
+           linkLabel.addMouseListener(new MouseAdapter() {
+               @Override
+               public void mouseClicked(MouseEvent e) {
+                   webViewPanel.loadURL(providerUrl);
+               }
+           });
            
            providerPanel.add(headerPanel, BorderLayout.NORTH);
            providerPanel.add(chartsPanel, BorderLayout.CENTER);

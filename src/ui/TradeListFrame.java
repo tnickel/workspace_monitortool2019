@@ -2,16 +2,16 @@ package ui;
 
 import java.awt.*;
 import java.awt.event.*;
-import javax.swing.*;
-import javax.swing.event.ListSelectionEvent;
-import javax.swing.event.ListSelectionListener;
-import javax.swing.filechooser.FileNameExtensionFilter;
 import java.io.*;
 import java.time.LocalDateTime;
 import java.util.List;
+import javax.swing.*;
+import javax.swing.event.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
 
+import components.TradeChartPanel;
 import components.TradeListTable;
-import components.OpenTradesChartPanel;
+import components.WebViewPanel;
 import data.ProviderStats;
 import data.Trade;
 import utils.TradeUtils;
@@ -19,21 +19,26 @@ import utils.TradeUtils;
 public class TradeListFrame extends JFrame {
     private final TradeListTable tradeTable;
     private final JPanel detailPanel;
-    private final OpenTradesChartPanel chartPanel;
+    private final TradeChartPanel chartPanel;
+    private final WebViewPanel webViewPanel;
     private final ProviderStats stats;
+    private JSplitPane mainSplitPane;
+    private JSplitPane rightSplitPane;
 
     public TradeListFrame(String providerName, ProviderStats stats) {
         super("Trade List: " + providerName);
         this.stats = stats;
         this.tradeTable = new TradeListTable(stats);
         this.detailPanel = new JPanel();
-        this.chartPanel = new OpenTradesChartPanel();
+        this.chartPanel = new TradeChartPanel();
+        this.webViewPanel = new WebViewPanel();
+        
         initializeUI();
         setupSelectionListener();
         
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         
-        // Escape-Taste zum Schließen
+        // Escape-Taste zum SchlieÃŸen
         KeyStroke escapeKeyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0, false);
         Action escapeAction = new AbstractAction() {
             public void actionPerformed(ActionEvent e) {
@@ -45,28 +50,44 @@ public class TradeListFrame extends JFrame {
     }
 
     private void initializeUI() {
-        setSize(1430, 780);
+        setSize(1600, 900);
         setLayout(new BorderLayout(5, 0));
 
         // Hauptbereich mit Tabelle
         JScrollPane scrollPane = new JScrollPane(tradeTable);
         
-        // Rechtes Panel mit Chart und Details
-        JPanel rightPanel = new JPanel(new BorderLayout(0, 5));
-        rightPanel.setPreferredSize(new Dimension(300, 0));
+        // Rechtes Panel mit Chart, Details und WebView
+        rightSplitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
+        
+        // Oberes Panel fÃ¼r Chart und Details
+        JPanel upperPanel = new JPanel(new BorderLayout(0, 5));
         
         // Chart Panel im oberen Bereich
         JPanel chartContainer = new JPanel(new BorderLayout());
         chartContainer.setBorder(BorderFactory.createTitledBorder("Open Trades Timeline"));
         chartContainer.add(chartPanel, BorderLayout.CENTER);
         
-        // Detail Panel für konkurrierende Trades
+        // Detail Panel fÃ¼r konkurrierende Trades
         detailPanel.setBorder(BorderFactory.createTitledBorder("Concurrent Trades"));
         detailPanel.setLayout(new BorderLayout());
 
-        // Zusammenführen der Panels
-        rightPanel.add(chartContainer, BorderLayout.NORTH);
-        rightPanel.add(detailPanel, BorderLayout.CENTER);
+        // ZusammenfÃ¼hren der oberen Panels
+        upperPanel.add(chartContainer, BorderLayout.NORTH);
+        upperPanel.add(detailPanel, BorderLayout.CENTER);
+        
+        // WebView Panel
+        JPanel webViewContainer = new JPanel(new BorderLayout());
+        webViewContainer.setBorder(BorderFactory.createTitledBorder("Signal Provider Details"));
+        webViewContainer.add(webViewPanel, BorderLayout.CENTER);
+        
+        //// Panels zum Split Pane hinzufÃ¼gen
+        rightSplitPane.setTopComponent(upperPanel);
+        rightSplitPane.setBottomComponent(webViewContainer);
+        rightSplitPane.setResizeWeight(0.5);
+        
+        // Haupt-Split Pane
+        mainSplitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, scrollPane, rightSplitPane);
+        mainSplitPane.setResizeWeight(0.6);
 
         // Toolbar
         JToolBar toolBar = new JToolBar();
@@ -78,8 +99,7 @@ public class TradeListFrame extends JFrame {
 
         // Layout zusammenbauen
         add(toolBar, BorderLayout.NORTH);
-        add(scrollPane, BorderLayout.CENTER);
-        add(rightPanel, BorderLayout.EAST);
+        add(mainSplitPane, BorderLayout.CENTER);
         setLocationRelativeTo(null);
     }
 
@@ -95,6 +115,10 @@ public class TradeListFrame extends JFrame {
                             selectedTrade.getOpenTime()
                         );
                         updateDetailPanel(selectedTrade, concurrentTrades);
+                        // Provider URL laden wenn verfÃ¼gbar
+                        if (selectedTrade.getSignalProviderURL() != null) {
+                            webViewPanel.loadURL(selectedTrade.getSignalProviderURL());
+                        }
                     }
                 }
             }
@@ -118,7 +142,7 @@ public class TradeListFrame extends JFrame {
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.weightx = 1.0;
 
-        // Übersichtsinformationen
+        // Ãœbersichtsinformationen
         JPanel summaryPanel = new JPanel(new GridLayout(3, 1, 5, 5));
         summaryPanel.setBorder(BorderFactory.createTitledBorder("Summary"));
         
@@ -131,17 +155,16 @@ public class TradeListFrame extends JFrame {
         content.add(summaryPanel, gbc);
         gbc.gridy++;
 
-        // Details für jeden konkurrierenden Trade
+        // Details fÃ¼r jeden konkurrierenden Trade
         for (Trade trade : concurrentTrades) {
             JPanel tradePanel = createTradePanel(trade);
             content.add(tradePanel, gbc);
             gbc.gridy++;
         }
 
-        // Scroll-Bereich für die Details
         JScrollPane scrollPane = new JScrollPane(content);
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
-        scrollPane.setBorder(null);  // Entfernt den Border des ScrollPane
+        scrollPane.setBorder(null);
         
         detailPanel.add(scrollPane, BorderLayout.CENTER);
         detailPanel.revalidate();
@@ -160,7 +183,6 @@ public class TradeListFrame extends JFrame {
         tgbc.fill = GridBagConstraints.HORIZONTAL;
         tgbc.weightx = 1.0;
 
-        // Trade Details
         addTradeDetail(tradePanel, "Symbol:", trade.getSymbol(), tgbc);
         addTradeDetail(tradePanel, "Type:", trade.getType(), tgbc);
         addTradeDetail(tradePanel, "Lots:", String.format("%.2f", trade.getLots()), tgbc);
@@ -199,11 +221,9 @@ public class TradeListFrame extends JFrame {
             }
             
             try (PrintWriter writer = new PrintWriter(new FileWriter(file))) {
-                // CSV Header
                 writer.println("Open Time,Close Time,Type,Symbol,Lots,Open Price,Close Price," +
                              "Profit/Loss,Commission,Swap,Total");
                 
-                // Daten schreiben
                 for (int i = 0; i < tradeTable.getModel().getRowCount(); i++) {
                     Trade trade = tradeTable.getTradeAt(i);
                     writer.printf("%s,%s,%s,%s,%.2f,%.5f,%.5f,%.2f,%.2f,%.2f,%.2f%n",

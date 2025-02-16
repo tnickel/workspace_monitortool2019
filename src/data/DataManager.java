@@ -1,10 +1,11 @@
 package data;
 
+
+
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
+import java.io.FileReader;  // Diese Zeile war bisher nicht da
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -13,18 +14,28 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
-import javax.swing.JOptionPane;
-import javax.swing.SwingUtilities;
 
 public class DataManager {
    private static final Logger LOGGER = Logger.getLogger(DataManager.class.getName());
    private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy.MM.dd HH:mm:ss");
    private static final int EXPECTED_MIN_FIELDS = 11;
+   private static final String BASE_URL = "https://www.mql5.com/en/signals/";
    
    private final Map<String, ProviderStats> signalProviderStats;
    
    public DataManager() {
        this.signalProviderStats = new HashMap<>();
+   }
+   
+   private String extractProviderName(String fileName) {
+       // Entferne die .csv Endung
+       String name = fileName.toLowerCase().replace(".csv", "");
+       // Hier k�nnen weitere Bereinigungen des Provider-Namens erfolgen
+       return name;
+   }
+   
+   private String constructProviderURL(String providerId) {
+       return BASE_URL + providerId;
    }
    
    public void loadData(String path) {
@@ -52,6 +63,12 @@ public class DataManager {
            String line;
            boolean isHeader = true;
            ProviderStats stats = new ProviderStats();
+           
+           // Setze Provider-Informationen
+           String providerName = extractProviderName(file.getName());
+           String providerURL = constructProviderURL(providerName);
+           stats.setSignalProviderInfo(providerName, providerURL);
+           
            int lineCount = 0;
            int tradeCounts = 0;
            double initialBalance = 0.0;

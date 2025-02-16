@@ -13,8 +13,12 @@ public class Trade {
     private final double lots;
     private final double openPrice;
     private final double closePrice;
-    private final double stopLoss;    // Neu
-    private final double takeProfit;  // Neu
+    private final double stopLoss;
+    private final double takeProfit;
+    
+    // Signal Provider Informationen
+    private final String signalProvider;
+    private final String signalProviderURL;
     
     // Finanzielle Informationen
     private final double commission;
@@ -25,6 +29,7 @@ public class Trade {
                 String type, String symbol, double lots,
                 double openPrice, double closePrice,
                 double stopLoss, double takeProfit,
+                String signalProvider, String signalProviderURL,
                 double commission, double swap, double profit) {
         this.openTime = openTime;
         this.closeTime = closeTime;
@@ -35,6 +40,8 @@ public class Trade {
         this.closePrice = closePrice;
         this.stopLoss = stopLoss;
         this.takeProfit = takeProfit;
+        this.signalProvider = signalProvider;
+        this.signalProviderURL = signalProviderURL;
         this.commission = commission;
         this.swap = swap;
         this.profit = profit;
@@ -77,6 +84,14 @@ public class Trade {
         return takeProfit;
     }
     
+    public String getSignalProvider() {
+        return signalProvider;
+    }
+    
+    public String getSignalProviderURL() {
+        return signalProviderURL;
+    }
+    
     public double getCommission() {
         return commission;
     }
@@ -106,6 +121,8 @@ public class Trade {
             ", closePrice=" + closePrice +
             ", stopLoss=" + stopLoss +
             ", takeProfit=" + takeProfit +
+            ", signalProvider='" + signalProvider + '\'' +
+            ", signalProviderURL='" + signalProviderURL + '\'' +
             ", commission=" + commission +
             ", swap=" + swap +
             ", profit=" + profit +

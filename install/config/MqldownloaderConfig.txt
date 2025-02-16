@@ -1,0 +1,8 @@
+#MQL Downloader Konfiguration
+#Tue Feb 04 04:13:10 CET 2025
+password=
+baseUrl=https\://www.mql5.com/en/signals/mt4/list
+downloadPath=C\:\\Forex\\MqlAnalyzer\\download\\mql4
+minWaitTime=2000
+maxWaitTime=8000
+username=tnickel

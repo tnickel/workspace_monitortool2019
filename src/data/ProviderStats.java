@@ -13,11 +13,26 @@ public class ProviderStats {
     private double initialBalance;
     private boolean hasStopLoss = false;
     private boolean hasTakeProfit = false;
+    private String signalProvider;
+    private String signalProviderURL;
     
     public ProviderStats() {
         this.trades = new ArrayList<>();
         this.profits = new ArrayList<>();
         this.initialBalance = 0.0;
+    }
+
+    public void setSignalProviderInfo(String provider, String url) {
+        this.signalProvider = provider;
+        this.signalProviderURL = url;
+    }
+
+    public String getSignalProvider() {
+        return signalProvider;
+    }
+
+    public String getSignalProviderURL() {
+        return signalProviderURL;
     }
 
     public void setInitialBalance(double balance) {
@@ -35,6 +50,7 @@ public class ProviderStats {
                         double commission, double swap, double profit) {
         Trade trade = new Trade(openTime, closeTime, type, symbol, lots,
                               openPrice, closePrice, stopLoss, takeProfit,
+                              signalProvider, signalProviderURL,
                               commission, swap, profit);
         trades.add(trade);
         profits.add(profit);
@@ -43,6 +59,7 @@ public class ProviderStats {
         if (takeProfit != 0.0) hasTakeProfit = true;
     }
     
+    // Alle anderen Methoden bleiben unverändert
     public List<Trade> getTrades() {
         return trades;
     }
@@ -172,6 +189,7 @@ public class ProviderStats {
     public int getTradeCount() {
         return trades.size();
     }
+    
     public double getEquityDrawdown() {
         if (trades.isEmpty()) return 0.0;
         
