@@ -45,13 +45,13 @@ import data.FavoritesManager;
 import data.ProviderStats;
 import data.Trade;
 
-public class CompareDialog extends JFrame {
+public class CompareEquityCurvesDialog extends JFrame {
     private final Map<String, ProviderStats> providerStats;
     private final JPanel detailPanel;
     private final String rootPath;
     private final FavoritesManager favoritesManager;
 
-    public CompareDialog(JFrame parent, Map<String, ProviderStats> stats, String rootPath) {
+    public CompareEquityCurvesDialog(JFrame parent, Map<String, ProviderStats> stats, String rootPath) {
         super("Compare Equity Curves");
         this.providerStats = stats;
         this.rootPath = rootPath;

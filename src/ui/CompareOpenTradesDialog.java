@@ -28,11 +28,11 @@ import data.ProviderStats;
 import data.Trade;
 import utils.ChartFactoryUtil;
 
-public class OpenTradesDialog extends JFrame {
+public class CompareOpenTradesDialog extends JFrame {
    private final Map<String, ProviderStats> providerStats;
    private final ChartFactoryUtil chartFactory;
 
-   public OpenTradesDialog(JFrame parent, Map<String, ProviderStats> stats) {
+   public CompareOpenTradesDialog(JFrame parent, Map<String, ProviderStats> stats) {
        super("Compare Open Trades");
        this.providerStats = stats;
        this.chartFactory = new ChartFactoryUtil();

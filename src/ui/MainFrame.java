@@ -169,7 +169,7 @@ public class MainFrame extends JFrame {
         
         JButton compareOpenTradesButton = new JButton("Compare Open Trades");
         compareOpenTradesButton.addActionListener(e -> {
-            OpenTradesDialog dialog = new OpenTradesDialog(this, mainTable.getCurrentProviderStats());
+            CompareOpenTradesDialog dialog = new CompareOpenTradesDialog(this, mainTable.getCurrentProviderStats());
             dialog.setVisible(true);
         });
 
@@ -188,15 +188,15 @@ public class MainFrame extends JFrame {
         List<String> selectedProviders = mainTable.getSelectedProviders();
         if (selectedProviders.isEmpty()) {
             JOptionPane.showMessageDialog(this,
-                "Bitte wählen Sie mindestens einen Provider aus.",
+                "Bitte wï¿½hlen Sie mindestens einen Provider aus.",
                 "Keine Auswahl",
                 JOptionPane.WARNING_MESSAGE);
             return;
         }
 
         int result = JOptionPane.showConfirmDialog(this,
-            "Möchten Sie die " + selectedProviders.size() + " ausgewählten Signal Provider löschen?",
-            "Provider löschen",
+            "Mï¿½chten Sie die " + selectedProviders.size() + " ausgewï¿½hlten Signal Provider lï¿½schen?",
+            "Provider lï¿½schen",
             JOptionPane.YES_NO_OPTION);
             
         if (result == JOptionPane.YES_OPTION) {
@@ -265,7 +265,7 @@ public class MainFrame extends JFrame {
     }
     
     private void showFilterDialog() {
-        FilterDialog dialog = new FilterDialog(this, mainTable.getCurrentFilter()); // Filterkriterien übergeben
+        FilterDialog dialog = new FilterDialog(this, mainTable.getCurrentFilter()); // Filterkriterien ï¿½bergeben
         FilterCriteria criteria = dialog.showDialog();
         if (criteria != null) {
             mainTable.applyFilter(criteria);
@@ -273,7 +273,7 @@ public class MainFrame extends JFrame {
     }
     
     private void showCompareDialog() {
-        CompareDialog dialog = new CompareDialog(this, mainTable.getCurrentProviderStats(), rootPath_glob);
+        CompareEquityCurvesDialog dialog = new CompareEquityCurvesDialog(this, mainTable.getCurrentProviderStats(), rootPath_glob);
         dialog.setVisible(true);
     }
     
