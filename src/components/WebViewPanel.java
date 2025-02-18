@@ -24,7 +24,7 @@ public class WebViewPanel extends JPanel {
         Platform.runLater(() -> {
             webView = new WebView();
             // Zoom auf 50% setzen
-            webView.setZoom(0.5);
+            webView.setZoom(0.8);
             Scene scene = new Scene(webView);
             jfxPanel.setScene(scene);
         });
