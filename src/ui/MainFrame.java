@@ -166,7 +166,17 @@ public class MainFrame extends JFrame {
         JButton compareButton = new JButton("Compare Equity Curves");
         compareButton.addActionListener(e -> showCompareDialog());
         toolBar.add(compareButton);
-        
+        JButton showSignalProvidersButton = new JButton("Show Signal Providers");
+        showSignalProvidersButton.addActionListener(e -> {
+            ShowSignalProviderList dialog = new ShowSignalProviderList(
+                this,
+                mainTable.getCurrentProviderStats(),
+                mainTable.getHtmlDatabase(),
+                config.getDownloadPath()
+            );
+            dialog.setVisible(true);
+        });
+        toolBar.add(showSignalProvidersButton);
         JButton compareOpenTradesButton = new JButton("Compare Open Trades");
         compareOpenTradesButton.addActionListener(e -> {
             CompareOpenTradesDialog dialog = new CompareOpenTradesDialog(this, mainTable.getCurrentProviderStats());

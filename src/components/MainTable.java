@@ -1,5 +1,7 @@
 package components;
 
+import java.awt.BorderLayout;
+import java.awt.Container;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
@@ -10,7 +12,9 @@ import java.util.Map;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+import javax.swing.JButton;
 import javax.swing.JTable;
+import javax.swing.SwingUtilities;
 import javax.swing.ToolTipManager;
 import javax.swing.table.TableRowSorter;
 
@@ -21,6 +25,7 @@ import models.HighlightTableModel;
 import renderers.HighlightRenderer;
 import renderers.RiskScoreRenderer;
 import ui.DetailFrame;
+import ui.ShowSignalProviderList;
 import utils.HtmlDatabase;
 
 public class MainTable extends JTable {
@@ -43,7 +48,6 @@ public class MainTable extends JTable {
         this.currentFilter = new FilterCriteria();
 
         loadSavedFilter(); // Filter beim Start laden
-
         initialize();
         setupMouseListener();
         setupModelListener();
@@ -57,7 +61,7 @@ public class MainTable extends JTable {
         setModel(model);
         TableRowSorter<HighlightTableModel> sorter = new TableRowSorter<>(model);
         
-        // Setze spezifische Comparatoren für jede Spalte
+        // Setze spezifische Comparatoren fÃ¼r jede Spalte
         for (int i = 0; i < model.getColumnCount(); i++) {
             final int column = i;
             sorter.setComparator(column, (Comparator<Object>) (o1, o2) -> {
@@ -72,7 +76,7 @@ public class MainTable extends JTable {
                     return Double.compare(d1, d2);
                 }
                 
-                // String Vergleich für alle anderen Fälle
+                // String Vergleich fÃ¼r alle anderen FÃ¤lle
                 return o1.toString().compareTo(o2.toString());
             });
         }
@@ -82,7 +86,7 @@ public class MainTable extends JTable {
         ToolTipManager.sharedInstance().setDismissDelay(8000);
         ToolTipManager.sharedInstance().registerComponent(this);
         
-        // Setze die Renderer für die Spalten
+        // Setze die Renderer fÃ¼r die Spalten
         for (int i = 0; i < getColumnCount(); i++) {
             String columnName = getColumnModel().getColumn(i).getHeaderValue().toString();
             // Finde die Risk Score Spalte basierend auf dem Index
@@ -95,6 +99,21 @@ public class MainTable extends JTable {
         getColumnModel().getColumn(1).setPreferredWidth(300);  // Signal Provider ist Spalte 1
         getColumnModel().getColumn(1).setMinWidth(250);      
         model.populateData(dataManager.getStats());
+    }
+    
+    public JButton createShowSignalProviderButton() {
+        JButton showProvidersButton = new JButton("Show Signal Providers");
+        showProvidersButton.addActionListener(e -> {
+            Map<String, ProviderStats> currentStats = getCurrentProviderStats();
+            ShowSignalProviderList dialog = new ShowSignalProviderList(
+                SwingUtilities.getWindowAncestor(this),
+                currentStats,
+                htmlDatabase,
+                rootPath
+            );
+            dialog.setVisible(true);
+        });
+        return showProvidersButton;
     }
     
     private void setupMouseListener() {
@@ -254,5 +273,9 @@ public class MainTable extends JTable {
             currentFilter = new FilterCriteria();
         }
         currentFilter.loadFilters();
+    }
+ // In MainTable.java fÃ¼ge diese Methode hinzu:
+    public HtmlDatabase getHtmlDatabase() {
+        return htmlDatabase;
     }
 }
