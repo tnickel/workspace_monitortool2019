@@ -202,16 +202,26 @@ public class MainTable extends JTable {
         } else {
             Map<String, ProviderStats> filteredStats = dataManager.getStats().entrySet().stream()
                 .filter(entry -> {
-                    Object[] rowData = model.createRowDataForProvider(
-                        entry.getKey(), 
-                        entry.getValue()
-                    );
-                    return currentFilter.matches(entry.getValue(), rowData);
+                    // Hole die tatsächlichen Werte durch temporäres Befüllen der Tabelle
+                    model.setRowCount(0);
+                    model.populateData(Map.of(entry.getKey(), entry.getValue()));
+                    
+                    // Extrahiere die Werte aus der ersten (und einzigen) Zeile
+                    Object[] rowData = new Object[model.getColumnCount()];
+                    for (int i = 0; i < model.getColumnCount(); i++) {
+                        rowData[i] = model.getValueAt(0, i);
+                    }
+                    
+                    // Prüfe ob die Werte dem Filter entsprechen
+                    boolean matches = currentFilter.matches(entry.getValue(), rowData);
+                    return matches;
                 })
                 .collect(Collectors.toMap(
                     Map.Entry::getKey,
                     Map.Entry::getValue
                 ));
+                
+            // Zeige die gefilterten Daten an
             model.populateData(filteredStats);
         }
         updateStatus();
