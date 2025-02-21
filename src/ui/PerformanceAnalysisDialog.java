@@ -11,6 +11,7 @@ import java.awt.GridLayout;
 import java.awt.event.KeyEvent;
 import java.net.URI;
 import java.text.DecimalFormat;
+import java.util.Map;
 
 import javax.swing.AbstractAction;
 import javax.swing.Action;
@@ -34,7 +35,7 @@ import data.ProviderStats;
 import utils.ChartFactoryUtil;
 import utils.HtmlDatabase;
 
-public class DetailFrame extends JFrame {
+public class PerformanceAnalysisDialog extends JFrame {
    private final ProviderStats stats;
    private final String providerId;
    private final String providerName;
@@ -43,13 +44,24 @@ public class DetailFrame extends JFrame {
    private final ChartFactoryUtil chartFactory;
    private final HtmlDatabase htmlDatabase;
 
-   public DetailFrame(String providerName, ProviderStats stats, String providerId, HtmlDatabase htmlDatabase) {
-       super("Performance Analysis: " + providerName);
-       this.stats = stats;
-       this.providerId = providerId;
-       this.providerName = providerName;
-       this.htmlDatabase = htmlDatabase;
-       this.chartFactory = new ChartFactoryUtil();
+   public PerformanceAnalysisDialog(String providerName, ProviderStats stats, String providerId, HtmlDatabase htmlDatabase) {
+	    super("Performance Analysis: " + providerName);
+	    this.stats = stats;
+	    this.providerId = providerId;
+	    this.providerName = providerName;
+	    this.htmlDatabase = htmlDatabase;
+	    this.chartFactory = new ChartFactoryUtil();
+	    
+	    // DEBUG: Ausgabe des Dateinamens
+	    System.out.println("Reading data for file: " + providerName + ".csv");
+	    
+	    // DEBUG: Ausgabe der gelesenen Daten
+	    Map<String, Double> monthlyProfits = htmlDatabase.getMonthlyProfitPercentages(providerName + ".csv");
+	    System.out.println("Monthly profits read: " + monthlyProfits);
+	    
+	    stats.setMonthlyProfits(monthlyProfits);
+	    
+	   
        
        initializeUI();
        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);

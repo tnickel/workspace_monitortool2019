@@ -26,7 +26,7 @@ public class HtmlDatabase {
             return dataCache.get(csvFileName);
         }
 
-        String txtFileName = csvFileName.replace(".csv", "_root.txt");
+        String txtFileName = csvFileName.replace(".csv", "") + "_root.txt";  // Hier war der Fehler
         File txtFile = new File(rootPath, txtFileName);
         
         if (!txtFile.exists()) {
@@ -50,7 +50,7 @@ public class HtmlDatabase {
                     continue;
                 }
                 
-                // Prüfe ob es eine neue Sektion ist
+                // PrÃ¼fe ob es eine neue Sektion ist
                 if (line.contains("=")) {
                     // Speichere die vorherige Sektion, falls vorhanden
                     if (currentKey != null && currentSection.length() > 0) {
@@ -64,7 +64,7 @@ public class HtmlDatabase {
                         currentSection.append(parts[1].trim());
                     }
                 } else if (currentKey != null && !line.trim().isEmpty()) {
-                    // Füge die Zeile zur aktuellen Sektion hinzu
+                    // FÃ¼ge die Zeile zur aktuellen Sektion hinzu
                     if (currentSection.length() > 0) {
                         currentSection.append("\n");
                     }
@@ -143,7 +143,7 @@ public class HtmlDatabase {
                               .replace(",", ".")
                               .replace(" ", "");
                               
-        // Berechne die Details für den Tooltip
+        // Berechne die Details fï¿½r den Tooltip
         updateAvr3MonthProfitCalculation(csvFileName);
                               
         try {
@@ -164,11 +164,11 @@ public class HtmlDatabase {
         sortedMonths.sort((a, b) -> b.compareTo(a)); // Absteigend sortieren
         
         StringBuilder details = new StringBuilder();
-        details.append("Verwendete Monate für die Berechnung:\n");
+        details.append("Verwendete Monate fï¿½r die Berechnung:\n");
         
         double sum = 0.0;
         int count = 0;
-        int maxMonths = Math.min(3, sortedMonths.size() - 1); // -1 für aktuellen Monat
+        int maxMonths = Math.min(3, sortedMonths.size() - 1); // -1 fï¿½r aktuellen Monat
         
         for (int i = 1; i <= maxMonths; i++) {
             String month = sortedMonths.get(i);
@@ -179,7 +179,7 @@ public class HtmlDatabase {
         }
         
         double average = count > 0 ? sum / count : 0.0;
-        details.append(String.format("\nDurchschnitt über %d Monate: %.2f%%", count, average));
+        details.append(String.format("\nDurchschnitt ï¿½ber %d Monate: %.2f%%", count, average));
         
         Map<String, String> data = getFileData(csvFileName);
         data.put("3MonthProfitCalculation", details.toString());
@@ -191,7 +191,7 @@ public class HtmlDatabase {
         String details = data.get("3MonthProfitCalculation");
         
         if (details == null || details.trim().isEmpty()) {
-            return "Keine Berechnungsdetails verfügbar";
+            return "Keine Berechnungsdetails verfï¿½gbar";
         }
 
         StringBuilder tooltip = new StringBuilder();
@@ -236,7 +236,7 @@ public class HtmlDatabase {
         String details = data.get(months + "MPDDCalculation");
         
         if (details == null || details.trim().isEmpty()) {
-            return String.format("Keine Berechnungsdetails für %d-Monats-Drawdown verfügbar", months);
+            return String.format("Keine Berechnungsdetails fï¿½r %d-Monats-Drawdown verfï¿½gbar", months);
         }
 
         StringBuilder tooltip = new StringBuilder();
@@ -281,7 +281,7 @@ public class HtmlDatabase {
         sortedMonths.sort((a, b) -> b.compareTo(a));
         
         StringBuilder details = new StringBuilder();
-        details.append(String.format("Verwendete Monate für %d-Monats-Drawdown Berechnung:\n", months));
+        details.append(String.format("Verwendete Monate fï¿½r %d-Monats-Drawdown Berechnung:\n", months));
         
         double maxDrawdown = 0.0;
         int maxStart = 0;
@@ -318,7 +318,7 @@ public class HtmlDatabase {
                 }
             }
         } else {
-            details.append("\nNicht genügend Monate für die Berechnung verfügbar.");
+            details.append("\nNicht genï¿½gend Monate fï¿½r die Berechnung verfï¿½gbar.");
         }
         
         Map<String, String> data = getFileData(csvFileName);
@@ -357,12 +357,12 @@ public class HtmlDatabase {
         String details = data.get("Stability Details");
         
         if (details == null || details.trim().isEmpty()) {
-            return "Keine Stabilitätsdetails verfügbar";
+            return "Keine Stabilitï¿½tsdetails verfï¿½gbar";
         }
 
         StringBuilder formattedDetails = new StringBuilder();
         formattedDetails.append("<html><div style='padding: 5px; white-space: nowrap;'>");
-        formattedDetails.append("<b>Stabilitätsanalyse:</b><br>");
+        formattedDetails.append("<b>Stabilitï¿½tsanalyse:</b><br>");
         formattedDetails.append("<br>");
 
         String[] lines = details.split("\n");
@@ -412,12 +412,12 @@ public class HtmlDatabase {
         List<String> sortedMonths = new ArrayList<>(monthlyProfits.keySet());
         sortedMonths.sort((a, b) -> b.compareTo(a)); // Absteigend sortieren
         
-        // Nach Abzug des aktuellen Monats verfügbare Monate
-        int availableMonths = sortedMonths.size() - 1; // -1 für aktuellen Monat
+        // Nach Abzug des aktuellen Monats verfï¿½gbare Monate
+        int availableMonths = sortedMonths.size() - 1; // -1 fï¿½r aktuellen Monat
         
-        // Wenn nicht genügend Monate für die angeforderte Berechnung verfügbar sind
+        // Wenn nicht genï¿½gend Monate fï¿½r die angeforderte Berechnung verfï¿½gbar sind
         if (n == 3) {
-            // Für 3MPDD bisheriges Verhalten beibehalten
+            // Fï¿½r 3MPDD bisheriges Verhalten beibehalten
             int monthsToUse = Math.min(n, availableMonths);
             if (monthsToUse <= 0) {
                 return 0.0;
@@ -425,19 +425,19 @@ public class HtmlDatabase {
             
             double sum = 0.0;
             for (int i = 0; i < monthsToUse; i++) {
-                sum += monthlyProfits.get(sortedMonths.get(i + 1)); // +1 um aktuellen Monat zu überspringen
+                sum += monthlyProfits.get(sortedMonths.get(i + 1)); // +1 um aktuellen Monat zu ï¿½berspringen
             }
             return sum / monthsToUse;
         } else {
-            // Für 6, 9 und 12 MPDD: Nur berechnen wenn genügend Monate verfügbar
-            int requiredMonths = n + 1; // +1 weil aktueller Monat nicht berücksichtigt wird
+            // Fï¿½r 6, 9 und 12 MPDD: Nur berechnen wenn genï¿½gend Monate verfï¿½gbar
+            int requiredMonths = n + 1; // +1 weil aktueller Monat nicht berï¿½cksichtigt wird
             if (sortedMonths.size() < requiredMonths) {
                 return 0.0;
             }
             
             double sum = 0.0;
             for (int i = 0; i < n; i++) {
-                sum += monthlyProfits.get(sortedMonths.get(i + 1)); // +1 um aktuellen Monat zu überspringen
+                sum += monthlyProfits.get(sortedMonths.get(i + 1)); // +1 um aktuellen Monat zu ï¿½berspringen
             }
             return sum / n;
         }

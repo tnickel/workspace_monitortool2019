@@ -24,7 +24,7 @@ import models.FilterCriteria;
 import models.HighlightTableModel;
 import renderers.HighlightRenderer;
 import renderers.RiskScoreRenderer;
-import ui.DetailFrame;
+import ui.PerformanceAnalysisDialog;
 import ui.ShowSignalProviderList;
 import utils.HtmlDatabase;
 
@@ -129,7 +129,7 @@ public class MainTable extends JTable {
                         String providerId = providerName.substring(providerName.lastIndexOf("_") + 1).replace(".csv", "");
                         
                         if (stats != null) {
-                            DetailFrame detailFrame = new DetailFrame(providerName, stats, providerId, htmlDatabase);
+                            PerformanceAnalysisDialog detailFrame = new PerformanceAnalysisDialog(providerName, stats, providerId, htmlDatabase);
                             detailFrame.setVisible(true);
                         }
                     }

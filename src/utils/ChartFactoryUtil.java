@@ -72,19 +72,22 @@ public class ChartFactoryUtil {
 
     public ChartPanel createMonthlyProfitChart(ProviderStats stats) {
         DefaultCategoryDataset dataset = new DefaultCategoryDataset();
-        TreeMap<YearMonth, Double> monthlyProfits = calculateMonthlyProfits(stats.getTrades());
+        Map<YearMonth, Double> monthlyProfits = stats.getMonthlyProfitPercentages();
 
-        for (Map.Entry<YearMonth, Double> entry : monthlyProfits.entrySet()) {
+        // Sortiere die Monate
+        TreeMap<YearMonth, Double> sortedMap = new TreeMap<>(monthlyProfits);
+        
+        for (Map.Entry<YearMonth, Double> entry : sortedMap.entrySet()) {
             YearMonth month = entry.getKey();
-            double profit = entry.getValue();
+            double profitPercentage = entry.getValue();
             String monthStr = month.format(DateTimeFormatter.ofPattern("yyyy-MM"));
-            dataset.addValue(profit, "Monthly Profit", monthStr);
+            dataset.addValue(profitPercentage, "Performance %", monthStr);
         }
 
         JFreeChart chart = ChartFactory.createBarChart(
             "Monthly Performance Overview",
             "Month",
-            "Profit/Loss",
+            "Performance %",
             dataset,
             PlotOrientation.VERTICAL,
             true,
@@ -102,15 +105,25 @@ public class ChartFactoryUtil {
             public Paint getItemPaint(int row, int column) {
                 Number value = dataset.getValue(row, column);
                 if (value != null && value.doubleValue() < 0) {
-                    return Color.RED; // Rot f�r negative Werte
+                    return Color.RED; // Rot für negative Werte
                 } else {
-                    return Color.GREEN; // Gr�n f�r positive Werte
+                    return Color.GREEN; // Grün für positive Werte
                 }
             }
         };
+        
+        // Labels für die Balken hinzufügen
+        renderer.setDefaultItemLabelGenerator(new org.jfree.chart.labels.StandardCategoryItemLabelGenerator("{2}%", new java.text.DecimalFormat("0.00")));
+        renderer.setDefaultItemLabelsVisible(true);
+        
         plot.setRenderer(renderer);
 
-        return new ChartPanel(chart);
+        // Rotiere die X-Achsen-Beschriftungen für bessere Lesbarkeit
+        plot.getDomainAxis().setCategoryLabelPositions(
+            org.jfree.chart.axis.CategoryLabelPositions.UP_45);
+
+        ChartPanel chartPanel = new ChartPanel(chart);
+        return chartPanel;
     }
 
     private TreeMap<YearMonth, Double> calculateMonthlyProfits(List<Trade> trades) {

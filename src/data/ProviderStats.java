@@ -2,14 +2,19 @@ package data;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+
 import org.jfree.data.category.DefaultCategoryDataset;
 import utils.TradeUtils;
 
 public class ProviderStats {
     private final List<Trade> trades;
     private final List<Double> profits;
+    private final Map<YearMonth, Double> monthlyProfitPercentages;
     private double initialBalance;
     private boolean hasStopLoss = false;
     private boolean hasTakeProfit = false;
@@ -19,6 +24,7 @@ public class ProviderStats {
     public ProviderStats() {
         this.trades = new ArrayList<>();
         this.profits = new ArrayList<>();
+        this.monthlyProfitPercentages = new TreeMap<>();
         this.initialBalance = 0.0;
     }
 
@@ -59,7 +65,26 @@ public class ProviderStats {
         if (takeProfit != 0.0) hasTakeProfit = true;
     }
     
-    // Alle anderen Methoden bleiben unverändert
+    public void setMonthlyProfits(Map<String, Double> monthProfits) {
+        monthlyProfitPercentages.clear();
+        for (Map.Entry<String, Double> entry : monthProfits.entrySet()) {
+            String[] parts = entry.getKey().split("/");
+            if (parts.length == 2) {
+                try {
+                    int year = Integer.parseInt(parts[0]);
+                    int month = Integer.parseInt(parts[1]);
+                    monthlyProfitPercentages.put(YearMonth.of(year, month), entry.getValue());
+                } catch (NumberFormatException e) {
+                    // Skip invalid entries
+                }
+            }
+        }
+    }
+    
+    public Map<YearMonth, Double> getMonthlyProfitPercentages() {
+        return monthlyProfitPercentages;
+    }
+    
     public List<Trade> getTrades() {
         return trades;
     }
