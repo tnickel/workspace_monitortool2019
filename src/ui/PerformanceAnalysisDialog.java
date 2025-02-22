@@ -31,6 +31,7 @@ import org.jfree.chart.ChartPanel;
 import charts.DrawdownChart;
 import charts.SymbolDistributionChart;
 import charts.TradeStackingChart;
+import charts.ThreeMonthProfitChart;
 import data.ProviderStats;
 import utils.ChartFactoryUtil;
 import utils.HtmlDatabase;
@@ -45,37 +46,35 @@ public class PerformanceAnalysisDialog extends JFrame {
    private final HtmlDatabase htmlDatabase;
 
    public PerformanceAnalysisDialog(String providerName, ProviderStats stats, String providerId, HtmlDatabase htmlDatabase) {
-	    super("Performance Analysis: " + providerName);
-	    this.stats = stats;
-	    this.providerId = providerId;
-	    this.providerName = providerName;
-	    this.htmlDatabase = htmlDatabase;
-	    this.chartFactory = new ChartFactoryUtil();
-	    
-	    // DEBUG: Ausgabe des Dateinamens
-	    System.out.println("Reading data for file: " + providerName + ".csv");
-	    
-	    // DEBUG: Ausgabe der gelesenen Daten
-	    Map<String, Double> monthlyProfits = htmlDatabase.getMonthlyProfitPercentages(providerName + ".csv");
-	    System.out.println("Monthly profits read: " + monthlyProfits);
-	    
-	    stats.setMonthlyProfits(monthlyProfits);
-	    
-	   
-       
-       initializeUI();
-       setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-       setSize(1000, 1800);
-       setLocationRelativeTo(null);
+        super("Performance Analysis: " + providerName);
+        this.stats = stats;
+        this.providerId = providerId;
+        this.providerName = providerName;
+        this.htmlDatabase = htmlDatabase;
+        this.chartFactory = new ChartFactoryUtil();
+        
+        // DEBUG: Ausgabe des Dateinamens
+        System.out.println("Reading data for file: " + providerName + ".csv");
+        
+        // DEBUG: Ausgabe der gelesenen Daten
+        Map<String, Double> monthlyProfits = htmlDatabase.getMonthlyProfitPercentages(providerName + ".csv");
+        System.out.println("Monthly profits read: " + monthlyProfits);
+        
+        stats.setMonthlyProfits(monthlyProfits);
+        
+        initializeUI();
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setSize(1000, 1800);
+        setLocationRelativeTo(null);
 
-       KeyStroke escapeKeyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0, false);
-       Action escapeAction = new AbstractAction() {
-           public void actionPerformed(java.awt.event.ActionEvent e) {
-               dispose();
-           }
-       };
-       getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(escapeKeyStroke, "ESCAPE");
-       getRootPane().getActionMap().put("ESCAPE", escapeAction);
+        KeyStroke escapeKeyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0, false);
+        Action escapeAction = new AbstractAction() {
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                dispose();
+            }
+        };
+        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(escapeKeyStroke, "ESCAPE");
+        getRootPane().getActionMap().put("ESCAPE", escapeAction);
    }
 
    private void initializeUI() {
@@ -100,6 +99,15 @@ public class PerformanceAnalysisDialog extends JFrame {
        monthlyChart.setPreferredSize(chartSize);
        monthlyChart.setAlignmentX(LEFT_ALIGNMENT);
        mainPanel.add(monthlyChart);
+       mainPanel.add(javax.swing.Box.createRigidArea(new Dimension(0, 20)));
+       
+       // Neue ThreeMonthProfitChart anstelle der Risk Exposure Chart
+       Map<String, Double> monthlyProfits = htmlDatabase.getMonthlyProfitPercentages(providerName + ".csv");
+       double equityDrawdown = htmlDatabase.getEquityDrawdown(providerName);
+       ThreeMonthProfitChart profitChart = new ThreeMonthProfitChart(monthlyProfits, equityDrawdown);
+       profitChart.setPreferredSize(chartSize);
+       profitChart.setAlignmentX(LEFT_ALIGNMENT);
+       mainPanel.add(profitChart);
        mainPanel.add(javax.swing.Box.createRigidArea(new Dimension(0, 20)));
        
        TradeStackingChart stackingChart = new TradeStackingChart(stats.getTrades());
