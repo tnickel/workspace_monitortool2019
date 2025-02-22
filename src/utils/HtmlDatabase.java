@@ -460,4 +460,22 @@ public class HtmlDatabase {
         
         return details;
     }
+    public void saveSteigungswert(String csvFileName, double steigung) {
+        Map<String, String> data = getFileData(csvFileName);
+        data.put("Steigungswert", String.format("%.2f", steigung).replace(',', '.'));
+        dataCache.put(csvFileName, data);
+    }
+
+    public double getSteigungswert(String csvFileName) {
+        Map<String, String> data = getFileData(csvFileName);
+        String steigungStr = data.getOrDefault("Steigungswert", "0.00")
+                                 .replace(",", ".")
+                                 .replace(" ", "");
+        try {
+            return Double.parseDouble(steigungStr);
+        } catch (NumberFormatException e) {
+            LOGGER.warning("Could not parse steigung value: " + steigungStr);
+            return 0.0;
+        }
+    }
 }

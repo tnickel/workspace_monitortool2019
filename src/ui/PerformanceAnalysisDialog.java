@@ -8,11 +8,13 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridLayout;
+import java.awt.Toolkit;
 import java.awt.event.KeyEvent;
 import java.net.URI;
 import java.text.DecimalFormat;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
+import java.util.TreeMap;
 
 import javax.swing.AbstractAction;
 import javax.swing.Action;
@@ -47,36 +49,42 @@ public class PerformanceAnalysisDialog extends JFrame {
    private final HtmlDatabase htmlDatabase;
 
    public PerformanceAnalysisDialog(String providerName, ProviderStats stats, String providerId, HtmlDatabase htmlDatabase) {
-        super("Performance Analysis: " + providerName);
-        this.stats = stats;
-        this.providerId = providerId;
-        this.providerName = providerName;
-        this.htmlDatabase = htmlDatabase;
-        this.chartFactory = new ChartFactoryUtil();
-        
-        // DEBUG: Ausgabe des Dateinamens
-        System.out.println("Reading data for file: " + providerName + ".csv");
-        
-        // DEBUG: Ausgabe der gelesenen Daten
-        Map<String, Double> monthlyProfits = htmlDatabase.getMonthlyProfitPercentages(providerName + ".csv");
-        System.out.println("Monthly profits read: " + monthlyProfits);
-        
-        stats.setMonthlyProfits(monthlyProfits);
-        
-        initializeUI();
-        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        setSize(1000, 1800);
-        setLocationRelativeTo(null);
+	    super("Performance Analysis: " + providerName);
+	    this.stats = stats;
+	    this.providerId = providerId;
+	    this.providerName = providerName;
+	    this.htmlDatabase = htmlDatabase;
+	    this.chartFactory = new ChartFactoryUtil();
+	    
+	    // DEBUG: Ausgabe des Dateinamens
+	    System.out.println("Reading data for file: " + providerName + ".csv");
+	    
+	    // DEBUG: Ausgabe der gelesenen Daten
+	    Map<String, Double> monthlyProfits = htmlDatabase.getMonthlyProfitPercentages(providerName + ".csv");
+	    System.out.println("Monthly profits read: " + monthlyProfits);
+	    
+	    stats.setMonthlyProfits(monthlyProfits);
+	    
+	    initializeUI();
+	    setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+	    
+	    // Breite um 30% erhöhen und Höhe um 10% reduzieren
+	    Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+	    int width = (int)(screenSize.width * 0.75);  // 75% der Bildschirmbreite
+	    int height = (int)(screenSize.height * 0.8); // 80% der Bildschirmhöhe
+	    setSize(width, height);
+	    
+	    setLocationRelativeTo(null);
 
-        KeyStroke escapeKeyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0, false);
-        Action escapeAction = new AbstractAction() {
-            public void actionPerformed(java.awt.event.ActionEvent e) {
-                dispose();
-            }
-        };
-        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(escapeKeyStroke, "ESCAPE");
-        getRootPane().getActionMap().put("ESCAPE", escapeAction);
-   }
+	    KeyStroke escapeKeyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0, false);
+	    Action escapeAction = new AbstractAction() {
+	        public void actionPerformed(java.awt.event.ActionEvent e) {
+	            dispose();
+	        }
+	    };
+	    getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(escapeKeyStroke, "ESCAPE");
+	    getRootPane().getActionMap().put("ESCAPE", escapeAction);
+	}
 
    private void initializeUI() {
        JPanel mainPanel = new JPanel();
@@ -138,39 +146,37 @@ public class PerformanceAnalysisDialog extends JFrame {
 	   JPanel mainPanel = new JPanel(new BorderLayout());
 	   mainPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
 
-	   // Ändere das Grid-Layout auf 3 Zeilen und 6 Spalten für mehr Platz  
-	   JPanel statsGrid = new JPanel(new GridLayout(3, 6, 15, 5));
+	   // Ändere das Grid-Layout auf 2 Zeilen und 7 Spalten für mehr Platz  
+	   JPanel statsGrid = new JPanel(new GridLayout(2, 7, 15, 5));
 	   
-	   double equityDrawdown = htmlDatabase.getEquityDrawdown(providerName);
-	   double threeMonthProfit = htmlDatabase.getAverageMonthlyProfit(providerName, 3);
-	   double sixMonthProfit = htmlDatabase.getAverageMonthlyProfit(providerName, 6);
-	   double nineMonthProfit = htmlDatabase.getAverageMonthlyProfit(providerName, 9);
-	   double twelveMonthProfit = htmlDatabase.getAverageMonthlyProfit(providerName, 12);
+	   String csvFileName = providerName + ".csv";
+	   double equityDrawdown = htmlDatabase.getEquityDrawdown(csvFileName);
+	   double threeMonthProfit = htmlDatabase.getAverageMonthlyProfit(csvFileName, 3);
+	   double sixMonthProfit = htmlDatabase.getAverageMonthlyProfit(csvFileName, 6);
+	   double nineMonthProfit = htmlDatabase.getAverageMonthlyProfit(csvFileName, 9);
+	   double twelveMonthProfit = htmlDatabase.getAverageMonthlyProfit(csvFileName, 12);
 
 	   double mpdd3 = calculateMPDD(threeMonthProfit, equityDrawdown);
 	   double mpdd6 = calculateMPDD(sixMonthProfit, equityDrawdown);
 	   double mpdd9 = calculateMPDD(nineMonthProfit, equityDrawdown);
-	   double mpdd12 = calculateMPDD(twelveMonthProfit, equityDrawdown);
-
+	 
 	   // Erste Zeile
 	   addStatField(statsGrid, "Total Trades: ", String.format("%d", stats.getTrades().size()));
 	   addStatField(statsGrid, "Win Rate: ", pf.format(stats.getWinRate()));
 	   addStatField(statsGrid, "Total Profit: ", df.format(stats.getTotalProfit()));
 	   addStatField(statsGrid, "Profit Factor: ", df.format(stats.getProfitFactor()));
 	   addStatField(statsGrid, "Max Concurrent Lots: ", df.format(stats.getMaxConcurrentLots()));
+	   addStatField(statsGrid, "Stability: ", df.format(htmlDatabase.getStabilitaetswert(csvFileName)));
 	   addStatField(statsGrid, "Days: ", String.format("%d", calculateDaysBetween(stats)));
 
 	   // Zweite Zeile
 	   addStatField(statsGrid, "Avg Profit/Trade: ", df.format(stats.getAverageProfit()));
 	   addStatField(statsGrid, "Max Drawdown: ", pf.format(stats.getMaxDrawdown()));
 	   addStatField(statsGrid, "Equity Drawdown: ", pf.format(equityDrawdown));
-	   addStatField(statsGrid, "Stability: ", df.format(htmlDatabase.getStabilitaetswert(providerName)));
 	   addStatField(statsGrid, "3MPDD: ", df.format(mpdd3));
 	   addStatField(statsGrid, "6MPDD: ", df.format(mpdd6));
-
-	   // Dritte Zeile
 	   addStatField(statsGrid, "9MPDD: ", df.format(mpdd9));
-	   addStatField(statsGrid, "12MPDD: ", df.format(mpdd12));
+	   addStatField(statsGrid, "Steigung: ", df.format(htmlDatabase.getSteigungswert(csvFileName)));
 	   
 	   JPanel urlPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
 	   String urlText = String.format("<html><u>https://www.mql5.com/de/signals/%s?source=Site+Signals+Subscriptions#!tab=account</u></html>", 
