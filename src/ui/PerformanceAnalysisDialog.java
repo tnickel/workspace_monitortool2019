@@ -11,6 +11,7 @@ import java.awt.GridLayout;
 import java.awt.event.KeyEvent;
 import java.net.URI;
 import java.text.DecimalFormat;
+import java.time.temporal.ChronoUnit;
 import java.util.Map;
 
 import javax.swing.AbstractAction;
@@ -30,8 +31,8 @@ import org.jfree.chart.ChartPanel;
 
 import charts.DrawdownChart;
 import charts.SymbolDistributionChart;
-import charts.TradeStackingChart;
 import charts.ThreeMonthProfitChart;
+import charts.TradeStackingChart;
 import data.ProviderStats;
 import utils.ChartFactoryUtil;
 import utils.HtmlDatabase;
@@ -134,74 +135,109 @@ public class PerformanceAnalysisDialog extends JFrame {
    }
 
    private JPanel createStatsPanel() {
-       JPanel mainPanel = new JPanel(new BorderLayout());
-       mainPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
+	   JPanel mainPanel = new JPanel(new BorderLayout());
+	   mainPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
 
-       JPanel statsGrid = new JPanel(new GridLayout(2, 4, 15, 5));
-       
-       addStatField(statsGrid, "Total Trades: ", String.format("%d", stats.getTrades().size()));
-       addStatField(statsGrid, "Win Rate: ", pf.format(stats.getWinRate()));
-       addStatField(statsGrid, "Total Profit: ", df.format(stats.getTotalProfit()));
-       addStatField(statsGrid, "Profit Factor: ", df.format(stats.getProfitFactor()));
-       addStatField(statsGrid, "Avg Profit/Trade: ", df.format(stats.getAverageProfit()));
-       addStatField(statsGrid, "Max Drawdown: ", pf.format(stats.getMaxDrawdown()));
-       addStatField(statsGrid, "Equity Drawdown: ", pf.format(htmlDatabase.getEquityDrawdown(providerName)));
-       addStatField(statsGrid, "Max Concurrent Lots: ", df.format(stats.getMaxConcurrentLots()));
+	   // Ändere das Grid-Layout auf 3 Zeilen und 6 Spalten für mehr Platz  
+	   JPanel statsGrid = new JPanel(new GridLayout(3, 6, 15, 5));
+	   
+	   double equityDrawdown = htmlDatabase.getEquityDrawdown(providerName);
+	   double threeMonthProfit = htmlDatabase.getAverageMonthlyProfit(providerName, 3);
+	   double sixMonthProfit = htmlDatabase.getAverageMonthlyProfit(providerName, 6);
+	   double nineMonthProfit = htmlDatabase.getAverageMonthlyProfit(providerName, 9);
+	   double twelveMonthProfit = htmlDatabase.getAverageMonthlyProfit(providerName, 12);
 
-       JPanel urlPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-       String urlText = String.format("<html><u>https://www.mql5.com/de/signals/%s?source=Site+Signals+Subscriptions#!tab=account</u></html>", 
-           providerId);
-       JLabel urlLabel = new JLabel(urlText);
-       urlLabel.setForeground(Color.BLUE);
-       urlLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-       
-       urlLabel.addMouseListener(new java.awt.event.MouseAdapter() {
-           @Override
-           public void mouseClicked(java.awt.event.MouseEvent evt) {
-               try {
-                   Desktop.getDesktop().browse(new URI(String.format(
-                       "https://www.mql5.com/de/signals/%s?source=Site+Signals+Subscriptions#!tab=account", 
-                       providerId)));
-               } catch (Exception e) {
-                   e.printStackTrace();
-               }
-           }
-       });
-       
-       urlPanel.add(urlLabel);
+	   double mpdd3 = calculateMPDD(threeMonthProfit, equityDrawdown);
+	   double mpdd6 = calculateMPDD(sixMonthProfit, equityDrawdown);
+	   double mpdd9 = calculateMPDD(nineMonthProfit, equityDrawdown);
+	   double mpdd12 = calculateMPDD(twelveMonthProfit, equityDrawdown);
 
-       JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-       JButton favButton = new JButton("Set Favorite");
-       JButton showTradesButton = new JButton("Show Trade List");
-       
-       favButton.setBackground(Color.WHITE);
-       favButton.addActionListener(e -> {
-           if (favButton.getBackground() == Color.WHITE) {
-               favButton.setBackground(Color.YELLOW);
-               favButton.setText("Remove Favorite");
-           } else {
-               favButton.setBackground(Color.WHITE);
-               favButton.setText("Set Favorite");
-           }
-       });
+	   // Erste Zeile
+	   addStatField(statsGrid, "Total Trades: ", String.format("%d", stats.getTrades().size()));
+	   addStatField(statsGrid, "Win Rate: ", pf.format(stats.getWinRate()));
+	   addStatField(statsGrid, "Total Profit: ", df.format(stats.getTotalProfit()));
+	   addStatField(statsGrid, "Profit Factor: ", df.format(stats.getProfitFactor()));
+	   addStatField(statsGrid, "Max Concurrent Lots: ", df.format(stats.getMaxConcurrentLots()));
+	   addStatField(statsGrid, "Days: ", String.format("%d", calculateDaysBetween(stats)));
 
-       showTradesButton.addActionListener(e -> {
-           TradeListFrame tradeListFrame = new TradeListFrame(getTitle(), stats);
-           tradeListFrame.setVisible(true);
-       });
+	   // Zweite Zeile
+	   addStatField(statsGrid, "Avg Profit/Trade: ", df.format(stats.getAverageProfit()));
+	   addStatField(statsGrid, "Max Drawdown: ", pf.format(stats.getMaxDrawdown()));
+	   addStatField(statsGrid, "Equity Drawdown: ", pf.format(equityDrawdown));
+	   addStatField(statsGrid, "Stability: ", df.format(htmlDatabase.getStabilitaetswert(providerName)));
+	   addStatField(statsGrid, "3MPDD: ", df.format(mpdd3));
+	   addStatField(statsGrid, "6MPDD: ", df.format(mpdd6));
 
-       buttonPanel.add(favButton);
-       buttonPanel.add(showTradesButton);
+	   // Dritte Zeile
+	   addStatField(statsGrid, "9MPDD: ", df.format(mpdd9));
+	   addStatField(statsGrid, "12MPDD: ", df.format(mpdd12));
+	   
+	   JPanel urlPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+	   String urlText = String.format("<html><u>https://www.mql5.com/de/signals/%s?source=Site+Signals+Subscriptions#!tab=account</u></html>", 
+	       providerId);
+	   JLabel urlLabel = new JLabel(urlText);
+	   urlLabel.setForeground(Color.BLUE);
+	   urlLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+	   
+	   urlLabel.addMouseListener(new java.awt.event.MouseAdapter() {
+	       @Override
+	       public void mouseClicked(java.awt.event.MouseEvent evt) {
+	           try {
+	               Desktop.getDesktop().browse(new URI(String.format(
+	                   "https://www.mql5.com/de/signals/%s?source=Site+Signals+Subscriptions#!tab=account", 
+	                   providerId)));
+	           } catch (Exception e) {
+	               e.printStackTrace();
+	           }
+	       }
+	   });
+	   
+	   urlPanel.add(urlLabel);
 
-       JPanel topPanel = new JPanel(new BorderLayout());
-       topPanel.add(statsGrid, BorderLayout.CENTER);
-       topPanel.add(buttonPanel, BorderLayout.EAST);
-       
-       mainPanel.add(topPanel, BorderLayout.NORTH);
-       mainPanel.add(urlPanel, BorderLayout.CENTER);
+	   JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+	   JButton favButton = new JButton("Set Favorite");
+	   JButton showTradesButton = new JButton("Show Trade List");
+	   
+	   favButton.setBackground(Color.WHITE);
+	   favButton.addActionListener(e -> {
+	       if (favButton.getBackground() == Color.WHITE) {
+	           favButton.setBackground(Color.YELLOW);
+	           favButton.setText("Remove Favorite");
+	       } else {
+	           favButton.setBackground(Color.WHITE);
+	           favButton.setText("Set Favorite");
+	       }
+	   });
 
-       return mainPanel;
-   }
+	   showTradesButton.addActionListener(e -> {
+	       TradeListFrame tradeListFrame = new TradeListFrame(getTitle(), stats);
+	       tradeListFrame.setVisible(true);
+	   });
+
+	   buttonPanel.add(favButton);
+	   buttonPanel.add(showTradesButton);
+
+	   JPanel topPanel = new JPanel(new BorderLayout());
+	   topPanel.add(statsGrid, BorderLayout.CENTER);
+	   topPanel.add(buttonPanel, BorderLayout.EAST);
+	   
+	   mainPanel.add(topPanel, BorderLayout.NORTH);
+	   mainPanel.add(urlPanel, BorderLayout.CENTER);
+
+	   return mainPanel;
+	}
+
+	private long calculateDaysBetween(ProviderStats stats) {
+	   return Math.abs(ChronoUnit.DAYS.between(stats.getStartDate(), stats.getEndDate())) + 1;
+	}
+
+	private double calculateMPDD(double monthlyProfitPercent, double maxEquityDrawdown) {
+	   if (maxEquityDrawdown == 0.0) {
+	       return 0.0;  // Verhindert Division durch Null
+	   }
+	   return monthlyProfitPercent / maxEquityDrawdown;
+	}
+
 
    private void addStatField(JPanel panel, String label, String value) {
        JPanel fieldPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
