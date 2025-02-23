@@ -1,6 +1,8 @@
 package ui;
 
 import java.awt.*;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
 import java.util.HashMap;
 import java.util.Map;
 import javax.swing.*;
@@ -21,7 +23,7 @@ public class FilterDialog extends JDialog {
         "3MProfProz", "Trades", "Trade Days", "Days", "Win Rate %", "Total Profit", 
         "Avg Profit/Trade", "Max Drawdown %", "Equity Drawdown %", 
         "Profit Factor", "MaxTrades", "MaxLots", "Max Duration (h)", 
-        "Risk Score", "S/L", "T/P", "Start Date", "End Date", "Stabilitaet"
+        "Risk Score", "S/L", "T/P", "Start Date", "End Date", "Stabilitaet", "Steigung"
     };
 
     public FilterDialog(JFrame parent, FilterCriteria filters) {
@@ -51,6 +53,14 @@ public class FilterDialog extends JDialog {
         filterTable.getColumnModel().getColumn(1).setPreferredWidth(100);
         filterTable.getColumnModel().getColumn(2).setPreferredWidth(100);
         
+        // Füge FocusListener für die Tabellenzellen hinzu
+        filterTable.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusLost(FocusEvent e) {
+                stopEditing();
+            }
+        });
+        
         setLayout(new BorderLayout(5, 5));
         
         JScrollPane scrollPane = new JScrollPane(filterTable);
@@ -62,6 +72,7 @@ public class FilterDialog extends JDialog {
         JButton resetButton = new JButton("Reset");
         
         okButton.addActionListener(e -> {
+            stopEditing(); // Stellt sicher, dass der letzte Wert übernommen wird
             if (validateAndSaveFilters()) {
                 dispose();
             }
@@ -84,8 +95,23 @@ public class FilterDialog extends JDialog {
         add(scrollPane, BorderLayout.CENTER);
         add(buttonPanel, BorderLayout.SOUTH);
         
+        // Füge WindowListener hinzu, um sicherzustellen, dass die Bearbeitung gestoppt wird
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosing(java.awt.event.WindowEvent windowEvent) {
+                stopEditing();
+            }
+        });
+        
         pack();
         setLocationRelativeTo(parent);
+    }
+    
+    // Hilfsmethode zum Stoppen der Bearbeitung
+    private void stopEditing() {
+        if (filterTable.isEditing()) {
+            filterTable.getCellEditor().stopCellEditing();
+        }
     }
     
     private boolean validateAndSaveFilters() {
@@ -101,7 +127,6 @@ public class FilterDialog extends JDialog {
             }
             
             // Textfilter für Signal Provider, Start Date und End Date
-            // Neue Indizes basierend auf der neuen Spaltenposition
             if (row == 1 || row == 23 || row == 24) {  // Signal Provider, Start Date, End Date
                 if (!minStr.isEmpty()) {
                     criteria.addFilter(row, new FilterRange(minStr));
