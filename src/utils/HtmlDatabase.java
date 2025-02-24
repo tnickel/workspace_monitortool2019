@@ -478,4 +478,17 @@ public class HtmlDatabase {
             return 0.0;
         }
     }
+ // In der Klasse HtmlDatabase.java
+    public double getEquityDrawdownGraphic(String csvFileName) {
+        Map<String, String> data = getFileData(csvFileName);
+        String drawdownGraphicStr = data.getOrDefault("MaxDDGraphic", "0")
+                                   .replace(",", ".")
+                                   .replace(" ", "");
+        try {
+            return Double.parseDouble(drawdownGraphicStr);
+        } catch (NumberFormatException e) {
+            LOGGER.warning("Could not parse max drawdown graphic: " + drawdownGraphicStr);
+            return 0.0;
+        }
+    }
 }
