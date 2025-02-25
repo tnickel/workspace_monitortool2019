@@ -19,6 +19,7 @@ import javax.swing.ToolTipManager;
 import javax.swing.table.TableRowSorter;
 
 import data.DataManager;
+import data.FavoritesManager;
 import data.ProviderStats;
 import models.FilterCriteria;
 import models.HighlightTableModel;
@@ -129,7 +130,8 @@ public class MainTable extends JTable {
                         String providerId = providerName.substring(providerName.lastIndexOf("_") + 1).replace(".csv", "");
                         
                         if (stats != null) {
-                            PerformanceAnalysisDialog detailFrame = new PerformanceAnalysisDialog(providerName, stats, providerId, htmlDatabase);
+                            PerformanceAnalysisDialog detailFrame = new PerformanceAnalysisDialog(
+                                providerName, stats, providerId, htmlDatabase, rootPath);
                             detailFrame.setVisible(true);
                         }
                     }
@@ -284,8 +286,58 @@ public class MainTable extends JTable {
         }
         currentFilter.loadFilters();
     }
- // In MainTable.java füge diese Methode hinzu:
+    
     public HtmlDatabase getHtmlDatabase() {
         return htmlDatabase;
+    }
+    
+    public void filterFavorites() {
+        if (dataManager == null) return;
+        
+        FavoritesManager favoritesManager = new FavoritesManager(rootPath);
+        System.out.println("Filterung nach Favoriten mit rootPath: " + rootPath);
+        
+        Map<String, ProviderStats> filteredStats = new HashMap<>();
+        
+        for (Map.Entry<String, ProviderStats> entry : dataManager.getStats().entrySet()) {
+            String providerName = entry.getKey();
+            String providerId = extractProviderId(providerName);
+            
+            System.out.println("Prüfe Provider: " + providerName + " mit ID: " + providerId);
+            
+            if (favoritesManager.isFavorite(providerId)) {
+                System.out.println("  -> Ist ein Favorit!");
+                filteredStats.put(providerName, entry.getValue());
+            }
+        }
+        
+        model.populateData(filteredStats);
+        updateStatus();
+    }
+    
+    // Hilfsmethode, um die Provider-ID aus dem Dateinamen zu extrahieren
+    private String extractProviderId(String providerName) {
+        // Variante 1: Name_123456.csv -> 123456
+        int underscoreIndex = providerName.lastIndexOf("_");
+        int dotIndex = providerName.lastIndexOf(".");
+        
+        if (underscoreIndex > 0 && dotIndex > underscoreIndex) {
+            return providerName.substring(underscoreIndex + 1, dotIndex);
+        }
+        
+        // Variante 2: Falls das Format anders ist, versuche Zahlen zu extrahieren
+        StringBuilder digits = new StringBuilder();
+        for (char c : providerName.toCharArray()) {
+            if (Character.isDigit(c)) {
+                digits.append(c);
+            }
+        }
+        
+        if (digits.length() > 0) {
+            return digits.toString();
+        }
+        
+        // Fallback
+        return providerName;
     }
 }

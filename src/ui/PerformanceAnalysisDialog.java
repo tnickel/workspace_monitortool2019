@@ -35,6 +35,7 @@ import charts.DurationProfitChart;
 import charts.SymbolDistributionChart;
 import charts.ThreeMonthProfitChart;
 import charts.TradeStackingChart;
+import data.FavoritesManager;
 import data.ProviderStats;
 import utils.ChartFactoryUtil;
 import utils.HtmlDatabase;
@@ -48,15 +49,17 @@ public class PerformanceAnalysisDialog extends JFrame
 	private final DecimalFormat pf = new DecimalFormat("#,##0.00'%'");
 	private final ChartFactoryUtil chartFactory;
 	private final HtmlDatabase htmlDatabase;
+    private final String rootPath;
 	
 	public PerformanceAnalysisDialog(String providerName, ProviderStats stats, String providerId,
-			HtmlDatabase htmlDatabase)
+			HtmlDatabase htmlDatabase, String rootPath)
 	{
 		super("Performance Analysis: " + providerName);
 		this.stats = stats;
 		this.providerId = providerId;
 		this.providerName = providerName;
 		this.htmlDatabase = htmlDatabase;
+        this.rootPath = rootPath;
 		this.chartFactory = new ChartFactoryUtil();
 		
 		// DEBUG: Ausgabe des Dateinamens
@@ -218,21 +221,33 @@ public class PerformanceAnalysisDialog extends JFrame
 		urlPanel.add(urlLabel);
 		
 		JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-		JButton favButton = new JButton("Set Favorite");
+		
+        // Den FavoritesManager initialisieren
+        FavoritesManager favoritesManager = new FavoritesManager(rootPath);
+        
+        // Überprüfen, ob der aktuelle Provider bereits ein Favorit ist
+        boolean isFavorite = favoritesManager.isFavorite(providerId);
+        
+        JButton favButton = new JButton(isFavorite ? "Remove Favorite" : "Set Favorite");
+        favButton.setBackground(isFavorite ? Color.YELLOW : Color.WHITE);
+        
 		JButton showTradesButton = new JButton("Show Trade List");
 		
-		favButton.setBackground(Color.WHITE);
-		favButton.addActionListener(e ->
-		{
-			if (favButton.getBackground() == Color.WHITE)
-			{
-				favButton.setBackground(Color.YELLOW);
-				favButton.setText("Remove Favorite");
-			} else
-			{
-				favButton.setBackground(Color.WHITE);
-				favButton.setText("Set Favorite");
-			}
+		favButton.addActionListener(e -> {
+            // Die Favoriten umschalten
+            favoritesManager.toggleFavorite(providerId);
+            
+            // Aktualisiere die Button-Anzeige
+            boolean isNowFavorite = favoritesManager.isFavorite(providerId);
+            if (isNowFavorite) {
+                favButton.setText("Remove Favorite");
+                favButton.setBackground(Color.YELLOW);
+            } else {
+                favButton.setText("Set Favorite");
+                favButton.setBackground(Color.WHITE);
+            }
+            
+            System.out.println("Favorit-Status für Provider " + providerId + " geändert: " + isNowFavorite);
 		});
 		
 		showTradesButton.addActionListener(e ->

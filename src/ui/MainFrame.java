@@ -161,6 +161,9 @@ public class MainFrame extends JFrame {
         toolBar.add(filterButton);
         
         JButton showFavoritesButton = new JButton("Show Favorites");
+        showFavoritesButton.addActionListener(e -> {
+            mainTable.filterFavorites();
+        });
         toolBar.add(showFavoritesButton);
         
         JButton compareButton = new JButton("Compare Equity Curves");
@@ -198,15 +201,15 @@ public class MainFrame extends JFrame {
         List<String> selectedProviders = mainTable.getSelectedProviders();
         if (selectedProviders.isEmpty()) {
             JOptionPane.showMessageDialog(this,
-                "Bitte w�hlen Sie mindestens einen Provider aus.",
+                "Bitte wählen Sie mindestens einen Provider aus.",
                 "Keine Auswahl",
                 JOptionPane.WARNING_MESSAGE);
             return;
         }
 
         int result = JOptionPane.showConfirmDialog(this,
-            "M�chten Sie die " + selectedProviders.size() + " ausgew�hlten Signal Provider l�schen?",
-            "Provider l�schen",
+            "Möchten Sie die " + selectedProviders.size() + " ausgewählten Signal Provider löschen?",
+            "Provider löschen",
             JOptionPane.YES_NO_OPTION);
             
         if (result == JOptionPane.YES_OPTION) {
@@ -275,7 +278,7 @@ public class MainFrame extends JFrame {
     }
     
     private void showFilterDialog() {
-        FilterDialog dialog = new FilterDialog(this, mainTable.getCurrentFilter()); // Filterkriterien �bergeben
+        FilterDialog dialog = new FilterDialog(this, mainTable.getCurrentFilter()); // Filterkriterien übergeben
         FilterCriteria criteria = dialog.showDialog();
         if (criteria != null) {
             mainTable.applyFilter(criteria);
