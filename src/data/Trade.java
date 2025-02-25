@@ -13,6 +13,12 @@ public class Trade {
     private final double lots;
     private final double openPrice;
     private final double closePrice;
+    private final double stopLoss;
+    private final double takeProfit;
+    
+    // Signal Provider Informationen
+    private final String signalProvider;
+    private final String signalProviderURL;
     
     // Finanzielle Informationen
     private final double commission;
@@ -22,6 +28,8 @@ public class Trade {
     public Trade(LocalDateTime openTime, LocalDateTime closeTime, 
                 String type, String symbol, double lots,
                 double openPrice, double closePrice,
+                double stopLoss, double takeProfit,
+                String signalProvider, String signalProviderURL,
                 double commission, double swap, double profit) {
         this.openTime = openTime;
         this.closeTime = closeTime;
@@ -30,6 +38,10 @@ public class Trade {
         this.lots = lots;
         this.openPrice = openPrice;
         this.closePrice = closePrice;
+        this.stopLoss = stopLoss;
+        this.takeProfit = takeProfit;
+        this.signalProvider = signalProvider;
+        this.signalProviderURL = signalProviderURL;
         this.commission = commission;
         this.swap = swap;
         this.profit = profit;
@@ -64,6 +76,22 @@ public class Trade {
         return closePrice;
     }
     
+    public double getStopLoss() {
+        return stopLoss;
+    }
+    
+    public double getTakeProfit() {
+        return takeProfit;
+    }
+    
+    public String getSignalProvider() {
+        return signalProvider;
+    }
+    
+    public String getSignalProviderURL() {
+        return signalProviderURL;
+    }
+    
     public double getCommission() {
         return commission;
     }
@@ -91,6 +119,10 @@ public class Trade {
             ", lots=" + lots +
             ", openPrice=" + openPrice +
             ", closePrice=" + closePrice +
+            ", stopLoss=" + stopLoss +
+            ", takeProfit=" + takeProfit +
+            ", signalProvider='" + signalProvider + '\'' +
+            ", signalProviderURL='" + signalProviderURL + '\'' +
             ", commission=" + commission +
             ", swap=" + swap +
             ", profit=" + profit +

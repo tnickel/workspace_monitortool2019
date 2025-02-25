@@ -1,188 +1,234 @@
 package ui;
 
-import javax.swing.*;
 import java.awt.*;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
 import models.FilterCriteria;
+import models.FilterCriteria.FilterRange;
 
 public class FilterDialog extends JDialog {
-    private FilterCriteria result = null;
-    private static FilterCriteria lastCriteria = null;
-    private final JTextField minTradeDaysField = new JTextField(10);
-    private final JTextField minProfitField = new JTextField(10);
-    private final JTextField minProfitFactorField = new JTextField(10);
-    private final JTextField minWinRateField = new JTextField(10);
-    private final JTextField maxDrawdownField = new JTextField(10);
-    private final JTextField minTotalProfitField = new JTextField(10);
-    private final JTextField maxConcurrentTradesField = new JTextField(10);
-    private final JTextField maxConcurrentLotsField = new JTextField(10);
+    private final JTable filterTable;
+    private FilterCriteria currentFilters;
     
-    public FilterDialog(JFrame parent) {
-        super(parent, "Filter Signal Providers", true);
+    private static final String[] COLUMN_NAMES = {
+        "Column Name", "Min Value", "Max Value"
+    };
+    
+    private static final String[] TABLE_COLUMNS = {
+    	    "No.", "Signal Provider", "Balance", "3MPDD", "6MPDD", "9MPDD", "12MPDD", 
+    	    "3MProfProz", "Trades", "Trade Days", "Days", "Win Rate %", "Total Profit", 
+    	    "Avg Profit/Trade", "Max Drawdown %", "Equity Drawdown %", 
+    	    "Profit Factor", "MaxTrades", "MaxLots", "Max Duration (h)", 
+    	    "Risk Score", "S/L", "T/P", "Start Date", "End Date", "Stabilitaet", "Steigung", "MaxDDGraphic"
+    	};
+
+    public FilterDialog(JFrame parent, FilterCriteria filters) {
+        super(parent, "Filter Settings", true);
+        this.currentFilters = filters;
         
-        // Panel f�r die Filter-Kriterien
-        JPanel filterPanel = new JPanel(new GridBagLayout());
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(5, 5, 5, 5);
-        gbc.anchor = GridBagConstraints.WEST;
+        DefaultTableModel model = new DefaultTableModel(COLUMN_NAMES, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return column > 0; 
+            }
+            
+            @Override
+            public void setValueAt(Object value, int row, int col) {
+                // Validiere Eingabe sofort
+                if (col > 0) {  // Nur für Min und Max Spalten
+                    String strValue = value.toString().trim();
+                    
+                    // Für Text-Spalten (Signal Provider, Start Date, End Date)
+                    if (row == 1 || row == 23 || row == 24) {
+                        super.setValueAt(strValue, row, col);
+                        return;
+                    }
+                    
+                    // Für numerische Spalten
+                    if (!strValue.isEmpty()) {
+                        try {
+                            Double.parseDouble(strValue);
+                            super.setValueAt(strValue, row, col);
+                        } catch (NumberFormatException e) {
+                            JOptionPane.showMessageDialog(null,
+                                "Bitte geben Sie eine gültige Zahl ein.",
+                                "Ungültige Eingabe",
+                                JOptionPane.ERROR_MESSAGE);
+                            return;
+                        }
+                    } else {
+                        super.setValueAt(strValue, row, col);
+                    }
+                }
+            }
+        };
         
-        // Zeile 1: Minimum Trade Days
-        gbc.gridx = 0; gbc.gridy = 0;
-        filterPanel.add(new JLabel("Min. Trade Days:"), gbc);
-        gbc.gridx = 1;
-        filterPanel.add(minTradeDaysField, gbc);
+        // Model mit existierenden Filtern befüllen
+        for (int i = 0; i < TABLE_COLUMNS.length; i++) {
+            Object minValue = "";
+            Object maxValue = "";
+            if (filters.getFilters().containsKey(i)) {
+                FilterRange range = filters.getFilters().get(i);
+                minValue = range.getMin() != null ? range.getMin().toString() : "";
+                maxValue = range.getMax() != null ? range.getMax().toString() : "";
+            }
+            model.addRow(new Object[]{TABLE_COLUMNS[i], minValue, maxValue});
+        }
         
-        // Zeile 2: Minimum Profit
-        gbc.gridx = 0; gbc.gridy = 1;
-        filterPanel.add(new JLabel("Min. Profit:"), gbc);
-        gbc.gridx = 1;
-        filterPanel.add(minProfitField, gbc);
+        filterTable = new JTable(model);
         
-        // Zeile 3: Minimum Total Profit
-        gbc.gridx = 0; gbc.gridy = 2;
-        filterPanel.add(new JLabel("Min. Total Profit:"), gbc);
-        gbc.gridx = 1;
-        filterPanel.add(minTotalProfitField, gbc);
+        // Verbesserte Zellenbearbeitung
+        filterTable.setDefaultEditor(Object.class, new DefaultCellEditor(new JTextField()) {
+            {
+                getComponent().addFocusListener(new FocusAdapter() {
+                    @Override
+                    public void focusLost(FocusEvent e) {
+                        stopCellEditing();
+                    }
+                });
+            }
+            
+            @Override
+            public boolean stopCellEditing() {
+                try {
+                    JTextField textField = (JTextField) getComponent();
+                    String value = textField.getText().trim();
+                    if (!value.isEmpty()) {
+                        int row = filterTable.getEditingRow();
+                        if (!(row == 1 || row == 23 || row == 24)) {  // Nicht für Text-Spalten
+                            Double.parseDouble(value);
+                        }
+                    }
+                    return super.stopCellEditing();
+                } catch (NumberFormatException e) {
+                    return false;
+                }
+            }
+        });
         
-        // Zeile 4: Minimum Profit Factor
-        gbc.gridx = 0; gbc.gridy = 3;
-        filterPanel.add(new JLabel("Min. Profit Factor:"), gbc);
-        gbc.gridx = 1;
-        filterPanel.add(minProfitFactorField, gbc);
+        // Verbesserte Tabelleneinstellungen
+        filterTable.putClientProperty("terminateEditOnFocusLost", Boolean.TRUE);
+        filterTable.getColumnModel().getColumn(0).setPreferredWidth(150);
+        filterTable.getColumnModel().getColumn(1).setPreferredWidth(100);
+        filterTable.getColumnModel().getColumn(2).setPreferredWidth(100);
         
-        // Zeile 5: Minimum Win Rate
-        gbc.gridx = 0; gbc.gridy = 4;
-        filterPanel.add(new JLabel("Min. Win Rate (%):"), gbc);
-        gbc.gridx = 1;
-        filterPanel.add(minWinRateField, gbc);
+        setLayout(new BorderLayout(5, 5));
         
-        // Zeile 6: Maximum Drawdown
-        gbc.gridx = 0; gbc.gridy = 5;
-        filterPanel.add(new JLabel("Max. Drawdown (%):"), gbc);
-        gbc.gridx = 1;
-        filterPanel.add(maxDrawdownField, gbc);
+        JScrollPane scrollPane = new JScrollPane(filterTable);
+        scrollPane.setPreferredSize(new Dimension(400, 500));
         
-        // Zeile 7: Max Concurrent Trades
-        gbc.gridx = 0; gbc.gridy = 6;
-        filterPanel.add(new JLabel("Max Concurrent Trades:"), gbc);
-        gbc.gridx = 1;
-        filterPanel.add(maxConcurrentTradesField, gbc);
-        
-        // Zeile 8: Max Concurrent Lots
-        gbc.gridx = 0; gbc.gridy = 7;
-        filterPanel.add(new JLabel("Max Concurrent Lots:"), gbc);
-        gbc.gridx = 1;
-        filterPanel.add(maxConcurrentLotsField, gbc);
-        
-        // Button Panel
-        JPanel buttonPanel = new JPanel();
-        JButton okButton = new JButton("OK");
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        JButton okButton = new JButton("Apply");
         JButton cancelButton = new JButton("Cancel");
+        JButton resetButton = new JButton("Reset");
         
         okButton.addActionListener(e -> {
-            if (validateAndSetResult()) {
-                lastCriteria = result;  // Speichern der letzten Werte
+            stopEditing();
+            if (validateAndSaveFilters()) {
                 dispose();
             }
         });
         
-        cancelButton.addActionListener(e -> {
-            result = null;
-            dispose();
+        cancelButton.addActionListener(e -> dispose());
+        
+        resetButton.addActionListener(e -> {
+            for (int row = 0; row < filterTable.getRowCount(); row++) {
+                filterTable.setValueAt("", row, 1);
+                filterTable.setValueAt("", row, 2);
+            }
         });
         
+        buttonPanel.add(resetButton);
         buttonPanel.add(okButton);
         buttonPanel.add(cancelButton);
         
-        // Main Layout
-        setLayout(new BorderLayout());
-        add(filterPanel, BorderLayout.CENTER);
+        add(new JLabel("Set min/max values for filtering:"), BorderLayout.NORTH);
+        add(scrollPane, BorderLayout.CENTER);
         add(buttonPanel, BorderLayout.SOUTH);
         
-        // Letzte Werte setzen, falls vorhanden
-        restoreLastValues();
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosing(java.awt.event.WindowEvent windowEvent) {
+                stopEditing();
+            }
+        });
         
         pack();
         setLocationRelativeTo(parent);
     }
     
-    private void restoreLastValues() {
-        if (lastCriteria != null) {
-            if (lastCriteria.getMinTradeDays() > 0) {
-                minTradeDaysField.setText(String.valueOf(lastCriteria.getMinTradeDays()));
-            }
-            if (lastCriteria.getMinProfit() > 0) {
-                minProfitField.setText(String.valueOf(lastCriteria.getMinProfit()));
-            }
-            if (lastCriteria.getMinTotalProfit() > 0) {
-                minTotalProfitField.setText(String.valueOf(lastCriteria.getMinTotalProfit()));
-            }
-            if (lastCriteria.getMinProfitFactor() > 0) {
-                minProfitFactorField.setText(String.valueOf(lastCriteria.getMinProfitFactor()));
-            }
-            if (lastCriteria.getMinWinRate() > 0) {
-                minWinRateField.setText(String.valueOf(lastCriteria.getMinWinRate()));
-            }
-            if (lastCriteria.getMaxDrawdown() < 100) {
-                maxDrawdownField.setText(String.valueOf(lastCriteria.getMaxDrawdown()));
-            }
-            if (lastCriteria.getMaxConcurrentTrades() < Integer.MAX_VALUE) {
-                maxConcurrentTradesField.setText(String.valueOf(lastCriteria.getMaxConcurrentTrades()));
-            }
-            if (lastCriteria.getMaxConcurrentLots() < Double.MAX_VALUE) {
-                maxConcurrentLotsField.setText(String.valueOf(lastCriteria.getMaxConcurrentLots()));
-            }
+    private void stopEditing() {
+        if (filterTable.isEditing()) {
+            filterTable.getCellEditor().stopCellEditing();
         }
     }
     
-    private boolean validateAndSetResult() {
-        try {
-            FilterCriteria criteria = new FilterCriteria();
+    private boolean validateAndSaveFilters() {
+        stopEditing();
+        
+        FilterCriteria criteria = new FilterCriteria();
+        boolean hasAnyFilter = false;
+        
+        for (int row = 0; row < filterTable.getRowCount(); row++) {
+            String minStr = ((String) filterTable.getValueAt(row, 1)).trim();
+            String maxStr = ((String) filterTable.getValueAt(row, 2)).trim();
             
-            if (!minTradeDaysField.getText().isEmpty()) {
-                criteria.setMinTradeDays(Integer.parseInt(minTradeDaysField.getText().trim()));
+            if (minStr.isEmpty() && maxStr.isEmpty()) {
+                continue;
             }
             
-            if (!minProfitField.getText().isEmpty()) {
-                criteria.setMinProfit(Double.parseDouble(minProfitField.getText().trim()));
+            // Textfilter für Signal Provider, Start Date und End Date
+            if (row == 1 || row == 23 || row == 24) {
+                if (!minStr.isEmpty()) {
+                    criteria.addFilter(row, new FilterRange(minStr));
+                    hasAnyFilter = true;
+                }
+                continue;
             }
             
-            if (!minTotalProfitField.getText().isEmpty()) {
-                criteria.setMinTotalProfit(Double.parseDouble(minTotalProfitField.getText().trim()));
+            try {
+                Double min = minStr.isEmpty() ? null : Double.parseDouble(minStr);
+                Double max = maxStr.isEmpty() ? null : Double.parseDouble(maxStr);
+                
+                // Prüfe, ob Min kleiner als Max ist
+                if (min != null && max != null && min > max) {
+                    JOptionPane.showMessageDialog(this,
+                        "Minimum muss kleiner als Maximum sein in Zeile " + (row + 1),
+                        "Validierungsfehler",
+                        JOptionPane.ERROR_MESSAGE);
+                    return false;
+                }
+                
+                if (min != null || max != null) {
+                    criteria.addFilter(row, new FilterRange(min, max));
+                    hasAnyFilter = true;
+                }
+            } catch (NumberFormatException e) {
+                JOptionPane.showMessageDialog(this,
+                    "Ungültiges Zahlenformat in Zeile " + (row + 1),
+                    "Validierungsfehler",
+                    JOptionPane.ERROR_MESSAGE);
+                return false;
             }
-            
-            if (!minProfitFactorField.getText().isEmpty()) {
-                criteria.setMinProfitFactor(Double.parseDouble(minProfitFactorField.getText().trim()));
-            }
-            
-            if (!minWinRateField.getText().isEmpty()) {
-                criteria.setMinWinRate(Double.parseDouble(minWinRateField.getText().trim()));
-            }
-            
-            if (!maxDrawdownField.getText().isEmpty()) {
-                criteria.setMaxDrawdown(Double.parseDouble(maxDrawdownField.getText().trim()));
-            }
-            
-            if (!maxConcurrentTradesField.getText().isEmpty()) {
-                criteria.setMaxConcurrentTrades(Integer.parseInt(maxConcurrentTradesField.getText().trim()));
-            }
-            
-            if (!maxConcurrentLotsField.getText().isEmpty()) {
-                criteria.setMaxConcurrentLots(Double.parseDouble(maxConcurrentLotsField.getText().trim()));
-            }
-            
-            result = criteria;
-            return true;
-            
-        } catch (NumberFormatException e) {
+        }
+        
+        if (!hasAnyFilter) {
             JOptionPane.showMessageDialog(this,
-                "Please enter valid numbers for all fields.",
-                "Invalid Input", JOptionPane.ERROR_MESSAGE);
+                "Bitte mindestens ein Filterkriterium setzen",
+                "Validierungsfehler",
+                JOptionPane.WARNING_MESSAGE);
             return false;
         }
+        
+        this.currentFilters = criteria;
+        criteria.saveFilters();
+        return true;
     }
     
     public FilterCriteria showDialog() {
         setVisible(true);
-        return result;  // Will be null if cancelled
+        return currentFilters;
     }
 }

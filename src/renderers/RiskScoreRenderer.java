@@ -1,42 +1,57 @@
 package renderers;
 
-
-
+import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
-import javax.swing.JTable;
-import java.awt.Component;
-import java.awt.Color;
-import services.RiskAnalysisServ;
+import java.awt.*;
 
 public class RiskScoreRenderer extends DefaultTableCellRenderer {
+    
     @Override
-    public Component getTableCellRendererComponent(
-            JTable table, Object value,
-            boolean isSelected, boolean hasFocus,
-            int row, int column) {
+    public Component getTableCellRendererComponent(JTable table, Object value,
+            boolean isSelected, boolean hasFocus, int row, int column) {
+        Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
         
-        Component c = super.getTableCellRendererComponent(
-            table, value, isSelected, hasFocus, row, column);
+        if (value instanceof Integer || value instanceof Double) {
+            double riskScore = value instanceof Integer ? (Integer)value : (Double)value;
             
-        if (value instanceof Number) {
-            int score = ((Number) value).intValue();
-            String category = RiskAnalysisServ.getRiskCategory(score);
-            
-            setText(score + " (" + category + ")");
-            
+            // Setze Farbe basierend auf Risiko-Score
             if (!isSelected) {
-                if (score <= 20) {
-                    setForeground(new Color(0, 100, 0));  // Dunkelgrün
-                } else if (score <= 40) {
-                    setForeground(new Color(0, 150, 0));  // Grün
-                } else if (score <= 60) {
-                    setForeground(new Color(180, 180, 0)); // Gelb
-                } else if (score <= 80) {
-                    setForeground(new Color(200, 100, 0)); // Orange
+                if (riskScore >= 8) {
+                    c.setBackground(new Color(255, 200, 200)); // Hellrot für hohes Risiko
+                } else if (riskScore <= 3) {
+                    c.setBackground(new Color(200, 255, 200)); // Hellgrün für niedriges Risiko
                 } else {
-                    setForeground(new Color(200, 0, 0));   // Rot
+                    c.setBackground(new Color(255, 255, 200)); // Hellgelb für mittleres Risiko
                 }
             }
+            
+            // Tooltip mit Risiko-Erklärung
+            StringBuilder tooltip = new StringBuilder("<html>");
+            tooltip.append("<b>Risiko-Score Erklärung:</b><br><br>");
+            tooltip.append("Score: ").append(String.format("%.1f", riskScore)).append("<br><br>");
+            
+            if (riskScore >= 8) {
+                tooltip.append("<b>Hohes Risiko:</b><br>");
+                tooltip.append("• Hohe Drawdowns<br>");
+                tooltip.append("• Große Positionsgrößen<br>");
+                tooltip.append("• Wenig konsistente Performance<br>");
+                tooltip.append("• Erhöhtes Verlustrisiko");
+            } else if (riskScore <= 3) {
+                tooltip.append("<b>Niedriges Risiko:</b><br>");
+                tooltip.append("• Moderate Drawdowns<br>");
+                tooltip.append("• Angemessene Positionsgrößen<br>");
+                tooltip.append("• Konsistente Performance<br>");
+                tooltip.append("• Gutes Risikomanagement");
+            } else {
+                tooltip.append("<b>Mittleres Risiko:</b><br>");
+                tooltip.append("• Durchschnittliche Drawdowns<br>");
+                tooltip.append("• Normale Positionsgrößen<br>");
+                tooltip.append("• Teilweise schwankende Performance<br>");
+                tooltip.append("• Ausgewogenes Risiko/Rendite-Verhältnis");
+            }
+            tooltip.append("</html>");
+            
+            setToolTipText(tooltip.toString());
         }
         
         return c;

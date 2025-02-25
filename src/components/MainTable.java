@@ -1,13 +1,25 @@
 package components;
 
+import java.awt.BorderLayout;
+import java.awt.Container;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+<<<<<<< HEAD
 import java.time.format.DateTimeFormatter;
+=======
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+>>>>>>> feb2025
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+import javax.swing.JButton;
 import javax.swing.JTable;
+import javax.swing.SwingUtilities;
+import javax.swing.ToolTipManager;
 import javax.swing.table.TableRowSorter;
 
 import data.DataManager;
@@ -16,42 +28,96 @@ import models.FilterCriteria;
 import models.HighlightTableModel;
 import renderers.HighlightRenderer;
 import renderers.RiskScoreRenderer;
-import ui.DetailFrame;
+import ui.PerformanceAnalysisDialog;
+import ui.ShowSignalProviderList;
+import utils.HtmlDatabase;
 
 public class MainTable extends JTable {
     private final HighlightTableModel model;
     private final HighlightRenderer renderer;
     private final RiskScoreRenderer riskRenderer;
     private final DataManager dataManager;
+<<<<<<< HEAD
     private final DateTimeFormatter dateFormatter;
+=======
+    private String rootPath;
+>>>>>>> feb2025
     private FilterCriteria currentFilter;
     private Consumer<String> statusUpdateCallback;
+    private final HtmlDatabase htmlDatabase;
     
-    public MainTable(DataManager dataManager) {
+    public MainTable(DataManager dataManager, String downloadPath) {
         this.dataManager = dataManager;
+<<<<<<< HEAD
         this.dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
         this.model = new HighlightTableModel(dateFormatter);
+=======
+        this.rootPath = downloadPath;
+        this.model = new HighlightTableModel(rootPath);
+>>>>>>> feb2025
         this.renderer = new HighlightRenderer();
         this.riskRenderer = new RiskScoreRenderer();
+        this.htmlDatabase = new HtmlDatabase(rootPath);
+        this.currentFilter = new FilterCriteria();
+
+        loadSavedFilter(); // Filter beim Start laden
         initialize();
         setupMouseListener();
         setupModelListener();
     }
-    
+
+    public FilterCriteria getCurrentFilter() {
+        return currentFilter != null ? currentFilter : new FilterCriteria();
+    }
+
     private void initialize() {
         setModel(model);
-        setRowSorter(new TableRowSorter<>(model));
+        TableRowSorter<HighlightTableModel> sorter = new TableRowSorter<>(model);
         
+        // Setze spezifische Comparatoren für jede Spalte
+        for (int i = 0; i < model.getColumnCount(); i++) {
+            final int column = i;
+            sorter.setComparator(column, (Comparator<Object>) (o1, o2) -> {
+                if (o1 == null && o2 == null) return 0;
+                if (o1 == null) return -1;
+                if (o2 == null) return 1;
+                
+                // Behandle numerische Spalten
+                if (o1 instanceof Number && o2 instanceof Number) {
+                    double d1 = ((Number) o1).doubleValue();
+                    double d2 = ((Number) o2).doubleValue();
+                    return Double.compare(d1, d2);
+                }
+                
+                // String Vergleich für alle anderen Fälle
+                return o1.toString().compareTo(o2.toString());
+            });
+        }
+        setRowSorter(sorter);
+        
+        ToolTipManager.sharedInstance().setInitialDelay(200);
+        ToolTipManager.sharedInstance().setDismissDelay(8000);
+        ToolTipManager.sharedInstance().registerComponent(this);
+        
+<<<<<<< HEAD
         // Set renderer for all columns
         for (int i = 0; i < getColumnCount(); i++) {
             if (i == 6) { // Max Drawdown column
                 getColumnModel().getColumn(i).setCellRenderer(riskRenderer);
             } else if (i == 7) { // Profit Factor column
+=======
+        // Setze die Renderer für die Spalten
+        for (int i = 0; i < getColumnCount(); i++) {
+            String columnName = getColumnModel().getColumn(i).getHeaderValue().toString();
+            // Finde die Risk Score Spalte basierend auf dem Index
+            if (i == 19) { // Risk Score ist an Position 19 im COLUMN_NAMES Array
+>>>>>>> feb2025
                 getColumnModel().getColumn(i).setCellRenderer(riskRenderer);
             } else {
                 getColumnModel().getColumn(i).setCellRenderer(renderer);
             }
         }
+<<<<<<< HEAD
         
         // Set column widths
         getColumnModel().getColumn(0).setPreferredWidth(50);   // No.
@@ -71,6 +137,26 @@ public class MainTable extends JTable {
         
         // Initial data population
         refreshTableData();
+=======
+        getColumnModel().getColumn(1).setPreferredWidth(300);  // Signal Provider ist Spalte 1
+        getColumnModel().getColumn(1).setMinWidth(250);      
+        model.populateData(dataManager.getStats());
+>>>>>>> feb2025
+    }
+    
+    public JButton createShowSignalProviderButton() {
+        JButton showProvidersButton = new JButton("Show Signal Providers");
+        showProvidersButton.addActionListener(e -> {
+            Map<String, ProviderStats> currentStats = getCurrentProviderStats();
+            ShowSignalProviderList dialog = new ShowSignalProviderList(
+                SwingUtilities.getWindowAncestor(this),
+                currentStats,
+                htmlDatabase,
+                rootPath
+            );
+            dialog.setVisible(true);
+        });
+        return showProvidersButton;
     }
     
     private void setupMouseListener() {
@@ -86,7 +172,7 @@ public class MainTable extends JTable {
                         String providerId = providerName.substring(providerName.lastIndexOf("_") + 1).replace(".csv", "");
                         
                         if (stats != null) {
-                            DetailFrame detailFrame = new DetailFrame(providerName, stats, providerId);
+                            PerformanceAnalysisDialog detailFrame = new PerformanceAnalysisDialog(providerName, stats, providerId, htmlDatabase);
                             detailFrame.setVisible(true);
                         }
                     }
@@ -104,20 +190,27 @@ public class MainTable extends JTable {
         updateStatus();
     }
     
+    public String getStatusText() {
+        int totalProviders = dataManager.getStats().size();
+        int visibleProviders = model.getRowCount();
+        
+        StringBuilder status = new StringBuilder()
+            .append(String.format("%d/%d Signal Providers", visibleProviders, totalProviders));
+            
+        if (currentFilter != null) {
+            status.append(" (filtered)");
+        }
+
+        status.append(" | Download Path: " + rootPath);
+
+        return status.toString();
+    }
+    
     public void updateStatus() {
         if (statusUpdateCallback != null) {
-            int totalProviders = dataManager.getStats().size();
-            int visibleProviders = model.getRowCount();
-            
-            StringBuilder status = new StringBuilder()
-                .append(String.format("%d/%d Signal Providers", visibleProviders, totalProviders));
-                
-            if (currentFilter != null) {
-                status.append(" (filtered)");
-            }
-
-            statusUpdateCallback.accept(status.toString());
+            statusUpdateCallback.accept(getStatusText());
         }
+        repaint();
     }
     
     public void highlightSearchText(String text) {
@@ -147,6 +240,7 @@ public class MainTable extends JTable {
         return false;
     }
     
+<<<<<<< HEAD
     public void applyFilter(FilterCriteria criteria) {
         this.currentFilter = criteria;
         refreshTableData();
@@ -156,15 +250,43 @@ public class MainTable extends JTable {
         model.clearData();
         Map<String, ProviderStats> statsToShow;
         
+=======
+    public void refreshTableData() {
+>>>>>>> feb2025
         if (currentFilter == null) {
             statsToShow = dataManager.getStats();
         } else {
+<<<<<<< HEAD
             statsToShow = dataManager.getStats().entrySet().stream()
                 .filter(entry -> currentFilter.matches(entry.getValue()))
+=======
+            Map<String, ProviderStats> filteredStats = dataManager.getStats().entrySet().stream()
+                .filter(entry -> {
+                    // Hole die tatsächlichen Werte durch temporäres Befüllen der Tabelle
+                    model.setRowCount(0);
+                    model.populateData(Map.of(entry.getKey(), entry.getValue()));
+                    
+                    // Extrahiere die Werte aus der ersten (und einzigen) Zeile
+                    Object[] rowData = new Object[model.getColumnCount()];
+                    for (int i = 0; i < model.getColumnCount(); i++) {
+                        rowData[i] = model.getValueAt(0, i);
+                    }
+                    
+                    // Prüfe ob die Werte dem Filter entsprechen
+                    boolean matches = currentFilter.matches(entry.getValue(), rowData);
+                    return matches;
+                })
+>>>>>>> feb2025
                 .collect(Collectors.toMap(
                     Map.Entry::getKey,
                     Map.Entry::getValue
                 ));
+<<<<<<< HEAD
+=======
+                
+            // Zeige die gefilterten Daten an
+            model.populateData(filteredStats);
+>>>>>>> feb2025
         }
         
         for (Map.Entry<String, ProviderStats> entry : statsToShow.entrySet()) {
@@ -180,10 +302,60 @@ public class MainTable extends JTable {
             return dataManager.getStats();
         }
         return dataManager.getStats().entrySet().stream()
-            .filter(entry -> currentFilter.matches(entry.getValue()))
+            .filter(entry -> currentFilter.matches(
+                entry.getValue(),
+                model.createRowDataForProvider(entry.getKey(), entry.getValue())
+            ))
             .collect(Collectors.toMap(
                 Map.Entry::getKey,
                 Map.Entry::getValue
             ));
+    }
+
+    public List<String> getSelectedProviders() {
+        int[] selectedRows = getSelectedRows();
+        List<String> providers = new ArrayList<>();
+        for (int row : selectedRows) {
+            int modelRow = convertRowIndexToModel(row);
+            String provider = (String) model.getValueAt(modelRow, 1);
+            providers.add(provider);
+        }
+        return providers;
+    }
+
+    public Map<String, ProviderStats> getSelectedProvidersMap() {
+        List<String> selectedProviders = getSelectedProviders();
+        Map<String, ProviderStats> selectedStats = new HashMap<>();
+        
+        Map<String, ProviderStats> allStats = dataManager.getStats();
+        for (String provider : selectedProviders) {
+            if (allStats.containsKey(provider)) {
+                selectedStats.put(provider, allStats.get(provider));
+            }
+        }
+        return selectedStats;
+    }
+
+    public void applyFilter(FilterCriteria criteria) {
+        this.currentFilter = criteria;
+        currentFilter.saveFilters(); // Speichert die Filterwerte nach Anwendung
+        refreshTableData();
+    }
+
+    public void resetFilter() {
+        this.currentFilter = new FilterCriteria();
+        currentFilter.saveFilters(); // Speichert den leeren Filter
+        refreshTableData();
+    }
+
+    public void loadSavedFilter() {
+        if (currentFilter == null) {
+            currentFilter = new FilterCriteria();
+        }
+        currentFilter.loadFilters();
+    }
+ // In MainTable.java füge diese Methode hinzu:
+    public HtmlDatabase getHtmlDatabase() {
+        return htmlDatabase;
     }
 }
