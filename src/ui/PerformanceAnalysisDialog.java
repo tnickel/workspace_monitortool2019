@@ -32,6 +32,7 @@ import org.jfree.chart.ChartPanel;
 
 import charts.DrawdownChart;
 import charts.DurationProfitChart;
+import charts.MonthlyTradeCountChart;
 import charts.SymbolDistributionChart;
 import charts.ThreeMonthProfitChart;
 import charts.TradeStackingChart;
@@ -137,6 +138,13 @@ public class PerformanceAnalysisDialog extends JFrame
 		durationChart.setPreferredSize(chartSize);
 		durationChart.setAlignmentX(LEFT_ALIGNMENT);
 		mainPanel.add(durationChart);
+		mainPanel.add(javax.swing.Box.createRigidArea(new Dimension(0, 20)));
+		
+		// Neue MonthlyTradeCountChart hinzufügen
+		MonthlyTradeCountChart tradeCountChart = new MonthlyTradeCountChart(stats.getTrades());
+		tradeCountChart.setPreferredSize(chartSize);
+		tradeCountChart.setAlignmentX(LEFT_ALIGNMENT);
+		mainPanel.add(tradeCountChart);
 		mainPanel.add(javax.swing.Box.createRigidArea(new Dimension(0, 20)));
 		
 		DrawdownChart drawdownChart = new DrawdownChart(stats.getTrades(), stats.getInitialBalance());
