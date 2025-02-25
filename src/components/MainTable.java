@@ -4,14 +4,10 @@ import java.awt.BorderLayout;
 import java.awt.Container;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-<<<<<<< HEAD
-import java.time.format.DateTimeFormatter;
-=======
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
->>>>>>> feb2025
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -37,24 +33,15 @@ public class MainTable extends JTable {
     private final HighlightRenderer renderer;
     private final RiskScoreRenderer riskRenderer;
     private final DataManager dataManager;
-<<<<<<< HEAD
-    private final DateTimeFormatter dateFormatter;
-=======
     private String rootPath;
->>>>>>> feb2025
     private FilterCriteria currentFilter;
     private Consumer<String> statusUpdateCallback;
     private final HtmlDatabase htmlDatabase;
     
     public MainTable(DataManager dataManager, String downloadPath) {
         this.dataManager = dataManager;
-<<<<<<< HEAD
-        this.dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-        this.model = new HighlightTableModel(dateFormatter);
-=======
         this.rootPath = downloadPath;
         this.model = new HighlightTableModel(rootPath);
->>>>>>> feb2025
         this.renderer = new HighlightRenderer();
         this.riskRenderer = new RiskScoreRenderer();
         this.htmlDatabase = new HtmlDatabase(rootPath);
@@ -99,49 +86,19 @@ public class MainTable extends JTable {
         ToolTipManager.sharedInstance().setDismissDelay(8000);
         ToolTipManager.sharedInstance().registerComponent(this);
         
-<<<<<<< HEAD
-        // Set renderer for all columns
-        for (int i = 0; i < getColumnCount(); i++) {
-            if (i == 6) { // Max Drawdown column
-                getColumnModel().getColumn(i).setCellRenderer(riskRenderer);
-            } else if (i == 7) { // Profit Factor column
-=======
         // Setze die Renderer für die Spalten
         for (int i = 0; i < getColumnCount(); i++) {
             String columnName = getColumnModel().getColumn(i).getHeaderValue().toString();
             // Finde die Risk Score Spalte basierend auf dem Index
             if (i == 19) { // Risk Score ist an Position 19 im COLUMN_NAMES Array
->>>>>>> feb2025
                 getColumnModel().getColumn(i).setCellRenderer(riskRenderer);
             } else {
                 getColumnModel().getColumn(i).setCellRenderer(renderer);
             }
         }
-<<<<<<< HEAD
-        
-        // Set column widths
-        getColumnModel().getColumn(0).setPreferredWidth(50);   // No.
-        getColumnModel().getColumn(1).setPreferredWidth(150);  // Signal Provider
-        getColumnModel().getColumn(2).setPreferredWidth(80);   // Trades
-        getColumnModel().getColumn(3).setPreferredWidth(100);  // Win Rate
-        getColumnModel().getColumn(4).setPreferredWidth(100);  // Total Profit
-        getColumnModel().getColumn(5).setPreferredWidth(120);  // Avg Profit/Trade
-        getColumnModel().getColumn(6).setPreferredWidth(120);  // Max Drawdown
-        getColumnModel().getColumn(7).setPreferredWidth(100);  // Profit Factor
-        getColumnModel().getColumn(8).setPreferredWidth(150);  // Max Concurrent Trades
-        getColumnModel().getColumn(9).setPreferredWidth(150);  // Max Concurrent Lots
-        getColumnModel().getColumn(10).setPreferredWidth(100); // Start Date
-        getColumnModel().getColumn(11).setPreferredWidth(100); // End Date
-        getColumnModel().getColumn(12).setPreferredWidth(80);  // Users
-        getColumnModel().getColumn(13).setPreferredWidth(120); // Invested Capital
-        
-        // Initial data population
-        refreshTableData();
-=======
         getColumnModel().getColumn(1).setPreferredWidth(300);  // Signal Provider ist Spalte 1
         getColumnModel().getColumn(1).setMinWidth(250);      
         model.populateData(dataManager.getStats());
->>>>>>> feb2025
     }
     
     public JButton createShowSignalProviderButton() {
@@ -187,7 +144,6 @@ public class MainTable extends JTable {
     
     public void setStatusUpdateCallback(Consumer<String> callback) {
         this.statusUpdateCallback = callback;
-        updateStatus();
     }
     
     public String getStatusText() {
@@ -240,26 +196,10 @@ public class MainTable extends JTable {
         return false;
     }
     
-<<<<<<< HEAD
-    public void applyFilter(FilterCriteria criteria) {
-        this.currentFilter = criteria;
-        refreshTableData();
-    }
-    
-    private void refreshTableData() {
-        model.clearData();
-        Map<String, ProviderStats> statsToShow;
-        
-=======
     public void refreshTableData() {
->>>>>>> feb2025
         if (currentFilter == null) {
-            statsToShow = dataManager.getStats();
+            model.populateData(dataManager.getStats());
         } else {
-<<<<<<< HEAD
-            statsToShow = dataManager.getStats().entrySet().stream()
-                .filter(entry -> currentFilter.matches(entry.getValue()))
-=======
             Map<String, ProviderStats> filteredStats = dataManager.getStats().entrySet().stream()
                 .filter(entry -> {
                     // Hole die tatsächlichen Werte durch temporäres Befüllen der Tabelle
@@ -276,24 +216,14 @@ public class MainTable extends JTable {
                     boolean matches = currentFilter.matches(entry.getValue(), rowData);
                     return matches;
                 })
->>>>>>> feb2025
                 .collect(Collectors.toMap(
                     Map.Entry::getKey,
                     Map.Entry::getValue
                 ));
-<<<<<<< HEAD
-=======
                 
             // Zeige die gefilterten Daten an
             model.populateData(filteredStats);
->>>>>>> feb2025
         }
-        
-        for (Map.Entry<String, ProviderStats> entry : statsToShow.entrySet()) {
-            String providerName = entry.getKey();
-            model.addRow(providerName, entry.getValue());
-        }
-        
         updateStatus();
     }
     

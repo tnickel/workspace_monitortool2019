@@ -5,14 +5,10 @@ import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
-<<<<<<< HEAD
-=======
 import java.util.Map;
 import java.util.TreeMap;
->>>>>>> feb2025
 
 import org.jfree.data.category.DefaultCategoryDataset;
-
 import utils.TradeUtils;
 
 public class ProviderStats {
@@ -20,24 +16,16 @@ public class ProviderStats {
     private final List<Double> profits;
     private final Map<YearMonth, Double> monthlyProfitPercentages;
     private double initialBalance;
-<<<<<<< HEAD
-    private int userCount;
-    private double investedCapital;
-    private String currency = "USD"; // Default-Währung
-=======
     private boolean hasStopLoss = false;
     private boolean hasTakeProfit = false;
     private String signalProvider;
     private String signalProviderURL;
->>>>>>> feb2025
     
     public ProviderStats() {
         this.trades = new ArrayList<>();
         this.profits = new ArrayList<>();
         this.monthlyProfitPercentages = new TreeMap<>();
         this.initialBalance = 0.0;
-        this.userCount = 0;
-        this.investedCapital = 0.0;
     }
 
     public void setSignalProviderInfo(String provider, String url) {
@@ -163,23 +151,13 @@ public class ProviderStats {
     }
     
     public LocalDate getStartDate() {
-        if (trades.isEmpty()) {
-            return LocalDate.now();
-        }
-        return trades.stream()
-            .map(trade -> trade.getOpenTime().toLocalDate())
-            .min(LocalDate::compareTo)
-            .orElse(LocalDate.now());
+        return trades.isEmpty() ? LocalDate.now() : 
+               trades.get(0).getOpenTime().toLocalDate();
     }
     
     public LocalDate getEndDate() {
-        if (trades.isEmpty()) {
-            return LocalDate.now();
-        }
-        return trades.stream()
-            .map(trade -> trade.getCloseTime().toLocalDate())
-            .max(LocalDate::compareTo)
-            .orElse(LocalDate.now());
+        return trades.isEmpty() ? LocalDate.now() : 
+               trades.get(trades.size() - 1).getCloseTime().toLocalDate();
     }
     
     public boolean hasStopLoss() {
@@ -254,27 +232,5 @@ public class ProviderStats {
             }
         }
         return maxDrawdownPercent;
-    }
-    public void setUserCount(int userCount) {
-        this.userCount = userCount;
-    }
-    
-    public int getUserCount() {
-        return userCount;
-    }
-    
-    public void setInvestedCapital(double investedCapital) {
-        this.investedCapital = investedCapital;
-    }
-    
-    public double getInvestedCapital() {
-        return investedCapital;
-    }
-    public void setCurrency(String currency) {
-        this.currency = currency;
-    }
-
-    public String getCurrency() {
-        return currency;
     }
 }
