@@ -52,47 +52,46 @@ public class PerformanceAnalysisDialog extends JFrame
 	private final HtmlDatabase htmlDatabase;
     private final String rootPath;
 	
-	public PerformanceAnalysisDialog(String providerName, ProviderStats stats, String providerId,
-			HtmlDatabase htmlDatabase, String rootPath)
-	{
-		super("Performance Analysis: " + providerName);
-		this.stats = stats;
-		this.providerId = providerId;
-		this.providerName = providerName;
-		this.htmlDatabase = htmlDatabase;
+    public PerformanceAnalysisDialog(String providerName, ProviderStats stats, String providerId,
+            HtmlDatabase htmlDatabase, String rootPath) {
+        super("Performance Analysis: " + providerName);
+        this.stats = stats;
+        this.providerId = providerId;
+        this.providerName = providerName;
+        this.htmlDatabase = htmlDatabase;
         this.rootPath = rootPath;
-		this.chartFactory = new ChartFactoryUtil();
-		
-		// DEBUG: Ausgabe des Dateinamens
-		System.out.println("Reading data for file: " + providerName + ".csv");
-		
-		// DEBUG: Ausgabe der gelesenen Daten
-		Map<String, Double> monthlyProfits = htmlDatabase.getMonthlyProfitPercentages(providerName + ".csv");
-		System.out.println("Monthly profits read: " + monthlyProfits);
-		
-		stats.setMonthlyProfits(monthlyProfits);
-		
-		initializeUI();
-		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-		
-		// Breite um 30% erhöhen und Höhe um 10% reduzieren
-		Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
-		int width = (int) (screenSize.width * 0.75); // 75% der Bildschirmbreite
-		int height = (int) (screenSize.height * 0.8); // 80% der Bildschirmhöhe
-		setSize(width, height);
-		
-		setLocationRelativeTo(null);
-		
-		KeyStroke escapeKeyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0, false);
-		Action escapeAction = new AbstractAction() {
-			public void actionPerformed(java.awt.event.ActionEvent e)
-			{
-				dispose();
-			}
-		};
-		getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(escapeKeyStroke, "ESCAPE");
-		getRootPane().getActionMap().put("ESCAPE", escapeAction);
-	}
+        this.chartFactory = new ChartFactoryUtil();
+        
+        // DEBUG: Ausgabe des Dateinamens
+        System.out.println("Reading data for file: " + providerName + ".csv");
+        
+        // DEBUG: Ausgabe der gelesenen Daten
+        Map<String, Double> monthlyProfits = htmlDatabase.getMonthlyProfitPercentages(providerName + ".csv");
+        System.out.println("Monthly profits read: " + monthlyProfits);
+        
+        stats.setMonthlyProfits(monthlyProfits);
+        
+        initializeUI();
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        
+        // Fensterbreite auf 85% statt 75% und Höhe unverändert bei 80%
+        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+        int width = (int) (screenSize.width * 0.85); // Erhöht von 75% auf 85%
+        int height = (int) (screenSize.height * 0.8); // 80% der Bildschirmhöhe
+        setSize(width, height);
+        
+        setLocationRelativeTo(null);
+        
+        KeyStroke escapeKeyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0, false);
+        Action escapeAction = new AbstractAction() {
+            public void actionPerformed(java.awt.event.ActionEvent e)
+            {
+                dispose();
+            }
+        };
+        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(escapeKeyStroke, "ESCAPE");
+        getRootPane().getActionMap().put("ESCAPE", escapeAction);
+    }
 	
 	private void initializeUI()
 	{
@@ -145,6 +144,19 @@ public class PerformanceAnalysisDialog extends JFrame
 		tradeCountChart.setPreferredSize(chartSize);
 		tradeCountChart.setAlignmentX(LEFT_ALIGNMENT);
 		mainPanel.add(tradeCountChart);
+		mainPanel.add(javax.swing.Box.createRigidArea(new Dimension(0, 22)));
+		
+		ChartPanel weekdayProfitChart = chartFactory.createWeekdayProfitChart(stats);
+		weekdayProfitChart.setPreferredSize(chartSize);
+		weekdayProfitChart.setAlignmentX(LEFT_ALIGNMENT);
+		mainPanel.add(weekdayProfitChart);
+		mainPanel.add(javax.swing.Box.createRigidArea(new Dimension(0, 20)));
+		
+		// In der initializeUI()-Methode, nach einem anderen Diagramm
+		ChartPanel martingaleChart = chartFactory.createMartingaleVisualizationChart(stats);
+		martingaleChart.setPreferredSize(chartSize);
+		martingaleChart.setAlignmentX(LEFT_ALIGNMENT);
+		mainPanel.add(martingaleChart);
 		mainPanel.add(javax.swing.Box.createRigidArea(new Dimension(0, 20)));
 		
 		DrawdownChart drawdownChart = new DrawdownChart(stats.getTrades(), stats.getInitialBalance());
