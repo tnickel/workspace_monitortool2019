@@ -123,23 +123,19 @@ public class ProviderStats {
     public double getMaxDrawdownPercent() {
         if (profits.isEmpty()) return 0.0;
         
-        boolean allProfitable = profits.stream().allMatch(profit -> profit > 0);
-        if (allProfitable) {
-            return 99.99;
-        }
-        
-        double currentBalance = initialBalance;
+        double currentBalance = initialBalance; // Wichtig: Stelle sicher, dass initialBalance korrekt gesetzt ist (z.B. auf 2000)
         double highWaterMark = initialBalance;
         double maxDrawdownPercent = 0.0;
         
         for (double profit : profits) {
             currentBalance += profit;
             
-            if (currentBalance < highWaterMark) {
+            if (currentBalance > highWaterMark) {
+                highWaterMark = currentBalance;
+            } 
+            else if (highWaterMark > 0) {
                 double drawdownPercent = (highWaterMark - currentBalance) / highWaterMark * 100;
                 maxDrawdownPercent = Math.max(maxDrawdownPercent, drawdownPercent);
-            } else {
-                highWaterMark = currentBalance;
             }
         }
         
@@ -231,6 +227,6 @@ public class ProviderStats {
                 maxDrawdownPercent = Math.max(maxDrawdownPercent, drawdownPercent);
             }
         }
-        return maxDrawdownPercent;
+        return 0;
     }
 }

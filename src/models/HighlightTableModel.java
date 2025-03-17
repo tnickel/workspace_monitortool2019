@@ -83,8 +83,19 @@ public class HighlightTableModel extends DefaultTableModel {
   }
   
   private double calculateTrend(Map<String, Double> monthlyProfits, String currentMonth) {
+       // Wenn monthlyProfits leer ist oder kein currentMonth vorhanden ist, gib 0.0 zurück
+       if (monthlyProfits.isEmpty() || currentMonth == null) {
+           return 0.0;
+       }
+       
        // Hole die vorherigen 3 Monate (ohne den aktuellen)
        TreeMap<String, Double> sortedProfits = new TreeMap<>(monthlyProfits);
+       
+       // Sicherheitsprüfung für den currentMonth
+       if (!sortedProfits.containsKey(currentMonth)) {
+           return 0.0;
+       }
+       
        String[] months = sortedProfits.headMap(currentMonth, false).keySet().toArray(new String[0]);
        
        if (months.length < 3) {
@@ -145,12 +156,26 @@ public class HighlightTableModel extends DefaultTableModel {
 	        double stabilitaet = htmlDatabase.getStabilitaetswert(providerName);
 	        
 	        Map<String, Double> monthlyProfits = htmlDatabase.getMonthlyProfitPercentages(providerName);
-	        String currentMonth = new TreeMap<>(monthlyProfits).lastKey();
-	        double steigung = calculateTrend(monthlyProfits, currentMonth);
+	        double steigung = 0.0;
+	        
+	        // Sichere Behandlung der Steigungsberechnung
+	        if (!monthlyProfits.isEmpty()) {
+	            TreeMap<String, Double> sortedMonthProfits = new TreeMap<>(monthlyProfits);
+	            if (!sortedMonthProfits.isEmpty()) {
+	                try {
+	                    String currentMonth = sortedMonthProfits.lastKey();
+	                    steigung = calculateTrend(monthlyProfits, currentMonth);
+	                    
+	                    // Speichere den Steigungswert
+	                    htmlDatabase.saveSteigungswert(providerName, steigung);
+	                } catch (Exception e) {
+	                    // Ignoriere Fehler bei der Steigungsberechnung
+	                    System.err.println("Fehler bei der Steigungsberechnung für " + providerName + ": " + e.getMessage());
+	                }
+	            }
+	        }
 
 	        long daysBetween = calculateDaysBetween(stats);
-	        
-	        htmlDatabase.saveSteigungswert(providerName + ".csv", steigung);
 	        
 	        addRow(new Object[]{
 	            rowNum++, 
@@ -185,6 +210,7 @@ public class HighlightTableModel extends DefaultTableModel {
 	    }
 	    fireTableDataChanged();
 	}
+  
   public Object[] createRowDataForProvider(String providerName, ProviderStats stats) {
 	    double equityDrawdown = htmlDatabase.getEquityDrawdown(providerName);
 	    double balance = htmlDatabase.getBalance(providerName);
@@ -204,11 +230,24 @@ public class HighlightTableModel extends DefaultTableModel {
 	    double stabilitaet = htmlDatabase.getStabilitaetswert(providerName);
 	    
 	    Map<String, Double> monthlyProfits = htmlDatabase.getMonthlyProfitPercentages(providerName);
-	    String currentMonth = new TreeMap<>(monthlyProfits).lastKey();
-	    double steigung = calculateTrend(monthlyProfits, currentMonth);
+	    double steigung = 0.0;
 	    
-	    // Speichere den Steigungswert
-	    htmlDatabase.saveSteigungswert(providerName + ".csv", steigung);
+	    // Sichere Behandlung der Steigungsberechnung
+	    if (!monthlyProfits.isEmpty()) {
+	        TreeMap<String, Double> sortedMonthProfits = new TreeMap<>(monthlyProfits);
+	        if (!sortedMonthProfits.isEmpty()) {
+	            try {
+	                String currentMonth = sortedMonthProfits.lastKey();
+	                steigung = calculateTrend(monthlyProfits, currentMonth);
+	                
+	                // Speichere den Steigungswert
+	                htmlDatabase.saveSteigungswert(providerName, steigung);
+	            } catch (Exception e) {
+	                // Ignoriere Fehler bei der Steigungsberechnung
+	                System.err.println("Fehler bei der Steigungsberechnung für " + providerName + ": " + e.getMessage());
+	            }
+	        }
+	    }
 
 	    long daysBetween = calculateDaysBetween(stats);
 
