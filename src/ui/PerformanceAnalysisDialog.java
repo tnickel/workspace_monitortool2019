@@ -159,11 +159,7 @@ public class PerformanceAnalysisDialog extends JFrame
 		mainPanel.add(martingaleChart);
 		mainPanel.add(javax.swing.Box.createRigidArea(new Dimension(0, 20)));
 		
-		DrawdownChart drawdownChart = new DrawdownChart(stats.getTrades(), stats.getInitialBalance());
-		drawdownChart.setPreferredSize(chartSize);
-		drawdownChart.setAlignmentX(LEFT_ALIGNMENT);
-		mainPanel.add(drawdownChart);
-		mainPanel.add(javax.swing.Box.createRigidArea(new Dimension(0, 20)));
+	
 		
 		SymbolDistributionChart symbolChart = new SymbolDistributionChart(stats.getTrades());
 		symbolChart.setPreferredSize(chartSize);

@@ -44,9 +44,9 @@ public class TradeStackingChart extends JPanel {
      lotsDataset = new TimeSeriesCollection();
      
      chart = ChartFactory.createTimeSeriesChart(
-         "Verlauf Der Gleichzeitig Geöffneten Trades Über Die Zeit",
-         "Zeit",
-         "Anzahl geöffneter Trades",
+         "History of Simultaneously Open Trades Over Time",
+         "Time",
+         "Number of open Trades",
          tradeDataset,
          true,
          true,
@@ -59,17 +59,17 @@ public class TradeStackingChart extends JPanel {
      plot.setDomainGridlinePaint(new Color(220, 220, 220));
      plot.setRangeGridlinePaint(new Color(220, 220, 220));
      
-     // Lots Dataset hinzufügen
+     // Lots Dataset hinzufï¿½gen
      plot.setDataset(1, lotsDataset);
      
-     // Renderer für Trades
+     // Renderer fï¿½r Trades
      XYLineAndShapeRenderer renderer1 = new XYLineAndShapeRenderer();
      renderer1.setDefaultShapesVisible(false);
      renderer1.setSeriesPaint(0, Color.BLUE);
      renderer1.setSeriesStroke(0, new BasicStroke(2.0f));
      plot.setRenderer(0, renderer1);
      
-     // Renderer für Lots
+     // Renderer fï¿½r Lots
      XYLineAndShapeRenderer renderer2 = new XYLineAndShapeRenderer();
      renderer2.setDefaultShapesVisible(false);
      renderer2.setSeriesPaint(0, Color.RED);
@@ -90,6 +90,8 @@ public class TradeStackingChart extends JPanel {
      rangeAxis1.setTickLabelFont(new Font("SansSerif", Font.PLAIN, 12));
      rangeAxis1.setLabelFont(new Font("SansSerif", Font.BOLD, 14));
      rangeAxis1.setStandardTickUnits(NumberAxis.createIntegerTickUnits());
+     rangeAxis1.setLabelPaint(Color.BLUE);  // Beschriftung blau
+     rangeAxis1.setTickLabelPaint(Color.BLUE);  // Tick-Beschriftung blau
      
      // Zweite Y-Achse (Lots)
      NumberAxis rangeAxis2 = new NumberAxis("Lots");
@@ -98,6 +100,8 @@ public class TradeStackingChart extends JPanel {
      rangeAxis2.setLabelFont(new Font("SansSerif", Font.BOLD, 14));
      plot.setRangeAxis(1, rangeAxis2);
      plot.mapDatasetToRangeAxis(1, 1);
+     rangeAxis2.setLabelPaint(Color.RED);  // Beschriftung rot
+     rangeAxis2.setTickLabelPaint(Color.RED);  // Tick-Beschriftung rot
      
      // Chart-Titel
      chart.getTitle().setFont(new Font("SansSerif", Font.BOLD, 16));
