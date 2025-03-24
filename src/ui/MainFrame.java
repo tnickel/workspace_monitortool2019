@@ -51,6 +51,7 @@ public class MainFrame extends JFrame {
         mainTable = new MainTable(dataManager, config.getDownloadPath());
         mainTable.setStatusUpdateCallback(text -> updateStatusBar());
         
+        mainTable.loadColumnVisibilitySettings();
         setupUI();
         setupSearch();
         setupStatusBar();
@@ -108,14 +109,35 @@ public class MainFrame extends JFrame {
 
     private void setupMenuBar() {
         JMenuBar menuBar = new JMenuBar();
+        
+        // Config-Menü
         JMenu configMenu = new JMenu("Config");
         
         JMenuItem pathMenuItem = new JMenuItem("Set Download Path");
         pathMenuItem.addActionListener(e -> setDownloadPath());
         
+        JMenuItem columnVisibilityMenuItem = new JMenuItem("Tabellenspalten konfigurieren");
+        columnVisibilityMenuItem.addActionListener(e -> showColumnConfigDialog());
+        
         configMenu.add(pathMenuItem);
+        configMenu.add(columnVisibilityMenuItem);
+        
+        // Visual-Menü
+        JMenu visualMenu = new JMenu("Visual");
+        
+        JMenuItem tableConfigMenuItem = new JMenuItem("Tabellenspalten anzeigen/verstecken");
+        tableConfigMenuItem.addActionListener(e -> showColumnConfigDialog());
+        
+        visualMenu.add(tableConfigMenuItem);
+        
         menuBar.add(configMenu);
+        menuBar.add(visualMenu);
+        
         setJMenuBar(menuBar);
+    }
+    private void showColumnConfigDialog() {
+        TableColumnConfigDialog dialog = new TableColumnConfigDialog(this, mainTable);
+        dialog.showDialog();
     }
 
     private void reloadData(String newPath) {

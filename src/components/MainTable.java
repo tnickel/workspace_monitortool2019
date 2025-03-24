@@ -1,7 +1,5 @@
 package components;
 
-import java.awt.BorderLayout;
-import java.awt.Container;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
@@ -10,12 +8,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.prefs.Preferences;
 import java.util.stream.Collectors;
 
 import javax.swing.JButton;
 import javax.swing.JTable;
 import javax.swing.SwingUtilities;
 import javax.swing.ToolTipManager;
+import javax.swing.table.TableColumn;
 import javax.swing.table.TableRowSorter;
 
 import data.DataManager;
@@ -27,6 +27,7 @@ import renderers.HighlightRenderer;
 import renderers.RiskScoreRenderer;
 import ui.PerformanceAnalysisDialog;
 import ui.ShowSignalProviderList;
+import ui.TableColumnConfigDialog;
 import utils.HtmlDatabase;
 
 public class MainTable extends JTable {
@@ -38,6 +39,7 @@ public class MainTable extends JTable {
     private FilterCriteria currentFilter;
     private Consumer<String> statusUpdateCallback;
     private final HtmlDatabase htmlDatabase;
+    private Map<Integer, Integer> originalColumnWidths = new HashMap<>();
     
     public MainTable(DataManager dataManager, String downloadPath) {
         this.dataManager = dataManager;
@@ -339,5 +341,71 @@ public class MainTable extends JTable {
         
         // Fallback
         return providerName;
+    }
+    public void loadColumnVisibilitySettings() {
+        Preferences prefs = Preferences.userNodeForPackage(getClass());
+        final String columnPrefPrefix = "column_visible_";
+        
+        for (int i = 0; i < getColumnCount(); i++) {
+            // Erste 2 Spalten sind immer sichtbar
+            if (i <= 1) continue;
+            
+            // Prüfen, ob Einstellung existiert
+            String key = columnPrefPrefix + i;
+            if (prefs.get(key, null) != null) {
+                boolean visible = prefs.getBoolean(key, true);
+                setColumnVisible(i, visible);
+            }
+        }
+    }
+
+    /**
+     * Setzt eine Spalte sichtbar oder unsichtbar
+     * 
+     * @param columnIndex Index der Spalte
+     * @param visible true für sichtbar, false für unsichtbar
+     */
+    public void setColumnVisible(int columnIndex, boolean visible) {
+        if (columnIndex < 0 || columnIndex >= getColumnCount()) {
+            return;
+        }
+        
+        TableColumn column = getColumnModel().getColumn(columnIndex);
+        
+        if (visible) {
+            // Spalte wieder sichtbar machen
+            if (originalColumnWidths.containsKey(columnIndex)) {
+                // Originale Breite wiederherstellen
+                column.setMinWidth(0);
+                column.setMaxWidth(Integer.MAX_VALUE);
+                column.setPreferredWidth(originalColumnWidths.get(columnIndex));
+                originalColumnWidths.remove(columnIndex);
+            }
+        } else {
+            // Spalte unsichtbar machen
+            if (!originalColumnWidths.containsKey(columnIndex)) {
+                // Originale Breite speichern
+                originalColumnWidths.put(columnIndex, column.getPreferredWidth());
+                
+                // Spalte auf minimale Breite setzen
+                column.setMinWidth(0);
+                column.setPreferredWidth(0);
+                column.setMaxWidth(0);
+            }
+        }
+    }
+
+    /**
+     * Prüft, ob eine Spalte sichtbar ist
+     * 
+     * @param columnIndex Index der Spalte
+     * @return true wenn die Spalte sichtbar ist, false sonst
+     */
+    public boolean isColumnVisible(int columnIndex) {
+        if (columnIndex < 0 || columnIndex >= getColumnCount()) {
+            return false;
+        }
+        
+        return !originalColumnWidths.containsKey(columnIndex);
     }
 }
