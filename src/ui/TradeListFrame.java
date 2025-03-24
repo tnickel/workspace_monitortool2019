@@ -87,7 +87,7 @@ public class TradeListFrame extends JFrame {
         
         // Haupt-Split Pane
         mainSplitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, scrollPane, rightSplitPane);
-        mainSplitPane.setResizeWeight(0.6);
+        mainSplitPane.setResizeWeight(0.8); // Geändert von 0.6 auf 0.8 für 80% Breite
 
         // Toolbar
         JToolBar toolBar = new JToolBar();
@@ -101,8 +101,12 @@ public class TradeListFrame extends JFrame {
         add(toolBar, BorderLayout.NORTH);
         add(mainSplitPane, BorderLayout.CENTER);
         setLocationRelativeTo(null);
+        
+        // Explizites Setzen der initialen Divider-Position
+        SwingUtilities.invokeLater(() -> {
+            mainSplitPane.setDividerLocation(0.8);
+        });
     }
-
     private void setupSelectionListener() {
         tradeTable.getSelectionModel().addListSelectionListener(new ListSelectionListener() {
             public void valueChanged(ListSelectionEvent e) {
