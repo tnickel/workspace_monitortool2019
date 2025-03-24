@@ -1,12 +1,12 @@
 package db;
 
+import java.io.File;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -21,6 +21,7 @@ public class HistoryDatabaseManager {
     private static final Logger LOGGER = Logger.getLogger(HistoryDatabaseManager.class.getName());
     private static HistoryDatabaseManager instance;
     private Connection connection;
+    private String rootPath;
     
     // SQL-Statements für Datenbankoperationen
     private static final String CREATE_PROVIDERS_TABLE = 
@@ -62,16 +63,22 @@ public class HistoryDatabaseManager {
     /**
      * Privater Konstruktor für Singleton-Pattern
      */
-    private HistoryDatabaseManager() {
+    private HistoryDatabaseManager(String rootPath) {
+        this.rootPath = rootPath;
         initDatabase();
     }
+
     
-    /**
-     * Gibt die Singleton-Instanz zurück
-     */
+    public static synchronized HistoryDatabaseManager getInstance(String rootPath) {
+        if (instance == null) {
+            instance = new HistoryDatabaseManager(rootPath);
+        }
+        return instance;
+    }
+
     public static synchronized HistoryDatabaseManager getInstance() {
         if (instance == null) {
-            instance = new HistoryDatabaseManager();
+            throw new IllegalStateException("HistoryDatabaseManager muss zuerst mit einem Pfad initialisiert werden");
         }
         return instance;
     }
@@ -84,10 +91,22 @@ public class HistoryDatabaseManager {
             // H2-Treiber laden
             Class.forName("org.h2.Driver");
             
-            // Verbindung zur In-Memory-Datenbank herstellen
-            // DB_CLOSE_DELAY=-1 verhindert, dass die Datenbank gelöscht wird, wenn die letzte Verbindung geschlossen wird
-            // DATABASE_TO_UPPER=false sorgt dafür, dass die Tabellen- und Spaltennamen nicht automatisch in Großbuchstaben umgewandelt werden
-            connection = DriverManager.getConnection("jdbc:h2:mem:providerhistorydb;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false", "sa", "");
+            // Verbindung zur Datenbank auf der Festplatte statt in-memory
+            // Der Pfad zur Datenbank ist im rootPath-Verzeichnis unter dem Namen "providerhistorydb"
+            String dbPath = rootPath + File.separator + "database" + File.separator + "providerhistorydb";
+            File dbDir = new File(rootPath + File.separator + "database");
+            if (!dbDir.exists()) {
+                dbDir.mkdirs();
+            }
+            
+            // JDBC-URL anpassen: 
+            // - file: statt mem: für Speicherung auf Festplatte
+            // - DB_CLOSE_DELAY=-1 verhindert die sofortige Schließung der Datenbank
+            // - AUTO_SERVER=TRUE erlaubt mehrere Verbindungen
+            // - DATABASE_TO_UPPER=false behält die Spaltennamen in Kleinbuchstaben
+            connection = DriverManager.getConnection(
+                "jdbc:h2:file:" + dbPath + ";DB_CLOSE_DELAY=-1;AUTO_SERVER=TRUE;DATABASE_TO_UPPER=false", 
+                "sa", "");
             
             // Tabellen erstellen, falls sie noch nicht existieren
             try (Statement stmt = connection.createStatement()) {
@@ -95,7 +114,7 @@ public class HistoryDatabaseManager {
                 stmt.execute(CREATE_STAT_VALUES_TABLE);
             }
             
-            LOGGER.info("Provider History Datenbank erfolgreich initialisiert");
+            LOGGER.info("Provider History Datenbank erfolgreich initialisiert: " + dbPath);
         } catch (ClassNotFoundException | SQLException e) {
             LOGGER.severe("Fehler beim Initialisieren der Datenbank: " + e.getMessage());
             e.printStackTrace();

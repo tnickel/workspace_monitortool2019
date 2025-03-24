@@ -21,10 +21,10 @@ public class ProviderHistoryService {
     private static final Logger LOGGER = Logger.getLogger(ProviderHistoryService.class.getName());
     private static ProviderHistoryService instance;
     
-    private final HistoryDatabaseManager dbManager;
     private final Map<String, Map<String, Double>> lastValues;
     private final Preferences prefs;
     private String rootPath;
+    private HistoryDatabaseManager dbManager;
     
     // Konstanten für Statistiktypen
     public static final String STAT_TYPE_3MPDD = "3MPDD";
@@ -34,7 +34,6 @@ public class ProviderHistoryService {
     
     // Singleton-Pattern
     private ProviderHistoryService() {
-        this.dbManager = HistoryDatabaseManager.getInstance();
         this.lastValues = new ConcurrentHashMap<>();
         this.prefs = Preferences.userNodeForPackage(ProviderHistoryService.class);
         this.rootPath = null; // Wird über initialize gesetzt
@@ -57,6 +56,9 @@ public class ProviderHistoryService {
      */
     public void initialize(String rootPath) {
         this.rootPath = rootPath;
+        
+        // HistoryDatabaseManager mit dem Pfad initialisieren
+        this.dbManager = HistoryDatabaseManager.getInstance(rootPath);
         
         // Lade die zuletzt gespeicherten Werte für bestehende Provider
         loadExistingValues();
@@ -319,7 +321,9 @@ public class ProviderHistoryService {
      * Beendet den Service und gibt Ressourcen frei
      */
     public void shutdown() {
-        dbManager.closeConnection();
+        if (dbManager != null) {
+            dbManager.closeConnection();
+        }
         LOGGER.info("Provider History Service beendet");
     }
 }
