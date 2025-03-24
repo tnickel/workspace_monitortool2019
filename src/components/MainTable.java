@@ -2,6 +2,8 @@ package components;
 
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -12,6 +14,7 @@ import java.util.prefs.Preferences;
 import java.util.stream.Collectors;
 
 import javax.swing.JButton;
+import javax.swing.JFrame;
 import javax.swing.JTable;
 import javax.swing.SwingUtilities;
 import javax.swing.ToolTipManager;
@@ -25,9 +28,9 @@ import models.FilterCriteria;
 import models.HighlightTableModel;
 import renderers.HighlightRenderer;
 import renderers.RiskScoreRenderer;
+import services.ProviderHistoryService;
 import ui.PerformanceAnalysisDialog;
 import ui.ShowSignalProviderList;
-import ui.TableColumnConfigDialog;
 import utils.HtmlDatabase;
 
 public class MainTable extends JTable {
@@ -40,6 +43,8 @@ public class MainTable extends JTable {
     private Consumer<String> statusUpdateCallback;
     private final HtmlDatabase htmlDatabase;
     private Map<Integer, Integer> originalColumnWidths = new HashMap<>();
+    private final ProviderHistoryService historyService;
+
     
     public MainTable(DataManager dataManager, String downloadPath) {
         this.dataManager = dataManager;
@@ -49,11 +54,30 @@ public class MainTable extends JTable {
         this.riskRenderer = new RiskScoreRenderer();
         this.htmlDatabase = new HtmlDatabase(rootPath);
         this.currentFilter = new FilterCriteria();
+        
+        // Provider History Service initialisieren
+        this.historyService = ProviderHistoryService.getInstance();
+        this.historyService.initialize(rootPath);
 
         loadSavedFilter(); // Filter beim Start laden
         initialize();
         setupMouseListener();
         setupModelListener();
+        
+        // Stellen Sie sicher, dass beim Beenden der Anwendung die Ressourcen freigegeben werden
+        try {
+            JFrame parentFrame = (JFrame) SwingUtilities.getWindowAncestor(this);
+            if (parentFrame != null) {
+                parentFrame.addWindowListener(new WindowAdapter() {
+                    @Override
+                    public void windowClosing(WindowEvent e) {
+                        historyService.shutdown();
+                    }
+                });
+            }
+        } catch (Exception e) {
+           System.out.println("Error=xxx");
+        }
     }
 
     public FilterCriteria getCurrentFilter() {
@@ -225,6 +249,14 @@ public class MainTable extends JTable {
                     Map.Entry::getValue
                 ));
                 
+            historyService.checkAndPerformWeeklySave();
+            // Bei jeder Aktualisierung auf geänderte 3MPDD-Werte prüfen und ggf. speichern
+            for (Map.Entry<String, ProviderStats> entry : dataManager.getStats().entrySet()) {
+                String providerName = entry.getKey();
+                double mpdd3 = model.calculateMPDD(htmlDatabase.getAverageMonthlyProfit(providerName, 3),
+                        htmlDatabase.getEquityDrawdown(providerName));
+                historyService.store3MpddValue(providerName, mpdd3);
+            }
             // Zeige die gefilterten Daten an
             model.populateData(filteredStats);
         }

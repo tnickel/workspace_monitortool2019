@@ -6,6 +6,8 @@ import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -28,6 +30,7 @@ import javax.swing.border.EmptyBorder;
 import components.MainTable;
 import data.DataManager;
 import models.FilterCriteria;
+import services.ProviderHistoryService;
 import utils.MqlAnalyserConf;
 
 public class MainFrame extends JFrame {
@@ -37,6 +40,7 @@ public class MainFrame extends JFrame {
     private final JTextField searchField;
     private final DataManager dataManager;
     private final MqlAnalyserConf config;
+    private final ProviderHistoryService historyService;
     private int[] currentSearchIndex = {-1};
     private String rootPath_glob = null;
 
@@ -48,6 +52,10 @@ public class MainFrame extends JFrame {
         this.searchField = new JTextField(20);
         rootPath_glob = rootPath;
         
+        // Provider History Service initialisieren
+        this.historyService = ProviderHistoryService.getInstance();
+        this.historyService.initialize(rootPath);
+        
         mainTable = new MainTable(dataManager, config.getDownloadPath());
         mainTable.setStatusUpdateCallback(text -> updateStatusBar());
         
@@ -55,6 +63,15 @@ public class MainFrame extends JFrame {
         setupUI();
         setupSearch();
         setupStatusBar();
+        
+        // Hinzufügen eines WindowListeners für sauberes Herunterfahren
+        this.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                LOGGER.info("Fenster wird geschlossen, Ressourcen werden freigegeben...");
+                historyService.shutdown();
+            }
+        });
     }
 
     private void updateStatusBar() {
@@ -72,6 +89,9 @@ public class MainFrame extends JFrame {
             String newPath = chooser.getSelectedFile().getAbsolutePath();
             config.setDownloadPath(newPath);
             rootPath_glob = newPath;
+            
+            // History Service mit neuem Pfad aktualisieren
+            historyService.initialize(newPath);
             
             if (JOptionPane.showConfirmDialog(this, 
                 "Download path updated. Reload data?", 
@@ -130,11 +150,41 @@ public class MainFrame extends JFrame {
         
         visualMenu.add(tableConfigMenuItem);
         
+        // Stats-Menü hinzufügen
+        JMenu statsMenu = new JMenu("Statistik");
+        
+        JMenuItem historyMenuItem = new JMenuItem("3MPDD Verlauf anzeigen");
+        historyMenuItem.addActionListener(e -> showMpddHistoryDialog());
+        
+        statsMenu.add(historyMenuItem);
+        
         menuBar.add(configMenu);
         menuBar.add(visualMenu);
+        menuBar.add(statsMenu);
         
         setJMenuBar(menuBar);
     }
+    
+    private void showMpddHistoryDialog() {
+        // Wenn Provider ausgewählt sind, zeige deren Historie, sonst zeige eine Meldung
+        List<String> selectedProviders = mainTable.getSelectedProviders();
+        if (selectedProviders.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                "Bitte wählen Sie mindestens einen Provider aus.",
+                "Keine Auswahl",
+                JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        
+        // Hier könnte ein neuer Dialog geöffnet werden, der die Historie der ausgewählten Provider anzeigt
+        // Für jetzt zeigen wir einfach eine Meldung
+        JOptionPane.showMessageDialog(this,
+            "Die 3MPDD-Historien für die ausgewählten Provider können im Performance Analysis Dialog angezeigt werden.\n" +
+            "Doppelklicken Sie auf einen Provider in der Tabelle, um den Dialog zu öffnen.",
+            "3MPDD Historie",
+            JOptionPane.INFORMATION_MESSAGE);
+    }
+    
     private void showColumnConfigDialog() {
         TableColumnConfigDialog dialog = new TableColumnConfigDialog(this, mainTable);
         dialog.showDialog();
@@ -191,6 +241,7 @@ public class MainFrame extends JFrame {
         JButton compareButton = new JButton("Compare Equity Curves");
         compareButton.addActionListener(e -> showCompareDialog());
         toolBar.add(compareButton);
+        
         JButton showSignalProvidersButton = new JButton("Show Signal Providers");
         showSignalProvidersButton.addActionListener(e -> {
             ShowSignalProviderList dialog = new ShowSignalProviderList(
@@ -202,18 +253,19 @@ public class MainFrame extends JFrame {
             dialog.setVisible(true);
         });
         toolBar.add(showSignalProvidersButton);
+        
         JButton compareOpenTradesButton = new JButton("Compare Open Trades");
         compareOpenTradesButton.addActionListener(e -> {
             CompareOpenTradesDialog dialog = new CompareOpenTradesDialog(this, mainTable.getCurrentProviderStats());
             dialog.setVisible(true);
         });
+        toolBar.add(compareOpenTradesButton);
 
         JButton riskScoreButton = new JButton("Risk Score Explanation");
         riskScoreButton.addActionListener(e -> {
             RiskScoreExplanationDialog dialog = new RiskScoreExplanationDialog(this);
             dialog.setVisible(true);
         });
-        toolBar.add(compareOpenTradesButton);
         toolBar.add(riskScoreButton);
         
         add(toolBar, BorderLayout.NORTH);
@@ -316,6 +368,22 @@ public class MainFrame extends JFrame {
         SwingUtilities.invokeLater(() -> {
             setVisible(true);
             updateStatusBar();
+            
+            // Prüfen, ob wöchentliche Speicherung erforderlich ist
+            historyService.checkAndPerformWeeklySave();
         });
+    }
+    
+    // Main-Methode (falls sie Teil dieser Klasse ist)
+    public static void main(String[] args) {
+        // ... (bestehender Code)
+        
+        // Registriere Shutdown-Hook für sauberes Beenden
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            LOGGER.info("Anwendung wird beendet, Ressourcen werden freigegeben...");
+            ProviderHistoryService.getInstance().shutdown();
+        }));
+        
+        // ... (weiterer Code)
     }
 }

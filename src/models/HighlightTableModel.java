@@ -71,7 +71,7 @@ public class HighlightTableModel extends DefaultTableModel {
       }
   }
   
-  private double calculateMPDD(double monthlyProfitPercent, double maxEquityDrawdown) {
+  public double calculateMPDD(double monthlyProfitPercent, double maxEquityDrawdown) {
       if (maxEquityDrawdown == 0.0) {
           return 0.0;  // Verhindert Division durch Null
       }

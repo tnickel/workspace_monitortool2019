@@ -491,4 +491,10 @@ public class HtmlDatabase {
             return 0.0;
         }
     }
+
+	public String getRootPath()
+	{
+		return rootPath;
+	}
+    
 }

@@ -33,11 +33,13 @@ import org.jfree.chart.ChartPanel;
 import charts.DrawdownChart;
 import charts.DurationProfitChart;
 import charts.MonthlyTradeCountChart;
+import charts.ProviderStatHistoryChart;
 import charts.SymbolDistributionChart;
 import charts.ThreeMonthProfitChart;
 import charts.TradeStackingChart;
 import data.FavoritesManager;
 import data.ProviderStats;
+import services.ProviderHistoryService;
 import utils.ChartFactoryUtil;
 import utils.HtmlDatabase;
 
@@ -127,6 +129,14 @@ public class PerformanceAnalysisDialog extends JFrame
 		mainPanel.add(profitChart);
 		mainPanel.add(javax.swing.Box.createRigidArea(new Dimension(0, 20)));
 		
+		// 3MPDD History Chart hinzufügen
+		ProviderStatHistoryChart statHistoryChart = new ProviderStatHistoryChart();
+		statHistoryChart.setPreferredSize(chartSize);
+		statHistoryChart.setAlignmentX(LEFT_ALIGNMENT);
+		statHistoryChart.loadProviderHistory(providerName);
+		mainPanel.add(statHistoryChart);
+		mainPanel.add(javax.swing.Box.createRigidArea(new Dimension(0, 20)));
+		
 		TradeStackingChart stackingChart = new TradeStackingChart(stats.getTrades());
 		stackingChart.setPreferredSize(chartSize);
 		stackingChart.setAlignmentX(LEFT_ALIGNMENT);
@@ -158,8 +168,6 @@ public class PerformanceAnalysisDialog extends JFrame
 		martingaleChart.setAlignmentX(LEFT_ALIGNMENT);
 		mainPanel.add(martingaleChart);
 		mainPanel.add(javax.swing.Box.createRigidArea(new Dimension(0, 20)));
-		
-	
 		
 		SymbolDistributionChart symbolChart = new SymbolDistributionChart(stats.getTrades());
 		symbolChart.setPreferredSize(chartSize);
