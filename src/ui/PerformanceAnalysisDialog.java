@@ -2,6 +2,7 @@ package ui;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Desktop;
 import java.awt.Dimension;
@@ -12,7 +13,9 @@ import java.awt.Toolkit;
 import java.awt.event.KeyEvent;
 import java.net.URI;
 import java.text.DecimalFormat;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.Map;
 
 import javax.swing.AbstractAction;
@@ -21,16 +24,19 @@ import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JComponent;
+import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JTable;
 import javax.swing.KeyStroke;
 import javax.swing.border.EmptyBorder;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.DefaultTableModel;
 
 import org.jfree.chart.ChartPanel;
 
-import charts.DrawdownChart;
 import charts.DurationProfitChart;
 import charts.MonthlyTradeCountChart;
 import charts.ProviderStatHistoryChart;
@@ -39,6 +45,7 @@ import charts.ThreeMonthProfitChart;
 import charts.TradeStackingChart;
 import data.FavoritesManager;
 import data.ProviderStats;
+import db.HistoryDatabaseManager.HistoryEntry;
 import services.ProviderHistoryService;
 import utils.ChartFactoryUtil;
 import utils.HtmlDatabase;
@@ -180,117 +187,117 @@ public class PerformanceAnalysisDialog extends JFrame
 		add(scrollPane);
 	}
 	
-	private JPanel createStatsPanel()
-	{
-		JPanel mainPanel = new JPanel(new BorderLayout());
-		mainPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
-		
-		// Ändere das Grid-Layout auf 2 Zeilen und 7 Spalten für mehr Platz
-		JPanel statsGrid = new JPanel(new GridLayout(2, 7, 15, 5));
-		
-		String csvFileName = providerName + ".csv";
-		double equityDrawdown = htmlDatabase.getEquityDrawdown(csvFileName);
-		double threeMonthProfit = htmlDatabase.getAverageMonthlyProfit(csvFileName, 3);
-		double sixMonthProfit = htmlDatabase.getAverageMonthlyProfit(csvFileName, 6);
-		double nineMonthProfit = htmlDatabase.getAverageMonthlyProfit(csvFileName, 9);
-		double twelveMonthProfit = htmlDatabase.getAverageMonthlyProfit(csvFileName, 12);
-		
-		double mpdd3 = calculateMPDD(threeMonthProfit, equityDrawdown);
-		double mpdd6 = calculateMPDD(sixMonthProfit, equityDrawdown);
-		double mpdd9 = calculateMPDD(nineMonthProfit, equityDrawdown);
-		
-		// Erste Zeile
-		addStatField(statsGrid, "Total Trades: ", String.format("%d", stats.getTrades().size()));
-		addStatField(statsGrid, "Win Rate: ", pf.format(stats.getWinRate()));
-		addStatField(statsGrid, "Total Profit: ", df.format(stats.getTotalProfit()));
-		addStatField(statsGrid, "Profit Factor: ", df.format(stats.getProfitFactor()));
-		addStatField(statsGrid, "Max Concurrent Lots: ", df.format(stats.getMaxConcurrentLots()));
-		addStatField(statsGrid, "Stability: ", df.format(htmlDatabase.getStabilitaetswert(csvFileName)));
-		addStatField(statsGrid, "Days: ", String.format("%d", calculateDaysBetween(stats)));
-		
-		// Zweite Zeile
-		addStatField(statsGrid, "Avg Profit/Trade: ", df.format(stats.getAverageProfit()));
-		addStatField(statsGrid, "Max Drawdown: ", pf.format(stats.getMaxDrawdown()));
-		addStatField(statsGrid, "Equity Drawdown: ", pf.format(equityDrawdown));
-		addStatField(statsGrid, "3MPDD: ", df.format(mpdd3));
-		addStatField(statsGrid, "6MPDD: ", df.format(mpdd6));
-		addStatField(statsGrid, "9MPDD: ", df.format(mpdd9));
-		addStatField(statsGrid, "Steigung: ", df.format(htmlDatabase.getSteigungswert(csvFileName)));
-		
-		JPanel urlPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-		String urlText = String.format(
-				"<html><u>https://www.mql5.com/de/signals/%s?source=Site+Signals+Subscriptions#!tab=account</u></html>",
-				providerId);
-		JLabel urlLabel = new JLabel(urlText);
-		urlLabel.setForeground(Color.BLUE);
-		urlLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-		
-		urlLabel.addMouseListener(new java.awt.event.MouseAdapter() {
-			@Override
-			public void mouseClicked(java.awt.event.MouseEvent evt)
-			{
-				try
-				{
-					Desktop.getDesktop()
-							.browse(new URI(String.format(
-									"https://www.mql5.com/de/signals/%s?source=Site+Signals+Subscriptions#!tab=account",
-									providerId)));
-				} catch (Exception e)
-				{
-					e.printStackTrace();
-				}
-			}
-		});
-		
-		urlPanel.add(urlLabel);
-		
-		JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-		
-        // Den FavoritesManager initialisieren
-        FavoritesManager favoritesManager = new FavoritesManager(rootPath);
-        
-        // Überprüfen, ob der aktuelle Provider bereits ein Favorit ist
-        boolean isFavorite = favoritesManager.isFavorite(providerId);
-        
-        JButton favButton = new JButton(isFavorite ? "Remove Favorite" : "Set Favorite");
-        favButton.setBackground(isFavorite ? Color.YELLOW : Color.WHITE);
-        
-		JButton showTradesButton = new JButton("Show Trade List");
-		
-		favButton.addActionListener(e -> {
-            // Die Favoriten umschalten
-            favoritesManager.toggleFavorite(providerId);
-            
-            // Aktualisiere die Button-Anzeige
-            boolean isNowFavorite = favoritesManager.isFavorite(providerId);
-            if (isNowFavorite) {
-                favButton.setText("Remove Favorite");
-                favButton.setBackground(Color.YELLOW);
-            } else {
-                favButton.setText("Set Favorite");
-                favButton.setBackground(Color.WHITE);
-            }
-            
-            System.out.println("Favorit-Status für Provider " + providerId + " geändert: " + isNowFavorite);
-		});
-		
-		showTradesButton.addActionListener(e ->
-		{
-			TradeListFrame tradeListFrame = new TradeListFrame(getTitle(), stats);
-			tradeListFrame.setVisible(true);
-		});
-		
-		buttonPanel.add(favButton);
-		buttonPanel.add(showTradesButton);
-		
-		JPanel topPanel = new JPanel(new BorderLayout());
-		topPanel.add(statsGrid, BorderLayout.CENTER);
-		topPanel.add(buttonPanel, BorderLayout.EAST);
-		
-		mainPanel.add(topPanel, BorderLayout.NORTH);
-		mainPanel.add(urlPanel, BorderLayout.CENTER);
-		
-		return mainPanel;
+	private JPanel createStatsPanel() {
+	    JPanel mainPanel = new JPanel(new BorderLayout());
+	    mainPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
+	    
+	    // Ändere das Grid-Layout auf 2 Zeilen und 7 Spalten für mehr Platz
+	    JPanel statsGrid = new JPanel(new GridLayout(2, 7, 15, 5));
+	    
+	    String csvFileName = providerName + ".csv";
+	    double equityDrawdown = htmlDatabase.getEquityDrawdown(csvFileName);
+	    double threeMonthProfit = htmlDatabase.getAverageMonthlyProfit(csvFileName, 3);
+	    double sixMonthProfit = htmlDatabase.getAverageMonthlyProfit(csvFileName, 6);
+	    double nineMonthProfit = htmlDatabase.getAverageMonthlyProfit(csvFileName, 9);
+	    double twelveMonthProfit = htmlDatabase.getAverageMonthlyProfit(csvFileName, 12);
+	    
+	    double mpdd3 = calculateMPDD(threeMonthProfit, equityDrawdown);
+	    double mpdd6 = calculateMPDD(sixMonthProfit, equityDrawdown);
+	    double mpdd9 = calculateMPDD(nineMonthProfit, equityDrawdown);
+	    
+	    // Erste Zeile
+	    addStatField(statsGrid, "Total Trades: ", String.format("%d", stats.getTrades().size()));
+	    addStatField(statsGrid, "Win Rate: ", pf.format(stats.getWinRate()));
+	    addStatField(statsGrid, "Total Profit: ", df.format(stats.getTotalProfit()));
+	    addStatField(statsGrid, "Profit Factor: ", df.format(stats.getProfitFactor()));
+	    addStatField(statsGrid, "Max Concurrent Lots: ", df.format(stats.getMaxConcurrentLots()));
+	    addStatField(statsGrid, "Stability: ", df.format(htmlDatabase.getStabilitaetswert(csvFileName)));
+	    addStatField(statsGrid, "Days: ", String.format("%d", calculateDaysBetween(stats)));
+	    
+	    // Zweite Zeile
+	    addStatField(statsGrid, "Avg Profit/Trade: ", df.format(stats.getAverageProfit()));
+	    addStatField(statsGrid, "Max Drawdown: ", pf.format(stats.getMaxDrawdown()));
+	    addStatField(statsGrid, "Equity Drawdown: ", pf.format(equityDrawdown));
+	    addStatField(statsGrid, "3MPDD: ", df.format(mpdd3));
+	    addStatField(statsGrid, "6MPDD: ", df.format(mpdd6));
+	    addStatField(statsGrid, "9MPDD: ", df.format(mpdd9));
+	    addStatField(statsGrid, "Steigung: ", df.format(htmlDatabase.getSteigungswert(csvFileName)));
+	    
+	    JPanel urlPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+	    String urlText = String.format(
+	            "<html><u>https://www.mql5.com/de/signals/%s?source=Site+Signals+Subscriptions#!tab=account</u></html>",
+	            providerId);
+	    JLabel urlLabel = new JLabel(urlText);
+	    urlLabel.setForeground(Color.BLUE);
+	    urlLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+	    
+	    urlLabel.addMouseListener(new java.awt.event.MouseAdapter() {
+	        @Override
+	        public void mouseClicked(java.awt.event.MouseEvent evt) {
+	            try {
+	                Desktop.getDesktop()
+	                        .browse(new URI(String.format(
+	                                "https://www.mql5.com/de/signals/%s?source=Site+Signals+Subscriptions#!tab=account",
+	                                providerId)));
+	            } catch (Exception e) {
+	                e.printStackTrace();
+	            }
+	        }
+	    });
+	    
+	    urlPanel.add(urlLabel);
+	    
+	    JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+	    
+	    // Den FavoritesManager initialisieren
+	    FavoritesManager favoritesManager = new FavoritesManager(rootPath);
+	    
+	    // Überprüfen, ob der aktuelle Provider bereits ein Favorit ist
+	    boolean isFavorite = favoritesManager.isFavorite(providerId);
+	    
+	    JButton favButton = new JButton(isFavorite ? "Remove Favorite" : "Set Favorite");
+	    favButton.setBackground(isFavorite ? Color.YELLOW : Color.WHITE);
+	    
+	    JButton showTradesButton = new JButton("Show Trade List");
+	    
+	    // Neuer Button für Datenbank-Informationen
+	    JButton showDbInfoButton = new JButton("Show DB Info");
+	    showDbInfoButton.addActionListener(e -> showDatabaseInfo());
+	    
+	    favButton.addActionListener(e -> {
+	        // Die Favoriten umschalten
+	        favoritesManager.toggleFavorite(providerId);
+	        
+	        // Aktualisiere die Button-Anzeige
+	        boolean isNowFavorite = favoritesManager.isFavorite(providerId);
+	        if (isNowFavorite) {
+	            favButton.setText("Remove Favorite");
+	            favButton.setBackground(Color.YELLOW);
+	        } else {
+	            favButton.setText("Set Favorite");
+	            favButton.setBackground(Color.WHITE);
+	        }
+	        
+	        System.out.println("Favorit-Status für Provider " + providerId + " geändert: " + isNowFavorite);
+	    });
+	    
+	    showTradesButton.addActionListener(e -> {
+	        TradeListFrame tradeListFrame = new TradeListFrame(getTitle(), stats);
+	        tradeListFrame.setVisible(true);
+	    });
+	    
+	    buttonPanel.add(favButton);
+	    buttonPanel.add(showTradesButton);
+	    buttonPanel.add(showDbInfoButton); // Neuen Button hinzufügen
+	    
+	    JPanel topPanel = new JPanel(new BorderLayout());
+	    topPanel.add(statsGrid, BorderLayout.CENTER);
+	    topPanel.add(buttonPanel, BorderLayout.EAST);
+	    
+	    mainPanel.add(topPanel, BorderLayout.NORTH);
+	    mainPanel.add(urlPanel, BorderLayout.CENTER);
+	    
+	    return mainPanel;
 	}
 	
 	private long calculateDaysBetween(ProviderStats stats)
@@ -321,5 +328,84 @@ public class PerformanceAnalysisDialog extends JFrame
 		fieldPanel.add(valueComponent);
 		
 		panel.add(fieldPanel);
+	}
+	private void showDatabaseInfo() {
+	    // ProviderHistoryService und die Datenbank-Informationen abrufen
+	    ProviderHistoryService historyService = ProviderHistoryService.getInstance();
+	    
+	    // Alle verfügbaren Statistiktypen abrufen
+	    List<HistoryEntry> mpddHistory = historyService.get3MpddHistory(providerName);
+	    
+	    // Dialog erstellen
+	    JDialog dbInfoDialog = new JDialog(this, "Datenbank-Informationen für " + providerName, true);
+	    dbInfoDialog.setLayout(new BorderLayout(10, 10));
+	    
+	    // Erstelle ein Modell für die Tabelle mit den Datenbankinformationen
+	    DefaultTableModel model = new DefaultTableModel();
+	    model.addColumn("Datum");
+	    model.addColumn("Statistiktyp");
+	    model.addColumn("Wert");
+	    
+	    // Füge die MPDD-Werte hinzu
+	    for (HistoryEntry entry : mpddHistory) {
+	        model.addRow(new Object[] {
+	            entry.getDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")),
+	            "3MPDD",
+	            String.format("%.4f", entry.getValue())
+	        });
+	    }
+	    
+	    // Erstelle die Tabelle und füge sie zum Dialog hinzu
+	    JTable table = new JTable(model);
+	    table.getColumnModel().getColumn(0).setPreferredWidth(200);
+	    table.getColumnModel().getColumn(1).setPreferredWidth(100);
+	    table.getColumnModel().getColumn(2).setPreferredWidth(100);
+	    
+	    // Optional: Bessere Formatierung für Werte
+	    table.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+	        @Override
+	        public Component getTableCellRendererComponent(JTable table, Object value,
+	                                                     boolean isSelected, boolean hasFocus, int row, int column) {
+	            Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+	            if (column == 2 && value != null) {
+	                try {
+	                    double val = Double.parseDouble(value.toString().replace(",", "."));
+	                    if (val > 0) {
+	                        c.setForeground(new Color(0, 150, 0));
+	                    } else {
+	                        c.setForeground(Color.RED);
+	                    }
+	                } catch (Exception e) {
+	                    // Ignorieren, falls kein gültiger Zahlenwert
+	                }
+	            }
+	            return c;
+	        }
+	    });
+	    
+	    JScrollPane scrollPane = new JScrollPane(table);
+	    scrollPane.setPreferredSize(new Dimension(500, 300));
+	    
+	    // Informationstext hinzufügen, wenn keine Daten vorhanden
+	    if (mpddHistory.isEmpty()) {
+	        JLabel noDataLabel = new JLabel("Keine Datenbank-Einträge für diesen Provider vorhanden.");
+	        noDataLabel.setHorizontalAlignment(JLabel.CENTER);
+	        dbInfoDialog.add(noDataLabel, BorderLayout.CENTER);
+	    } else {
+	        dbInfoDialog.add(scrollPane, BorderLayout.CENTER);
+	    }
+	    
+	    // Schließen-Button hinzufügen
+	    JButton closeButton = new JButton("Schließen");
+	    closeButton.addActionListener(e -> dbInfoDialog.dispose());
+	    
+	    JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+	    buttonPanel.add(closeButton);
+	    dbInfoDialog.add(buttonPanel, BorderLayout.SOUTH);
+	    
+	    // Dialog anzeigen
+	    dbInfoDialog.pack();
+	    dbInfoDialog.setLocationRelativeTo(this);
+	    dbInfoDialog.setVisible(true);
 	}
 }
