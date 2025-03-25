@@ -309,10 +309,12 @@ public class MainFrame extends JFrame {
                 }
             } else {
                 // Detaillierten Dialog zum Erzwingen der Speicherung öffnen
+                // Hier rootPath übergeben
                 ForceDbSaveDialog dialog = new ForceDbSaveDialog(
                     this,
                     historyService,
-                    dataManager.getStats()
+                    dataManager.getStats(),
+                    config.getDownloadPath() // Hier wird der Download-Pfad aus der Konfiguration übergeben
                 );
                 dialog.setVisible(true);
             }

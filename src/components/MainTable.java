@@ -250,13 +250,20 @@ public class MainTable extends JTable {
                 ));
                 
             historyService.checkAndPerformWeeklySave();
+            
             // Bei jeder Aktualisierung auf geänderte 3MPDD-Werte prüfen und ggf. speichern
             for (Map.Entry<String, ProviderStats> entry : dataManager.getStats().entrySet()) {
                 String providerName = entry.getKey();
-                double mpdd3 = model.calculateMPDD(htmlDatabase.getAverageMonthlyProfit(providerName, 3),
-                        htmlDatabase.getEquityDrawdown(providerName));
+                
+                // Die Berechnung der 3MPDD-Werte erfolgt jetzt direkt hier
+                double threeMonthProfit = htmlDatabase.getAverageMonthlyProfit(providerName, 3);
+                double equityDrawdown = htmlDatabase.getEquityDrawdown(providerName);
+                double mpdd3 = model.calculateMPDD(threeMonthProfit, equityDrawdown);
+                
+                // Speichere den Wert in der Datenbank
                 historyService.store3MpddValue(providerName, mpdd3);
             }
+            
             // Zeige die gefilterten Daten an
             model.populateData(filteredStats);
         }

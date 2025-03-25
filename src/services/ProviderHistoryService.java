@@ -1,4 +1,3 @@
-
 package services;
 
 import java.io.File;
@@ -292,16 +291,22 @@ public class ProviderHistoryService {
                 if (files != null) {
                     LOGGER.info("Erzwinge Speicherung für " + files.length + " Provider");
                     
+                    // Verwende die gleiche Berechnung wie in der Haupttabelle
+                    HtmlDatabase htmlDb = new HtmlDatabase(rootPath);
+                    
                     for (File file : files) {
                         String providerName = file.getName();
                         
-                        // Erstelle einen Dummy-Wert für 3MPDD
-                        double dummyValue = 1.0;
+                        // Berechne 3MPDD-Wert
+                        double threeMonthProfit = htmlDb.getAverageMonthlyProfit(providerName, 3);
+                        double equityDrawdown = htmlDb.getEquityDrawdown(providerName);
+                        double mpdd3 = calculateMPDD(threeMonthProfit, equityDrawdown);
                         
                         // In DB speichern
-                        dbManager.storeStatValue(providerName, STAT_TYPE_3MPDD, dummyValue, true);
+                        dbManager.storeStatValue(providerName, STAT_TYPE_3MPDD, mpdd3, true);
                         
-                        LOGGER.info("Dummy-Wert für Provider " + providerName + " gespeichert");
+                        LOGGER.info(String.format("3MPDD-Wert %.4f für Provider %s gespeichert", 
+                                mpdd3, providerName));
                     }
                 }
             }
@@ -319,141 +324,141 @@ public class ProviderHistoryService {
      * @param htmlDb Die HTML-Datenbank
      * @return Map mit Provider-Namen als Schlüssel und innerer Map mit Statistiktypen und Werten
      */
-      private Map<String, Map<String, Double>> collectAllStatValues(HtmlDatabase htmlDb) {
-    	        Map<String, Map<String, Double>> allValues = new HashMap<>();
-    	        
-    	        // Hole den Root-Pfad aus der HtmlDatabase
-    	        String rootPath = htmlDb.getRootPath();
-    	        
-    	        // Hole alle CSV-Dateien im Root-Verzeichnis
-    	        File downloadDirectory = new File(rootPath);
-    	        if (downloadDirectory.exists() && downloadDirectory.isDirectory()) {
-    	            File[] files = downloadDirectory.listFiles((dir, name) -> name.toLowerCase().endsWith(".csv"));
-    	            
-    	            if (files != null) {
-    	                for (File file : files) {
-    	                    String providerName = file.getName();
-    	                    Map<String, Double> providerValues = new HashMap<>();
-    	                    
-    	                    // Berechne 3MPDD für jeden Provider
-    	                    double monthlyProfit = htmlDb.getAverageMonthlyProfit(providerName, 3);
-    	                    double equityDrawdown = htmlDb.getEquityDrawdown(providerName);
-    	                    double mpdd3 = calculateMPDD(monthlyProfit, equityDrawdown);
-    	                    
-    	                    // Speichere den 3MPDD-Wert
-    	                    providerValues.put(STAT_TYPE_3MPDD, mpdd3);
-    	                    
-    	                    // Hier können später weitere Statistik-Typen hinzugefügt werden
-    	                    
-    	                    allValues.put(providerName, providerValues);
-    	                }
-    	            }
-    	        }
-    	        
-    	        return allValues;
-    	    }
-    	    
-    	    /**
-    	     * Hilfsmethode für die MPDD-Berechnung
-    	     */
-    	    private double calculateMPDD(double monthlyProfitPercent, double maxEquityDrawdown) {
-    	        if (maxEquityDrawdown == 0.0) {
-    	            return 0.0;  // Verhindert Division durch Null
-    	        }
-    	        return monthlyProfitPercent / maxEquityDrawdown;
-    	    }
-    	    
-    	    /**
-    	     * Holt die Historie der 3MPDD-Werte für einen Signal Provider
-    	     * 
-    	     * @param providerName Signal Provider Name
-    	     * @return Liste von 3MPDD-Werten mit Zeitstempeln
-    	     */
-    	    public List<HistoryEntry> get3MpddHistory(String providerName) {
-    	        return dbManager.getStatHistory(providerName, STAT_TYPE_3MPDD);
-    	    }
-    	    
-    	    /**
-    	     * Holt die Historie eines statistischen Werts für einen Signal Provider
-    	     * 
-    	     * @param providerName Signal Provider Name
-    	     * @param statType Art des statistischen Werts
-    	     * @return Liste von Werten mit Zeitstempeln
-    	     */
-    	    public List<HistoryEntry> getStatHistory(String providerName, String statType) {
-    	        return dbManager.getStatHistory(providerName, statType);
-    	    }
-    	    
-    	    /**
-    	     * Holt alle Historieneinträge für alle Provider und Statistiktypen
-    	     * 
-    	     * @return Map mit Providername als Schlüssel und einer Map von Statistiktypen zu HistoryEntry-Listen als Wert
-    	     */
-    	    public Map<String, Map<String, List<HistoryEntry>>> getAllHistoryEntries() {
-    	        if (dbManager == null) {
-    	            LOGGER.warning("Keine Datenbankverbindung verfügbar");
-    	            return new HashMap<>();
-    	        }
-    	        
-    	        Map<String, Map<String, List<HistoryEntry>>> result = new HashMap<>();
-    	        
-    	        try {
-    	            // Alle Provider abrufen
-    	            List<String> allProviders = dbManager.getAllProviders();
-    	            
-    	            // Für jeden Provider alle Stats abrufen
-    	            for (String providerName : allProviders) {
-    	                Map<String, List<HistoryEntry>> providerStats = new HashMap<>();
-    	                
-    	                // 3MPDD-Historie abrufen
-    	                List<HistoryEntry> mpddHistory = dbManager.getStatHistory(providerName, STAT_TYPE_3MPDD);
-    	                if (!mpddHistory.isEmpty()) {
-    	                    providerStats.put(STAT_TYPE_3MPDD, mpddHistory);
-    	                }
-    	                
-    	                // Hier können weitere Statistiktypen hinzugefügt werden, wenn sie implementiert werden
-    	                
-    	                if (!providerStats.isEmpty()) {
-    	                    result.put(providerName, providerStats);
-    	                }
-    	            }
-    	            
-    	            return result;
-    	        } catch (Exception e) {
-    	            LOGGER.severe("Fehler beim Abrufen aller Historieneinträge: " + e.getMessage());
-    	            e.printStackTrace();
-    	            return new HashMap<>();
-    	        }
-    	    }
-    	    
-    	    /**
-    	     * Prüft, ob die Datenbank Einträge enthält
-    	     * 
-    	     * @return true wenn Einträge vorhanden sind, false sonst
-    	     */
-    	    public boolean hasDatabaseEntries() {
-    	        if (dbManager == null) {
-    	            return false;
-    	        }
-    	        
-    	        try {
-    	            // Prüfe, ob es Provider gibt
-    	            List<String> providers = dbManager.getAllProviders();
-    	            return !providers.isEmpty();
-    	        } catch (Exception e) {
-    	            LOGGER.severe("Fehler beim Prüfen auf Datenbankeinträge: " + e.getMessage());
-    	            e.printStackTrace();
-    	            return false;
-    	        }
-    	    }
-    	    
-    	    /**
-    	     * Beendet den Service und gibt Ressourcen frei
-    	     */
-    	    public void shutdown() {
-    	        if (dbManager != null) {
-    	            dbManager.closeConnection();
-    	        }
-    	        LOGGER.info("Provider History Service beendet");
-    	    }
-    	}
+    private Map<String, Map<String, Double>> collectAllStatValues(HtmlDatabase htmlDb) {
+        Map<String, Map<String, Double>> allValues = new HashMap<>();
+        
+        // Hole den Root-Pfad aus der HtmlDatabase
+        String rootPath = htmlDb.getRootPath();
+        
+        // Hole alle CSV-Dateien im Root-Verzeichnis
+        File downloadDirectory = new File(rootPath);
+        if (downloadDirectory.exists() && downloadDirectory.isDirectory()) {
+            File[] files = downloadDirectory.listFiles((dir, name) -> name.toLowerCase().endsWith(".csv"));
+            
+            if (files != null) {
+                for (File file : files) {
+                    String providerName = file.getName();
+                    Map<String, Double> providerValues = new HashMap<>();
+                    
+                    // Berechne 3MPDD für jeden Provider
+                    double threeMonthProfit = htmlDb.getAverageMonthlyProfit(providerName, 3);
+                    double equityDrawdown = htmlDb.getEquityDrawdown(providerName);
+                    double mpdd3 = calculateMPDD(threeMonthProfit, equityDrawdown);
+                    
+                    // Speichere den 3MPDD-Wert
+                    providerValues.put(STAT_TYPE_3MPDD, mpdd3);
+                    
+                    // Hier können später weitere Statistik-Typen hinzugefügt werden
+                    
+                    allValues.put(providerName, providerValues);
+                }
+            }
+        }
+        
+        return allValues;
+    }
+
+    /**
+     * Hilfsmethode für die MPDD-Berechnung
+     */
+    private double calculateMPDD(double monthlyProfitPercent, double maxEquityDrawdown) {
+        if (maxEquityDrawdown == 0.0) {
+            return 0.0;  // Verhindert Division durch Null
+        }
+        return monthlyProfitPercent / maxEquityDrawdown;
+    }
+
+    /**
+     * Holt die Historie der 3MPDD-Werte für einen Signal Provider
+     * 
+     * @param providerName Signal Provider Name
+     * @return Liste von 3MPDD-Werten mit Zeitstempeln
+     */
+    public List<HistoryEntry> get3MpddHistory(String providerName) {
+        return dbManager.getStatHistory(providerName, STAT_TYPE_3MPDD);
+    }
+
+    /**
+     * Holt die Historie eines statistischen Werts für einen Signal Provider
+     * 
+     * @param providerName Signal Provider Name
+     * @param statType Art des statistischen Werts
+     * @return Liste von Werten mit Zeitstempeln
+     */
+    public List<HistoryEntry> getStatHistory(String providerName, String statType) {
+        return dbManager.getStatHistory(providerName, statType);
+    }
+
+    /**
+     * Holt alle Historieneinträge für alle Provider und Statistiktypen
+     * 
+     * @return Map mit Providername als Schlüssel und einer Map von Statistiktypen zu HistoryEntry-Listen als Wert
+     */
+    public Map<String, Map<String, List<HistoryEntry>>> getAllHistoryEntries() {
+        if (dbManager == null) {
+            LOGGER.warning("Keine Datenbankverbindung verfügbar");
+            return new HashMap<>();
+        }
+        
+        Map<String, Map<String, List<HistoryEntry>>> result = new HashMap<>();
+        
+        try {
+            // Alle Provider abrufen
+            List<String> allProviders = dbManager.getAllProviders();
+            
+            // Für jeden Provider alle Stats abrufen
+            for (String providerName : allProviders) {
+                Map<String, List<HistoryEntry>> providerStats = new HashMap<>();
+                
+                // 3MPDD-Historie abrufen
+                List<HistoryEntry> mpddHistory = dbManager.getStatHistory(providerName, STAT_TYPE_3MPDD);
+                if (!mpddHistory.isEmpty()) {
+                    providerStats.put(STAT_TYPE_3MPDD, mpddHistory);
+                }
+                
+                // Hier können weitere Statistiktypen hinzugefügt werden, wenn sie implementiert werden
+                
+                if (!providerStats.isEmpty()) {
+                    result.put(providerName, providerStats);
+                }
+            }
+            
+            return result;
+        } catch (Exception e) {
+            LOGGER.severe("Fehler beim Abrufen aller Historieneinträge: " + e.getMessage());
+            e.printStackTrace();
+            return new HashMap<>();
+        }
+    }
+
+    /**
+     * Prüft, ob die Datenbank Einträge enthält
+     * 
+     * @return true wenn Einträge vorhanden sind, false sonst
+     */
+    public boolean hasDatabaseEntries() {
+        if (dbManager == null) {
+            return false;
+        }
+        
+        try {
+            // Prüfe, ob es Provider gibt
+            List<String> providers = dbManager.getAllProviders();
+            return !providers.isEmpty();
+        } catch (Exception e) {
+            LOGGER.severe("Fehler beim Prüfen auf Datenbankeinträge: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    /**
+     * Beendet den Service und gibt Ressourcen frei
+     */
+    public void shutdown() {
+        if (dbManager != null) {
+            dbManager.closeConnection();
+        }
+        LOGGER.info("Provider History Service beendet");
+    }
+    }

@@ -22,6 +22,7 @@ import javax.swing.SwingWorker;
 
 import data.ProviderStats;
 import services.ProviderHistoryService;
+import utils.HtmlDatabase;
 
 /**
  * Dialog zum Erzwingen der Speicherung aller Provider-Daten in die Datenbank
@@ -33,12 +34,14 @@ public class ForceDbSaveDialog extends JDialog {
     private final JProgressBar progressBar;
     private JButton closeButton;
     private JButton saveButton;
+    private final String rootPath; // Hier wird rootPath als Instanzvariable definiert
     
     public ForceDbSaveDialog(JFrame parent, ProviderHistoryService historyService, 
-            Map<String, ProviderStats> providers) {
+            Map<String, ProviderStats> providers, String rootPath) { // rootPath als Parameter hinzugefügt
         super(parent, "Datenbank-Speicherung erzwingen", true);
         this.historyService = historyService;
         this.providers = providers;
+        this.rootPath = rootPath; // rootPath speichern
         
         // UI-Komponenten
         logArea = new JTextArea();
@@ -109,20 +112,25 @@ public class ForceDbSaveDialog extends JDialog {
                     publish("Start der Datenbank-Speicherung...");
                     publish(String.format("Gefundene Provider: %d", total));
                     
+                    // Erstelle eine Instanz von HtmlDatabase mit dem korrekten rootPath
+                    HtmlDatabase htmlDb = new HtmlDatabase(rootPath);
+                    
                     // Erzwinge die Speicherung für jeden Provider
                     for (Map.Entry<String, ProviderStats> entry : providers.entrySet()) {
                         String providerName = entry.getKey();
                         
-                        // 3MPDD-Wert berechnen (vereinfacht)
-                        double mpddValue = Math.random() * 5.0; // Zufallswert für Test
+                        // Berechne 3MPDD-Wert
+                        double threeMonthProfit = htmlDb.getAverageMonthlyProfit(providerName, 3);
+                        double equityDrawdown = htmlDb.getEquityDrawdown(providerName);
+                        double mpdd3 = threeMonthProfit / (equityDrawdown > 0 ? equityDrawdown : 1.0);
                         
                         // In DB speichern mit force=true
-                        boolean success = historyService.store3MpddValue(providerName, mpddValue, true);
+                        boolean success = historyService.store3MpddValue(providerName, mpdd3, true);
                         
                         // Status loggen
                         if (success) {
                             publish(String.format("Provider '%s': 3MPDD-Wert %.4f gespeichert", 
-                                    providerName, mpddValue));
+                                    providerName, mpdd3));
                         } else {
                             publish(String.format("Provider '%s': Fehler bei der Speicherung", 
                                     providerName));
