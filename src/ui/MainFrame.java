@@ -24,6 +24,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.JToolBar;
 import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
 import javax.swing.border.BevelBorder;
 import javax.swing.border.EmptyBorder;
 
@@ -267,6 +268,56 @@ public class MainFrame extends JFrame {
             dialog.setVisible(true);
         });
         toolBar.add(riskScoreButton);
+       
+        JButton dbViewerButton = new JButton("DB Einträge");
+        dbViewerButton.addActionListener(e -> {
+            DatabaseViewerDialog dialog = new DatabaseViewerDialog(this, historyService);
+            dialog.setVisible(true);
+        });
+        toolBar.add(dbViewerButton);
+        
+        JButton dbForceSaveButton = new JButton("DB Speicherung erzwingen");
+        dbForceSaveButton.addActionListener(e -> {
+            // Prüfen, ob bereits Einträge in der DB vorhanden sind
+            if (!historyService.hasDatabaseEntries()) {
+                int answer = JOptionPane.showConfirmDialog(
+                    this,
+                    "Es wurden keine Einträge in der Datenbank gefunden. Möchten Sie eine initiale Speicherung für alle Provider erzwingen?",
+                    "Datenbank leer",
+                    JOptionPane.YES_NO_OPTION
+                );
+                
+                if (answer == JOptionPane.YES_OPTION) {
+                    // Initiale Speicherung im Hintergrund ausführen
+                    new SwingWorker<Void, Void>() {
+                        @Override
+                        protected Void doInBackground() throws Exception {
+                            historyService.forceInitialSave();
+                            return null;
+                        }
+                        
+                        @Override
+                        protected void done() {
+                            JOptionPane.showMessageDialog(
+                                MainFrame.this,
+                                "Initiale Speicherung abgeschlossen. Die Datenbank enthält nun Einträge für alle Provider.",
+                                "Speicherung abgeschlossen",
+                                JOptionPane.INFORMATION_MESSAGE
+                            );
+                        }
+                    }.execute();
+                }
+            } else {
+                // Detaillierten Dialog zum Erzwingen der Speicherung öffnen
+                ForceDbSaveDialog dialog = new ForceDbSaveDialog(
+                    this,
+                    historyService,
+                    dataManager.getStats()
+                );
+                dialog.setVisible(true);
+            }
+        });
+        toolBar.add(dbForceSaveButton);
         
         add(toolBar, BorderLayout.NORTH);
     }

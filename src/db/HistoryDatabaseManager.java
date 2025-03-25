@@ -30,35 +30,33 @@ public class HistoryDatabaseManager {
             "provider_name VARCHAR(255) UNIQUE NOT NULL)";
     
     private static final String CREATE_STAT_VALUES_TABLE = 
-            "CREATE TABLE IF NOT EXISTS stat_values (" +
-            "id INT AUTO_INCREMENT PRIMARY KEY, " +
-            "provider_id INT NOT NULL, " +
-            "stat_type VARCHAR(50) NOT NULL, " +
-            "recorded_date TIMESTAMP NOT NULL, " +
-            "value DOUBLE NOT NULL, " +
-            "FOREIGN KEY (provider_id) REFERENCES signal_providers(provider_id), " +
-            "UNIQUE (provider_id, stat_type, recorded_date))";
+    	    "CREATE TABLE IF NOT EXISTS stat_values (" +
+    	    "id INT AUTO_INCREMENT PRIMARY KEY, " +
+    	    "provider_id INT NOT NULL, " +
+    	    "stat_type VARCHAR(50) NOT NULL, " +
+    	    "recorded_date TIMESTAMP NOT NULL, " +
+    	    "\"value\" DOUBLE NOT NULL, " +
+    	    "FOREIGN KEY (provider_id) REFERENCES signal_providers(provider_id), " +
+    	    "UNIQUE (provider_id, stat_type, recorded_date))";
     
     private static final String INSERT_PROVIDER = 
-            "INSERT INTO signal_providers (provider_name) VALUES (?) " +
-            "ON DUPLICATE KEY UPDATE provider_id = provider_id";
+            "INSERT INTO signal_providers (provider_name) VALUES (?)";
     
     private static final String GET_PROVIDER_ID = 
             "SELECT provider_id FROM signal_providers WHERE provider_name = ?";
     
     private static final String INSERT_STAT_VALUE = 
-            "INSERT INTO stat_values (provider_id, stat_type, recorded_date, value) VALUES (?, ?, ?, ?) " +
-            "ON DUPLICATE KEY UPDATE value = ?";
+    	    "INSERT INTO stat_values (provider_id, stat_type, recorded_date, \"value\") VALUES (?, ?, ?, ?)";
     
     private static final String GET_LATEST_STAT_VALUE = 
-            "SELECT value FROM stat_values " +
-            "WHERE provider_id = ? AND stat_type = ? " +
-            "ORDER BY recorded_date DESC LIMIT 1";
+    	    "SELECT \"value\" FROM stat_values " +
+    	    "WHERE provider_id = ? AND stat_type = ? " +
+    	    "ORDER BY recorded_date DESC LIMIT 1";
     
     private static final String GET_STAT_HISTORY = 
-            "SELECT recorded_date, value FROM stat_values " +
-            "WHERE provider_id = ? AND stat_type = ? " +
-            "ORDER BY recorded_date DESC";
+    	    "SELECT recorded_date, \"value\" FROM stat_values " +
+    	    "WHERE provider_id = ? AND stat_type = ? " +
+    	    "ORDER BY recorded_date DESC";
     
     /**
      * Privater Konstruktor für Singleton-Pattern
@@ -91,27 +89,40 @@ public class HistoryDatabaseManager {
             // H2-Treiber laden
             Class.forName("org.h2.Driver");
             
-            // Verbindung zur Datenbank auf der Festplatte statt in-memory
-            // Der Pfad zur Datenbank ist im rootPath-Verzeichnis unter dem Namen "providerhistorydb"
+            // Verbindung zur Datenbank auf der Festplatte
             String dbPath = rootPath + File.separator + "database" + File.separator + "providerhistorydb";
             File dbDir = new File(rootPath + File.separator + "database");
             if (!dbDir.exists()) {
                 dbDir.mkdirs();
             }
             
-            // JDBC-URL anpassen: 
-            // - file: statt mem: für Speicherung auf Festplatte
-            // - DB_CLOSE_DELAY=-1 verhindert die sofortige Schließung der Datenbank
-            // - AUTO_SERVER=TRUE erlaubt mehrere Verbindungen
-            // - DATABASE_TO_UPPER=false behält die Spaltennamen in Kleinbuchstaben
             connection = DriverManager.getConnection(
                 "jdbc:h2:file:" + dbPath + ";DB_CLOSE_DELAY=-1;AUTO_SERVER=TRUE;DATABASE_TO_UPPER=false", 
                 "sa", "");
             
-            // Tabellen erstellen, falls sie noch nicht existieren
+            // Tabellen erstellen
             try (Statement stmt = connection.createStatement()) {
-                stmt.execute(CREATE_PROVIDERS_TABLE);
-                stmt.execute(CREATE_STAT_VALUES_TABLE);
+                // Tabelle für Provider erstellen
+                boolean result1 = stmt.execute(CREATE_PROVIDERS_TABLE);
+                LOGGER.info("Provider-Tabelle erstellt: " + result1);
+                
+                // Tabelle für statistische Werte erstellen
+                boolean result2 = stmt.execute(CREATE_STAT_VALUES_TABLE);
+                LOGGER.info("Statistik-Werte-Tabelle erstellt: " + result2);
+                
+                // Prüfen, ob Tabellen existieren
+                ResultSet rs1 = connection.getMetaData().getTables(null, null, "signal_providers", null);
+                boolean providersTableExists = rs1.next();
+                
+                ResultSet rs2 = connection.getMetaData().getTables(null, null, "stat_values", null);
+                boolean statValuesTableExists = rs2.next();
+                
+                LOGGER.info("Tabellen existieren: signal_providers=" + providersTableExists + 
+                            ", stat_values=" + statValuesTableExists);
+                
+                if (!providersTableExists || !statValuesTableExists) {
+                    LOGGER.severe("Tabellen konnten nicht erstellt werden!");
+                }
             }
             
             LOGGER.info("Provider History Datenbank erfolgreich initialisiert: " + dbPath);
@@ -121,15 +132,6 @@ public class HistoryDatabaseManager {
         }
     }
     
-    /**
-     * Speichert einen neuen statistischen Wert in der Datenbank
-     * 
-     * @param providerName Name des Signal Providers
-     * @param statType Art des statistischen Werts (z.B. "3MPDD", "DRAWDOWN", etc.)
-     * @param value Der zu speichernde Wert
-     * @param forceUpdate erzwingt Update auch bei gleichem Wert
-     * @return true wenn erfolgreich, false bei Fehler
-     */
     public boolean storeStatValue(String providerName, String statType, double value, boolean forceUpdate) {
         if (connection == null) {
             LOGGER.warning("Keine Datenbankverbindung verfügbar");
@@ -153,18 +155,51 @@ public class HistoryDatabaseManager {
             // Aktuelles Datum/Zeit
             LocalDateTime now = LocalDateTime.now();
             
-            // Wert speichern
-            try (PreparedStatement stmt = connection.prepareStatement(INSERT_STAT_VALUE)) {
-                stmt.setInt(1, providerId);
-                stmt.setString(2, statType);
-                stmt.setObject(3, now);
-                stmt.setDouble(4, value);
-                stmt.setDouble(5, value); // Für das UPDATE bei Duplikat
-                stmt.executeUpdate();
+            // Für H2 angepasste Version
+            try {
+                // Zuerst prüfen, ob ein Eintrag mit identischem Schlüssel existiert
+                try (PreparedStatement checkStmt = connection.prepareStatement(
+                        "SELECT COUNT(*) FROM stat_values WHERE provider_id = ? AND stat_type = ? AND recorded_date = ?")) {
+                    checkStmt.setInt(1, providerId);
+                    checkStmt.setString(2, statType);
+                    checkStmt.setObject(3, now);
+                    
+                    ResultSet rs = checkStmt.executeQuery();
+                    if (rs.next() && rs.getInt(1) > 0) {
+                        // Eintrag existiert, UPDATE verwenden
+                        try (PreparedStatement updateStmt = connection.prepareStatement(
+                        		"UPDATE stat_values SET \"value\" = ? WHERE provider_id = ? AND stat_type = ? AND recorded_date = ?"
+                        		)) 
+                        {
+                            
+                        	updateStmt.setDouble(1, value);
+                            updateStmt.setInt(2, providerId);
+                            updateStmt.setString(3, statType);
+                            updateStmt.setObject(4, now);
+                            updateStmt.executeUpdate();
+                        }
+                    } else {
+                        // Eintrag existiert nicht, INSERT verwenden
+                        try (PreparedStatement insertStmt = connection.prepareStatement(
+                        		"INSERT INTO stat_values (provider_id, stat_type, recorded_date, \"value\") VALUES (?, ?, ?, ?)"
+                        		)) 
+                        {
+                            insertStmt.setInt(1, providerId);
+                            insertStmt.setString(2, statType);
+                            insertStmt.setObject(3, now);
+                            insertStmt.setDouble(4, value);
+                            insertStmt.executeUpdate();
+                        }
+                    }
+                }
                 
                 LOGGER.info(String.format("%s-Wert %.4f für %s gespeichert (Datum: %s)", 
                         statType, value, providerName, now.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)));
                 return true;
+            } catch (SQLException e) {
+                LOGGER.severe("Fehler beim Speichern des " + statType + "-Werts: " + e.getMessage());
+                e.printStackTrace();
+                return false;
             }
         } catch (SQLException e) {
             LOGGER.severe("Fehler beim Speichern des " + statType + "-Werts: " + e.getMessage());
@@ -172,11 +207,13 @@ public class HistoryDatabaseManager {
             return false;
         }
     }
+   
     
-    /**
-     * Holt die Provider-ID aus der Datenbank oder erstellt einen neuen Eintrag
-     */
     private int getOrCreateProvider(String providerName) throws SQLException {
+        if (providerName == null || providerName.trim().isEmpty()) {
+            throw new SQLException("Provider-Name darf nicht leer sein");
+        }
+
         // Versuche zuerst, die ID zu bekommen
         try (PreparedStatement stmt = connection.prepareStatement(GET_PROVIDER_ID)) {
             stmt.setString(1, providerName);
@@ -187,20 +224,41 @@ public class HistoryDatabaseManager {
         }
         
         // Wenn nicht gefunden, füge neuen Provider hinzu
-        try (PreparedStatement stmt = connection.prepareStatement(INSERT_PROVIDER, Statement.RETURN_GENERATED_KEYS)) {
+        try (PreparedStatement stmt = connection.prepareStatement(
+                INSERT_PROVIDER, 
+                Statement.RETURN_GENERATED_KEYS)) {
             stmt.setString(1, providerName);
-            stmt.executeUpdate();
+            int affectedRows = stmt.executeUpdate();
+            
+            if (affectedRows == 0) {
+                throw new SQLException("Provider konnte nicht erstellt werden, keine Zeilen betroffen");
+            }
             
             // Hole generierte ID
-            ResultSet rs = stmt.getGeneratedKeys();
-            if (rs.next()) {
-                return rs.getInt(1);
-            } else {
-                throw new SQLException("Konnte keine ID für den neu eingefügten Provider erhalten");
+            try (ResultSet rs = stmt.getGeneratedKeys()) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                } else {
+                    throw new SQLException("Konnte keine ID für den neu eingefügten Provider erhalten");
+                }
             }
+        } catch (SQLException e) {
+            // Falls es einen Unique-Constraint-Fehler gibt (z.B. wenn der Provider in der Zwischenzeit
+            // von einem anderen Thread eingefügt wurde), versuche es noch einmal mit SELECT
+            if (e.getMessage().contains("Unique index or primary key violation") || 
+                e.getMessage().contains("Unique constraint violation") ||
+                e.getMessage().contains("Eindeutiger Index oder Primärschlüsselverletzung")) {
+                try (PreparedStatement stmt = connection.prepareStatement(GET_PROVIDER_ID)) {
+                    stmt.setString(1, providerName);
+                    ResultSet rs = stmt.executeQuery();
+                    if (rs.next()) {
+                        return rs.getInt(1);
+                    }
+                }
+            }
+            throw e;
         }
     }
-    
     /**
      * Holt den letzten gespeicherten statistischen Wert für einen Provider
      * 
@@ -335,6 +393,34 @@ public class HistoryDatabaseManager {
         public String toString() {
             return String.format("[%s] %.4f", 
                     date.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME), value);
+        }
+    }
+    /**
+     * Holt eine Liste aller Provider aus der Datenbank
+     * 
+     * @return Liste aller Providernamen
+     */
+    public List<String> getAllProviders() {
+        List<String> providers = new ArrayList<>();
+        
+        if (connection == null) {
+            LOGGER.warning("Keine Datenbankverbindung verfügbar");
+            return providers;
+        }
+        
+        try (Statement stmt = connection.createStatement()) {
+            String query = "SELECT provider_name FROM signal_providers ORDER BY provider_name";
+            ResultSet rs = stmt.executeQuery(query);
+            
+            while (rs.next()) {
+                providers.add(rs.getString(1));
+            }
+            
+            return providers;
+        } catch (SQLException e) {
+            LOGGER.severe("Fehler beim Abrufen aller Provider: " + e.getMessage());
+            e.printStackTrace();
+            return providers;
         }
     }
 }
