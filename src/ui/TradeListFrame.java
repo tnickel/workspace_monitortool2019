@@ -11,7 +11,6 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 
 import components.TradeChartPanel;
 import components.TradeListTable;
-import components.WebViewPanel;
 import data.ProviderStats;
 import data.Trade;
 import utils.TradeUtils;
@@ -20,18 +19,15 @@ public class TradeListFrame extends JFrame {
     private final TradeListTable tradeTable;
     private final JPanel detailPanel;
     private final TradeChartPanel chartPanel;
-    private final WebViewPanel webViewPanel;
-    private final ProviderStats stats;
     private JSplitPane mainSplitPane;
-    private JSplitPane rightSplitPane;
+    private final ProviderStats stats; // Referenz auf die ProviderStats
 
     public TradeListFrame(String providerName, ProviderStats stats) {
         super("Trade List: " + providerName);
-        this.stats = stats;
+        this.stats = stats; // ProviderStats speichern
         this.tradeTable = new TradeListTable(stats);
         this.detailPanel = new JPanel();
         this.chartPanel = new TradeChartPanel();
-        this.webViewPanel = new WebViewPanel();
         
         initializeUI();
         setupSelectionListener();
@@ -56,11 +52,8 @@ public class TradeListFrame extends JFrame {
         // Hauptbereich mit Tabelle
         JScrollPane scrollPane = new JScrollPane(tradeTable);
         
-        // Rechtes Panel mit Chart, Details und WebView
-        rightSplitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
-        
-        // Oberes Panel für Chart und Details
-        JPanel upperPanel = new JPanel(new BorderLayout(0, 5));
+        // Rechtes Panel für Chart und Concurrent Trades
+        JPanel rightPanel = new JPanel(new BorderLayout(0, 5));
         
         // Chart Panel im oberen Bereich
         JPanel chartContainer = new JPanel(new BorderLayout());
@@ -71,23 +64,13 @@ public class TradeListFrame extends JFrame {
         detailPanel.setBorder(BorderFactory.createTitledBorder("Concurrent Trades"));
         detailPanel.setLayout(new BorderLayout());
 
-        // Zusammenführen der oberen Panels
-        upperPanel.add(chartContainer, BorderLayout.NORTH);
-        upperPanel.add(detailPanel, BorderLayout.CENTER);
-        
-        // WebView Panel
-        JPanel webViewContainer = new JPanel(new BorderLayout());
-        webViewContainer.setBorder(BorderFactory.createTitledBorder("Signal Provider Details"));
-        webViewContainer.add(webViewPanel, BorderLayout.CENTER);
-        
-        //// Panels zum Split Pane hinzufügen
-        rightSplitPane.setTopComponent(upperPanel);
-        rightSplitPane.setBottomComponent(webViewContainer);
-        rightSplitPane.setResizeWeight(0.5);
+        // Zusammenführen der Panels
+        rightPanel.add(chartContainer, BorderLayout.NORTH);
+        rightPanel.add(detailPanel, BorderLayout.CENTER);
         
         // Haupt-Split Pane
-        mainSplitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, scrollPane, rightSplitPane);
-        mainSplitPane.setResizeWeight(0.8); // Geändert von 0.6 auf 0.8 für 80% Breite
+        mainSplitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, scrollPane, rightPanel);
+        mainSplitPane.setResizeWeight(0.8); // 80% Breite für die Tabelle
 
         // Toolbar
         JToolBar toolBar = new JToolBar();
@@ -107,6 +90,7 @@ public class TradeListFrame extends JFrame {
             mainSplitPane.setDividerLocation(0.8);
         });
     }
+    
     private void setupSelectionListener() {
         tradeTable.getSelectionModel().addListSelectionListener(new ListSelectionListener() {
             public void valueChanged(ListSelectionEvent e) {
@@ -114,15 +98,12 @@ public class TradeListFrame extends JFrame {
                     int row = tradeTable.getSelectedRow();
                     if (row >= 0) {
                         Trade selectedTrade = tradeTable.getTradeAt(row);
+                        // Verwende TradeUtils.getActiveTradesAt direkt mit den Trades aus stats
                         List<Trade> concurrentTrades = TradeUtils.getActiveTradesAt(
                             stats.getTrades(), 
                             selectedTrade.getOpenTime()
                         );
                         updateDetailPanel(selectedTrade, concurrentTrades);
-                        // Provider URL laden wenn verfügbar
-                        if (selectedTrade.getSignalProviderURL() != null) {
-                            webViewPanel.loadURL(selectedTrade.getSignalProviderURL());
-                        }
                     }
                 }
             }
@@ -228,8 +209,10 @@ public class TradeListFrame extends JFrame {
                 writer.println("Open Time,Close Time,Type,Symbol,Lots,Open Price,Close Price," +
                              "Profit/Loss,Commission,Swap,Total");
                 
-                for (int i = 0; i < tradeTable.getModel().getRowCount(); i++) {
-                    Trade trade = tradeTable.getTradeAt(i);
+                // Exportiere die originalen Trades aus stats
+                List<Trade> tradesToExport = stats.getTrades();
+                
+                for (Trade trade : tradesToExport) {
                     writer.printf("%s,%s,%s,%s,%.2f,%.5f,%.5f,%.2f,%.2f,%.2f,%.2f%n",
                         trade.getOpenTime(),
                         trade.getCloseTime(),
