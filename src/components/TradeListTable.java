@@ -84,6 +84,10 @@ public class TradeListTable extends JTable {
 
         double runningProfit = 0.0;
 
+        // Eine Liste aller Trades nach dem Öffnungszeitpunkt sortieren
+        List<Trade> allTradesByOpen = new ArrayList<>(sortedTrades);
+        allTradesByOpen.sort(Comparator.comparing(Trade::getOpenTime));
+
         for (int i = 0; i < sortedTrades.size(); i++) {
             Trade trade = sortedTrades.get(i);
             double totalProfit = trade.getTotalProfit();
@@ -91,9 +95,17 @@ public class TradeListTable extends JTable {
 
             long durationHours = java.time.Duration.between(trade.getOpenTime(), trade.getCloseTime()).toHours();
 
-            List<Trade> activeTrades = TradeUtils.getActiveTradesAt(sortedTrades, trade.getOpenTime());
+            // Aktive Trades zum Zeitpunkt der Eröffnung dieses Trades ermitteln
+            // Das ist der Schlüssel für die korrekte Berechnung
+            List<Trade> activeTrades = getActiveTradesAt(allTradesByOpen, trade.getOpenTime());
+            
+            // Anzahl der offenen Trades (bereits bestehende + aktueller Trade)
             int openTradesCount = activeTrades.size();
+            
+            // Summe der offenen Lots
             double openLotsCount = activeTrades.stream().mapToDouble(Trade::getLots).sum();
+            
+            // Offenes Equity berechnen
             double openEquity = estimateOpenEquity(activeTrades, trade.getOpenTime());
 
             model.addRow(new Object[] {
@@ -116,6 +128,33 @@ public class TradeListTable extends JTable {
                 openEquity
             });
         }
+    }
+    
+    /**
+     * Ermittelt alle Trades, die zum angegebenen Zeitpunkt aktiv/offen waren
+     * 
+     * @param allTrades Liste aller Trades (sollte nach Eröffnungszeit sortiert sein)
+     * @param time Der Zeitpunkt, für den offene Trades ermittelt werden sollen
+     * @return Liste der aktiven Trades zum angegebenen Zeitpunkt
+     */
+    private List<Trade> getActiveTradesAt(List<Trade> allTrades, LocalDateTime time) {
+        List<Trade> activeTrades = new ArrayList<>();
+        
+        for (Trade trade : allTrades) {
+            // Wenn der Trade nach dem gesuchten Zeitpunkt eröffnet wurde, 
+            // ist er für unsere Berechnung nicht relevant
+            if (trade.getOpenTime().isAfter(time)) {
+                continue;
+            }
+            
+            // Wenn der Trade vor oder genau zum gesuchten Zeitpunkt eröffnet
+            // und nach dem Zeitpunkt geschlossen wurde, ist er aktiv
+            if (trade.getCloseTime().isAfter(time)) {
+                activeTrades.add(trade);
+            }
+        }
+        
+        return activeTrades;
     }
 
     private void initializeTable() {
