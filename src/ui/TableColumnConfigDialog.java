@@ -59,7 +59,7 @@ public class TableColumnConfigDialog extends JDialog {
             String columnName = columnNames[i];
             
             JCheckBox checkbox = new JCheckBox(columnName);
-            checkbox.setSelected(true); // Standardmäßig alle ausgewählt
+            checkbox.setSelected(mainTable.isColumnVisible(i)); // Aktuellen Zustand der Spalte verwenden
             
             // Spalten "No." und "Signal Provider" sollten immer sichtbar sein
             if (i <= 1) {
@@ -156,15 +156,11 @@ public class TableColumnConfigDialog extends JDialog {
     }
     
     private void loadPreferences() {
-        // Lade gespeicherte Sichtbarkeitseinstellungen
+        // Lade gespeicherte Sichtbarkeitseinstellungen und synchronisiere die Checkboxen mit dem aktuellen Zustand
         for (int i = 0; i < columnCheckboxes.size(); i++) {
             JCheckBox checkbox = columnCheckboxes.get(i);
-            
-            // Wenn ein Wert gespeichert wurde, lade ihn
-            if (prefs.get(PREF_PREFIX + i, null) != null) {
-                boolean visible = prefs.getBoolean(PREF_PREFIX + i, true);
-                checkbox.setSelected(visible);
-            }
+            boolean isVisible = mainTable.isColumnVisible(i);
+            checkbox.setSelected(isVisible);
         }
     }
     

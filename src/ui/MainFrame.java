@@ -60,7 +60,8 @@ public class MainFrame extends JFrame {
         mainTable = new MainTable(dataManager, config.getDownloadPath());
         mainTable.setStatusUpdateCallback(text -> updateStatusBar());
         
-        mainTable.loadColumnVisibilitySettings();
+        // Die Zeile mit loadColumnVisibilitySettings() wurde entfernt, da dies jetzt in der MainTable-Klasse erfolgt
+        
         setupUI();
         setupSearch();
         setupStatusBar();

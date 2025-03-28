@@ -64,6 +64,9 @@ public class MainTable extends JTable {
         setupMouseListener();
         setupModelListener();
         
+        // Spalten-Sichtbarkeit laden NACH der Initialisierung der Tabelle
+        loadColumnVisibilitySettings();
+        
         // Stellen Sie sicher, dass beim Beenden der Anwendung die Ressourcen freigegeben werden
         try {
             JFrame parentFrame = (JFrame) SwingUtilities.getWindowAncestor(this);
@@ -385,13 +388,39 @@ public class MainTable extends JTable {
         Preferences prefs = Preferences.userNodeForPackage(getClass());
         final String columnPrefPrefix = "column_visible_";
         
+        // Prüfen, ob überhaupt Spalteneinstellungen existieren
+        boolean hasSettings = false;
         for (int i = 0; i < getColumnCount(); i++) {
-            // Erste 2 Spalten sind immer sichtbar
-            if (i <= 1) continue;
-            
-            // Prüfen, ob Einstellung existiert
             String key = columnPrefPrefix + i;
             if (prefs.get(key, null) != null) {
+                hasSettings = true;
+                break;
+            }
+        }
+        
+        // Wenn keine Einstellungen existieren, einige Standardspalten verstecken
+        if (!hasSettings) {
+            // Standardeinstellungen: Nur wichtige Spalten anzeigen, andere ausblenden
+            // Beispiel: Spalten 0, 1, 3, 4, 8, 11, 14, 19 sind sichtbar (Index-basiert)
+            for (int i = 0; i < getColumnCount(); i++) {
+                // Wichtige Spalten standardmäßig sichtbar lassen
+                boolean isStandardVisible = (i <= 1) || (i == 3) || (i == 4) || (i == 8) || 
+                                          (i == 11) || (i == 14) || (i == 19);
+                
+                if (!isStandardVisible) {
+                    setColumnVisible(i, false);
+                }
+                
+                // Speichere Standardeinstellung für zukünftige Verwendung
+                prefs.putBoolean(columnPrefPrefix + i, isStandardVisible);
+            }
+        } else {
+            // Bestehende Einstellungen laden
+            for (int i = 0; i < getColumnCount(); i++) {
+                // Erste 2 Spalten sind immer sichtbar
+                if (i <= 1) continue;
+                
+                String key = columnPrefPrefix + i;
                 boolean visible = prefs.getBoolean(key, true);
                 setColumnVisible(i, visible);
             }
@@ -409,28 +438,37 @@ public class MainTable extends JTable {
             return;
         }
         
-        TableColumn column = getColumnModel().getColumn(columnIndex);
+        // Verhindere, dass die ersten beiden Spalten jemals ausgeblendet werden
+        if (columnIndex <= 1 && !visible) {
+            return;
+        }
         
-        if (visible) {
-            // Spalte wieder sichtbar machen
-            if (originalColumnWidths.containsKey(columnIndex)) {
-                // Originale Breite wiederherstellen
-                column.setMinWidth(0);
-                column.setMaxWidth(Integer.MAX_VALUE);
-                column.setPreferredWidth(originalColumnWidths.get(columnIndex));
-                originalColumnWidths.remove(columnIndex);
+        try {
+            TableColumn column = getColumnModel().getColumn(columnIndex);
+            
+            if (visible) {
+                // Spalte wieder sichtbar machen
+                if (originalColumnWidths.containsKey(columnIndex)) {
+                    // Originale Breite wiederherstellen
+                    column.setMinWidth(0);
+                    column.setMaxWidth(Integer.MAX_VALUE);
+                    column.setPreferredWidth(originalColumnWidths.get(columnIndex));
+                    originalColumnWidths.remove(columnIndex);
+                }
+            } else {
+                // Spalte unsichtbar machen
+                if (!originalColumnWidths.containsKey(columnIndex)) {
+                    // Originale Breite speichern
+                    originalColumnWidths.put(columnIndex, column.getPreferredWidth());
+                    
+                    // Spalte auf minimale Breite setzen
+                    column.setMinWidth(0);
+                    column.setPreferredWidth(0);
+                    column.setMaxWidth(0);
+                }
             }
-        } else {
-            // Spalte unsichtbar machen
-            if (!originalColumnWidths.containsKey(columnIndex)) {
-                // Originale Breite speichern
-                originalColumnWidths.put(columnIndex, column.getPreferredWidth());
-                
-                // Spalte auf minimale Breite setzen
-                column.setMinWidth(0);
-                column.setPreferredWidth(0);
-                column.setMaxWidth(0);
-            }
+        } catch (Exception e) {
+            System.err.println("Fehler beim Ändern der Spaltensichtbarkeit: " + e.getMessage());
         }
     }
 
