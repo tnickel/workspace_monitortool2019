@@ -1,16 +1,16 @@
 package ui;
 
 import java.awt.BorderLayout;
-import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.prefs.Preferences;
+import java.util.Properties;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -20,7 +20,6 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
-import javax.swing.table.TableColumn;
 
 import components.MainTable;
 
@@ -28,15 +27,19 @@ import components.MainTable;
  * Dialog zum Konfigurieren der sichtbaren Spalten in der Haupttabelle
  */
 public class TableColumnConfigDialog extends JDialog {
+    private static final String CONFIG_FILENAME = "column_config.properties";
     private static final String PREF_PREFIX = "column_visible_";
     private final MainTable mainTable;
     private final List<JCheckBox> columnCheckboxes = new ArrayList<>();
-    private final Preferences prefs = Preferences.userNodeForPackage(TableColumnConfigDialog.class);
-    public static final String PREF_IDENTIFIER = "TableColumnVisibility";
+    private final Properties properties = new Properties();
+    private final File configFile;
     
     public TableColumnConfigDialog(JFrame parent, MainTable mainTable) {
         super(parent, "Tabellenspalten-Konfiguration", true);
         this.mainTable = mainTable;
+        
+        // Konfigurationsdatei im Verzeichnis der Anwendung
+        configFile = new File(CONFIG_FILENAME);
         
         initializeUI();
         loadPreferences();
@@ -147,20 +150,47 @@ public class TableColumnConfigDialog extends JDialog {
     }
     
     private void savePreferences() {
-        // Speichere Sichtbarkeit für jede Spalte
+        // Speichere Sichtbarkeit für jede Spalte in den Properties
         for (int i = 0; i < columnCheckboxes.size(); i++) {
             JCheckBox checkbox = columnCheckboxes.get(i);
             boolean visible = checkbox.isSelected();
-            prefs.putBoolean(PREF_PREFIX + i, visible);
+            properties.setProperty(PREF_PREFIX + i, String.valueOf(visible));
+        }
+        
+        // Speichere Properties in der Datei
+        try (FileOutputStream out = new FileOutputStream(configFile)) {
+            properties.store(out, "Tabellen-Spalten Konfiguration");
+            System.out.println("Spalteneinstellungen wurden gespeichert in: " + configFile.getAbsolutePath());
+        } catch (IOException e) {
+            System.err.println("Fehler beim Speichern der Spalteneinstellungen: " + e.getMessage());
+            e.printStackTrace();
         }
     }
     
     private void loadPreferences() {
-        // Lade gespeicherte Sichtbarkeitseinstellungen und synchronisiere die Checkboxen mit dem aktuellen Zustand
-        for (int i = 0; i < columnCheckboxes.size(); i++) {
-            JCheckBox checkbox = columnCheckboxes.get(i);
-            boolean isVisible = mainTable.isColumnVisible(i);
-            checkbox.setSelected(isVisible);
+        // Lade Properties aus der Datei, falls vorhanden
+        if (configFile.exists()) {
+            try (FileInputStream in = new FileInputStream(configFile)) {
+                properties.load(in);
+                
+                // Aktualisiere Checkboxen basierend auf geladenen Properties
+                for (int i = 0; i < columnCheckboxes.size(); i++) {
+                    JCheckBox checkbox = columnCheckboxes.get(i);
+                    if (i <= 1) {
+                        // Erste 2 Spalten immer sichtbar
+                        checkbox.setSelected(true);
+                    } else {
+                        String key = PREF_PREFIX + i;
+                        boolean visible = Boolean.parseBoolean(properties.getProperty(key, "true"));
+                        checkbox.setSelected(visible);
+                    }
+                }
+                
+                System.out.println("Spalteneinstellungen wurden geladen aus: " + configFile.getAbsolutePath());
+            } catch (IOException e) {
+                System.err.println("Fehler beim Laden der Spalteneinstellungen: " + e.getMessage());
+                e.printStackTrace();
+            }
         }
     }
     

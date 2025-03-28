@@ -4,13 +4,16 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.function.Consumer;
-import java.util.prefs.Preferences;
 import java.util.stream.Collectors;
 
 import javax.swing.JButton;
@@ -385,54 +388,96 @@ public class MainTable extends JTable {
         return providerName;
     }
     public void loadColumnVisibilitySettings() {
-        Preferences prefs = Preferences.userNodeForPackage(getClass());
-        final String columnPrefPrefix = "column_visible_";
+        File configFile = new File("column_config.properties");
+        Properties props = new Properties();
         
-        // Prüfen, ob überhaupt Spalteneinstellungen existieren
-        boolean hasSettings = false;
-        for (int i = 0; i < getColumnCount(); i++) {
-            String key = columnPrefPrefix + i;
-            if (prefs.get(key, null) != null) {
-                hasSettings = true;
-                break;
-            }
-        }
-        
-        // Wenn keine Einstellungen existieren, einige Standardspalten verstecken
-        if (!hasSettings) {
-            // Standardeinstellungen: Nur wichtige Spalten anzeigen, andere ausblenden
-            // Beispiel: Spalten 0, 1, 3, 4, 8, 11, 14, 19 sind sichtbar (Index-basiert)
-            for (int i = 0; i < getColumnCount(); i++) {
-                // Wichtige Spalten standardmäßig sichtbar lassen
-                boolean isStandardVisible = (i <= 1) || (i == 3) || (i == 4) || (i == 8) || 
-                                          (i == 11) || (i == 14) || (i == 19);
+        if (configFile.exists()) {
+            try (FileInputStream in = new FileInputStream(configFile)) {
+                props.load(in);
                 
-                if (!isStandardVisible) {
-                    setColumnVisible(i, false);
+                // Prüfen, ob überhaupt Spalteneinstellungen existieren
+                boolean hasSettings = false;
+                for (int i = 0; i < getColumnCount(); i++) {
+                    String key = "column_visible_" + i;
+                    if (props.getProperty(key) != null) {
+                        hasSettings = true;
+                        break;
+                    }
                 }
                 
-                // Speichere Standardeinstellung für zukünftige Verwendung
-                prefs.putBoolean(columnPrefPrefix + i, isStandardVisible);
+                if (hasSettings) {
+                    // Bestehende Einstellungen laden
+                    for (int i = 0; i < getColumnCount(); i++) {
+                        // Erste 2 Spalten sind immer sichtbar
+                        if (i <= 1) continue;
+                        
+                        String key = "column_visible_" + i;
+                        boolean visible = Boolean.parseBoolean(props.getProperty(key, "true"));
+                        
+                        // Prüfe, ob die Spalte sichtbar sein soll
+                        if (!visible) {
+                            // Spalte verstecken
+                            TableColumn column = getColumnModel().getColumn(i);
+                            int originalWidth = column.getPreferredWidth();
+                            originalColumnWidths.put(i, originalWidth);
+                            column.setMinWidth(0);
+                            column.setPreferredWidth(0);
+                            column.setMaxWidth(0);
+                        }
+                    }
+                } else {
+                    // Wenn keine Einstellungen existieren, Standardwerte anwenden
+                    setDefaultColumnVisibility();
+                }
+                
+                System.out.println("Spalteneinstellungen wurden geladen aus: " + configFile.getAbsolutePath());
+            } catch (IOException e) {
+                System.err.println("Fehler beim Laden der Spalteneinstellungen: " + e.getMessage());
+                e.printStackTrace();
+                
+                // Bei Fehler: Standardeinstellungen verwenden
+                setDefaultColumnVisibility();
             }
         } else {
-            // Bestehende Einstellungen laden
-            for (int i = 0; i < getColumnCount(); i++) {
-                // Erste 2 Spalten sind immer sichtbar
-                if (i <= 1) continue;
-                
-                String key = columnPrefPrefix + i;
-                boolean visible = prefs.getBoolean(key, true);
-                setColumnVisible(i, visible);
+            // Wenn keine Konfigurationsdatei existiert, Standardeinstellungen verwenden
+            setDefaultColumnVisibility();
+        }
+    }
+
+    private void setDefaultColumnVisibility() {
+        // Standardeinstellungen: Nur wichtige Spalten anzeigen, andere ausblenden
+        // Beispiel: Spalten 0, 1, 3, 4, 8, 11, 14, 19 sind sichtbar (Index-basiert)
+        for (int i = 0; i < getColumnCount(); i++) {
+            // Wichtige Spalten standardmäßig sichtbar lassen
+            boolean isStandardVisible = (i <= 1) || (i == 3) || (i == 4) || (i == 8) || 
+                                       (i == 11) || (i == 14) || (i == 19);
+            
+            if (!isStandardVisible) {
+                // Spalte verstecken
+                TableColumn column = getColumnModel().getColumn(i);
+                int originalWidth = column.getPreferredWidth();
+                originalColumnWidths.put(i, originalWidth);
+                column.setMinWidth(0);
+                column.setPreferredWidth(0);
+                column.setMaxWidth(0);
             }
         }
     }
 
     /**
-     * Setzt eine Spalte sichtbar oder unsichtbar
+     * Prüft, ob eine Spalte sichtbar ist
      * 
      * @param columnIndex Index der Spalte
-     * @param visible true für sichtbar, false für unsichtbar
+     * @return true wenn die Spalte sichtbar ist, false sonst
      */
+    public boolean isColumnVisible(int columnIndex) {
+        if (columnIndex < 0 || columnIndex >= getColumnCount()) {
+            return false;
+        }
+        
+        return !originalColumnWidths.containsKey(columnIndex);
+    }
+   
     public void setColumnVisible(int columnIndex, boolean visible) {
         if (columnIndex < 0 || columnIndex >= getColumnCount()) {
             return;
@@ -470,19 +515,5 @@ public class MainTable extends JTable {
         } catch (Exception e) {
             System.err.println("Fehler beim Ändern der Spaltensichtbarkeit: " + e.getMessage());
         }
-    }
-
-    /**
-     * Prüft, ob eine Spalte sichtbar ist
-     * 
-     * @param columnIndex Index der Spalte
-     * @return true wenn die Spalte sichtbar ist, false sonst
-     */
-    public boolean isColumnVisible(int columnIndex) {
-        if (columnIndex < 0 || columnIndex >= getColumnCount()) {
-            return false;
-        }
-        
-        return !originalColumnWidths.containsKey(columnIndex);
     }
 }
