@@ -49,6 +49,7 @@ import db.HistoryDatabaseManager.HistoryEntry;
 import services.ProviderHistoryService;
 import utils.ChartFactoryUtil;
 import utils.HtmlDatabase;
+import charts.CurrencyPairTradesChart;
 
 public class PerformanceAnalysisDialog extends JFrame
 {
@@ -149,6 +150,13 @@ public class PerformanceAnalysisDialog extends JFrame
 		stackingChart.setAlignmentX(LEFT_ALIGNMENT);
 		mainPanel.add(stackingChart);
 		mainPanel.add(javax.swing.Box.createRigidArea(new Dimension(0, 20)));
+		
+		CurrencyPairTradesChart currencyPairTradesChart = new CurrencyPairTradesChart(stats.getTrades());
+		currencyPairTradesChart.setPreferredSize(new Dimension(950, 650)); // Höher für beide Diagramme
+		currencyPairTradesChart.setAlignmentX(LEFT_ALIGNMENT);
+		mainPanel.add(currencyPairTradesChart);
+		mainPanel.add(javax.swing.Box.createRigidArea(new Dimension(0, 20)));
+		
 		
 		DurationProfitChart durationChart = new DurationProfitChart(stats.getTrades());
 		durationChart.setPreferredSize(chartSize);
