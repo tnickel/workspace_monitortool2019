@@ -1,13 +1,16 @@
 package renderers;
 
-import models.HighlightTableModel;
-
-import javax.swing.*;
-import javax.swing.table.DefaultTableCellRenderer;
-import java.awt.*;
+import java.awt.Color;
+import java.awt.Component;
 import java.text.DecimalFormat;
 import java.util.List;
 import java.util.regex.Pattern;
+
+import javax.swing.JLabel;
+import javax.swing.JTable;
+import javax.swing.table.DefaultTableCellRenderer;
+
+import models.HighlightTableModel;
 
 public class HighlightRenderer extends DefaultTableCellRenderer {
     private String searchText = "";
@@ -33,7 +36,7 @@ public class HighlightRenderer extends DefaultTableCellRenderer {
                 String columnName = table.getColumnName(column);
                 
                 if (providerName != null && model.getHtmlDatabase() != null) {
-                    // Tooltips für verschiedene Spalten basierend auf Spaltennamen
+                    // Tooltips fï¿½r verschiedene Spalten basierend auf Spaltennamen
                     switch (columnName) {
                         case "3MPDD":
                             setToolTipText(model.getHtmlDatabase().getMPDDTooltip(providerName, 3));
@@ -72,7 +75,7 @@ public class HighlightRenderer extends DefaultTableCellRenderer {
                                 
                                 setToolTipText(tooltip.toString());
                             } else {
-                                setToolTipText("Keine Profitdaten verfügbar");
+                                setToolTipText("Keine Profitdaten verfï¿½gbar");
                             }
                             break;
                         default:
@@ -82,17 +85,17 @@ public class HighlightRenderer extends DefaultTableCellRenderer {
                 }
             }
             
-            // Farbliche Hervorhebung für MPDD-Spalten
+            // Farbliche Hervorhebung fï¿½r MPDD-Spalten
             String columnName = table.getColumnName(column);
             if ((columnName.equals("3MPDD") || columnName.equals("6MPDD") || 
                  columnName.equals("9MPDD") || columnName.equals("12MPDD")) && !isSelected) {
                 double mpddValue = (Double)value;
                 if (mpddValue > 1.0) {
-                    c.setBackground(new Color(200, 255, 200)); // Hellgrün für gute Werte
+                    c.setBackground(new Color(200, 255, 200)); // Hellgrï¿½n fï¿½r gute Werte
                 } else if (mpddValue < 0.5) {
-                    c.setBackground(new Color(255, 200, 200)); // Hellrot für schlechte Werte
+                    c.setBackground(new Color(255, 200, 200)); // Hellrot fï¿½r schlechte Werte
                 } else {
-                    c.setBackground(new Color(255, 255, 200)); // Hellgelb für mittlere Werte
+                    c.setBackground(new Color(255, 255, 200)); // Hellgelb fï¿½r mittlere Werte
                 }
             }
         }

@@ -2,10 +2,12 @@ package components;
 
 
 
+import java.awt.GridLayout;
+
+import javax.swing.JPanel;
+
 import data.ProviderStats;
 import utils.ChartFactoryUtil;
-import javax.swing.*;
-import java.awt.*;
 
 public class ChartsPanel extends JPanel {
     private final ChartFactoryUtil chartFactory;

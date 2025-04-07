@@ -1,9 +1,12 @@
 package services;
 
-import data.Trade;
-import data.ProviderStats;
-import java.util.*;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.TreeMap;
+
+import data.ProviderStats;
+import data.Trade;
 
 public class RiskAnalysisServ {
     public static int calculateRiskScore(ProviderStats stats) {
@@ -34,16 +37,16 @@ public class RiskAnalysisServ {
     }
     
     private static double calculateOpenEquityRisk(List<Trade> trades) {
-        // Map für das Tracking der offenen Lots pro Zeitpunkt
+        // Map fï¿½r das Tracking der offenen Lots pro Zeitpunkt
         TreeMap<LocalDateTime, Double> openLotsAtTime = new TreeMap<>();
         
-        // Erfasse alle Lot-Änderungen über die Zeit
+        // Erfasse alle Lot-ï¿½nderungen ï¿½ber die Zeit
         for (Trade trade : trades) {
             openLotsAtTime.merge(trade.getOpenTime(), trade.getLots(), Double::sum);
             openLotsAtTime.merge(trade.getCloseTime(), -trade.getLots(), Double::sum);
         }
         
-        // Berechne kumulierte Lots für jeden Zeitpunkt
+        // Berechne kumulierte Lots fï¿½r jeden Zeitpunkt
         double maxOpenLots = 0;
         double runningLots = 0;
         
@@ -67,10 +70,10 @@ public class RiskAnalysisServ {
     private static double analyzeConcurrentRisk(List<Trade> trades) {
         if (trades.isEmpty()) return 0;
         
-        // Map für das Tracking der offenen Lots pro Zeitpunkt
+        // Map fï¿½r das Tracking der offenen Lots pro Zeitpunkt
         TreeMap<LocalDateTime, Double> lotsAtTime = new TreeMap<>();
         
-        // Erfasse Lot-Änderungen und deren Werte
+        // Erfasse Lot-ï¿½nderungen und deren Werte
         for (Trade trade : trades) {
             lotsAtTime.merge(trade.getOpenTime(), trade.getLots(), Double::sum);
             lotsAtTime.merge(trade.getCloseTime(), -trade.getLots(), Double::sum);
@@ -123,9 +126,9 @@ public class RiskAnalysisServ {
         }
         
         // Kombinierte Bewertung aus:
-        // - Maximaler Lot-Erhöhung
-        // - Anzahl aufeinanderfolgender Verluste mit Erhöhung
-        // - Maximale Lot-Größe in einer Verlustsequenz
+        // - Maximaler Lot-Erhï¿½hung
+        // - Anzahl aufeinanderfolgender Verluste mit Erhï¿½hung
+        // - Maximale Lot-Grï¿½ï¿½e in einer Verlustsequenz
         double baseScore = Math.min(100, (maxLotIncrease * 20) + (consecutiveLossesWithIncrease * 5));
         double lotSizeScore = Math.min(100, (maxConsecutiveLots / 0.1) * 10); // 0.1 Lot als Basis
         

@@ -1,7 +1,18 @@
 package ui;
 
-import javax.swing.*;
-import java.awt.*;
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.Font;
+
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JDialog;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 
 public class RiskScoreExplanationDialog extends JDialog {
     
@@ -45,8 +56,8 @@ public class RiskScoreExplanationDialog extends JDialog {
             "- Trading frequency</p>" +
             
             "<h2>Calculation Formula:</h2>" +
-            "<p>Risk Score = (0.4 × Drawdown Risk) + (0.3 × Position Risk) + " +
-            "(0.3 × Trade Management Risk)</p>" +
+            "<p>Risk Score = (0.4 ï¿½ Drawdown Risk) + (0.3 ï¿½ Position Risk) + " +
+            "(0.3 ï¿½ Trade Management Risk)</p>" +
             
             "<h2>Risk Level Classification:</h2>" +
             "<p>0-20: Very Low Risk<br>" +

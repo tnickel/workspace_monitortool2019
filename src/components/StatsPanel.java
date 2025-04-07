@@ -2,10 +2,15 @@ package components;
 
 
 
-import data.ProviderStats;
-import javax.swing.*;
-import java.awt.*;
+import java.awt.GridLayout;
 import java.text.DecimalFormat;
+
+import javax.swing.BorderFactory;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.SwingConstants;
+
+import data.ProviderStats;
 
 public class StatsPanel extends JPanel {
     private final ProviderStats stats;

@@ -8,7 +8,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-import org.jfree.data.category.DefaultCategoryDataset;
 import utils.TradeUtils;
 
 public class ProviderStats {

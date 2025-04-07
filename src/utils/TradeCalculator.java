@@ -1,9 +1,10 @@
 package utils;
 
-import data.Trade;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.List;
+
+import data.Trade;
 
 public class TradeCalculator {
     public static class OpenTradeStats {
@@ -22,7 +23,7 @@ public class TradeCalculator {
         List<Trade> activeTrades = new ArrayList<>();
         
         for (Trade trade : allTrades) {
-            // Prüfe ob Trade zum Zeitpunkt aktiv war
+            // Prï¿½fe ob Trade zum Zeitpunkt aktiv war
             if (trade.getOpenTime().compareTo(timePoint) <= 0 && 
                 trade.getCloseTime().compareTo(timePoint) > 0) {
                 activeTrades.add(trade);

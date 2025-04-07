@@ -3,9 +3,11 @@ package charts;
 
 import java.awt.Color;
 import java.awt.Dimension;
-import java.util.List;
 import java.time.Duration;
-import data.Trade;
+import java.util.List;
+
+import javax.swing.JPanel;
+
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
@@ -13,7 +15,8 @@ import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.XYItemRenderer;
 import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
-import javax.swing.JPanel;
+
+import data.Trade;
 
 public class DurationProfitChart extends JPanel {
     

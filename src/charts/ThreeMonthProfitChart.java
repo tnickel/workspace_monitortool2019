@@ -1,5 +1,11 @@
 package charts;
 
+import java.awt.BasicStroke;
+import java.awt.Color;
+import java.text.SimpleDateFormat;
+import java.util.Map;
+import java.util.TreeMap;
+
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
@@ -9,12 +15,6 @@ import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import org.jfree.data.time.Month;
 import org.jfree.data.time.TimeSeries;
 import org.jfree.data.time.TimeSeriesCollection;
-
-import java.awt.BasicStroke;
-import java.awt.Color;
-import java.text.SimpleDateFormat;
-import java.util.Map;
-import java.util.TreeMap;
 
 public class ThreeMonthProfitChart extends ChartPanel {
     

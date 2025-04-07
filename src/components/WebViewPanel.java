@@ -3,7 +3,9 @@ package components;
 
 
 import java.awt.BorderLayout;
+
 import javax.swing.JPanel;
+
 import javafx.application.Platform;
 import javafx.embed.swing.JFXPanel;
 import javafx.scene.Scene;

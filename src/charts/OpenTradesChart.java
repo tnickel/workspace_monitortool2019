@@ -7,7 +7,6 @@ import java.awt.Font;
 import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -19,11 +18,9 @@ import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.DateAxis;
-import org.jfree.chart.axis.DateTickMarkPosition;
 import org.jfree.chart.axis.NumberAxis;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
-import org.jfree.chart.ui.RectangleInsets;
 import org.jfree.data.time.Millisecond;
 import org.jfree.data.time.TimeSeries;
 import org.jfree.data.time.TimeSeriesCollection;
@@ -38,7 +35,7 @@ public class OpenTradesChart extends JPanel {
         dataset = new TimeSeriesCollection();
         
         chart = ChartFactory.createTimeSeriesChart(
-            null,  // Kein Titel, wird später gesetzt
+            null,  // Kein Titel, wird spï¿½ter gesetzt
             "Zeit",
             "Anzahl",
             dataset,
@@ -100,7 +97,7 @@ public class OpenTradesChart extends JPanel {
         }
         
         dataset.addSeries(series);
-        chart.setTitle("Verlauf der gleichzeitig geöffneten Trades");
+        chart.setTitle("Verlauf der gleichzeitig geï¿½ffneten Trades");
     }
     
     public void addLotsProvider(String providerName, List<Trade> trades) {

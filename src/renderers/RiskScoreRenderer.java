@@ -1,8 +1,10 @@
 package renderers;
 
-import javax.swing.*;
+import java.awt.Color;
+import java.awt.Component;
+
+import javax.swing.JTable;
 import javax.swing.table.DefaultTableCellRenderer;
-import java.awt.*;
 
 public class RiskScoreRenderer extends DefaultTableCellRenderer {
     
@@ -17,37 +19,37 @@ public class RiskScoreRenderer extends DefaultTableCellRenderer {
             // Setze Farbe basierend auf Risiko-Score
             if (!isSelected) {
                 if (riskScore >= 8) {
-                    c.setBackground(new Color(255, 200, 200)); // Hellrot für hohes Risiko
+                    c.setBackground(new Color(255, 200, 200)); // Hellrot fï¿½r hohes Risiko
                 } else if (riskScore <= 3) {
-                    c.setBackground(new Color(200, 255, 200)); // Hellgrün für niedriges Risiko
+                    c.setBackground(new Color(200, 255, 200)); // Hellgrï¿½n fï¿½r niedriges Risiko
                 } else {
-                    c.setBackground(new Color(255, 255, 200)); // Hellgelb für mittleres Risiko
+                    c.setBackground(new Color(255, 255, 200)); // Hellgelb fï¿½r mittleres Risiko
                 }
             }
             
-            // Tooltip mit Risiko-Erklärung
+            // Tooltip mit Risiko-Erklï¿½rung
             StringBuilder tooltip = new StringBuilder("<html>");
-            tooltip.append("<b>Risiko-Score Erklärung:</b><br><br>");
+            tooltip.append("<b>Risiko-Score Erklï¿½rung:</b><br><br>");
             tooltip.append("Score: ").append(String.format("%.1f", riskScore)).append("<br><br>");
             
             if (riskScore >= 8) {
                 tooltip.append("<b>Hohes Risiko:</b><br>");
-                tooltip.append("• Hohe Drawdowns<br>");
-                tooltip.append("• Große Positionsgrößen<br>");
-                tooltip.append("• Wenig konsistente Performance<br>");
-                tooltip.append("• Erhöhtes Verlustrisiko");
+                tooltip.append("ï¿½ Hohe Drawdowns<br>");
+                tooltip.append("ï¿½ Groï¿½e Positionsgrï¿½ï¿½en<br>");
+                tooltip.append("ï¿½ Wenig konsistente Performance<br>");
+                tooltip.append("ï¿½ Erhï¿½htes Verlustrisiko");
             } else if (riskScore <= 3) {
                 tooltip.append("<b>Niedriges Risiko:</b><br>");
-                tooltip.append("• Moderate Drawdowns<br>");
-                tooltip.append("• Angemessene Positionsgrößen<br>");
-                tooltip.append("• Konsistente Performance<br>");
-                tooltip.append("• Gutes Risikomanagement");
+                tooltip.append("ï¿½ Moderate Drawdowns<br>");
+                tooltip.append("ï¿½ Angemessene Positionsgrï¿½ï¿½en<br>");
+                tooltip.append("ï¿½ Konsistente Performance<br>");
+                tooltip.append("ï¿½ Gutes Risikomanagement");
             } else {
                 tooltip.append("<b>Mittleres Risiko:</b><br>");
-                tooltip.append("• Durchschnittliche Drawdowns<br>");
-                tooltip.append("• Normale Positionsgrößen<br>");
-                tooltip.append("• Teilweise schwankende Performance<br>");
-                tooltip.append("• Ausgewogenes Risiko/Rendite-Verhältnis");
+                tooltip.append("ï¿½ Durchschnittliche Drawdowns<br>");
+                tooltip.append("ï¿½ Normale Positionsgrï¿½ï¿½en<br>");
+                tooltip.append("ï¿½ Teilweise schwankende Performance<br>");
+                tooltip.append("ï¿½ Ausgewogenes Risiko/Rendite-Verhï¿½ltnis");
             }
             tooltip.append("</html>");
             

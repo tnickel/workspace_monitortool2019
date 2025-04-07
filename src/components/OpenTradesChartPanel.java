@@ -1,9 +1,13 @@
 package components;
 
-import javax.swing.*;
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Dimension;
 import java.time.LocalDateTime;
 import java.util.List;
+
+import javax.swing.JPanel;
+import javax.swing.JSplitPane;
+
 import data.Trade;
 
 public class OpenTradesChartPanel extends JPanel {

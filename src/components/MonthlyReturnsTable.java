@@ -1,18 +1,23 @@
 
 package components;
 
-import javax.swing.*;
-import javax.swing.table.DefaultTableCellRenderer;
-import javax.swing.table.DefaultTableModel;
-import java.awt.*;
-import java.time.YearMonth;
-import java.time.format.TextStyle;
-import java.util.Locale;
-import java.util.Map;
-import java.util.TreeMap;
-import data.Trade;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Cursor;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTable;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.DefaultTableModel;
+
+import data.Trade;
 
 public class MonthlyReturnsTable extends JPanel {
     private final JTable table;

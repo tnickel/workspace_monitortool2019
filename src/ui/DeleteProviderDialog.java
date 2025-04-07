@@ -1,12 +1,23 @@
 package ui;
 
-import javax.swing.*;
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.FlowLayout;
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.Map;
 import java.util.logging.Logger;
+
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JDialog;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
 
 import data.DataManager;
 import data.ProviderStats;
@@ -20,7 +31,7 @@ public class DeleteProviderDialog extends JDialog {
 
     public DeleteProviderDialog(JFrame parent, String rootPath, DataManager dataManager, 
                               Map<String, ProviderStats> selectedProviders, Runnable refreshCallback) {
-        super(parent, "Signal Provider löschen", true);
+        super(parent, "Signal Provider lï¿½schen", true);
         this.dataManager = dataManager;
         this.refreshCallback = refreshCallback;
         this.config = new MqlAnalyserConf(rootPath);
@@ -30,13 +41,13 @@ public class DeleteProviderDialog extends JDialog {
         messagePanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
         JLabel messageLabel = new JLabel(String.format(
-            "<html>Möchten Sie wirklich <b>%d</b> ausgewählte Signal Provider löschen?<br>" +
+            "<html>Mï¿½chten Sie wirklich <b>%d</b> ausgewï¿½hlte Signal Provider lï¿½schen?<br>" +
             "Die Dateien werden in den Ordner 'deleted' verschoben.</html>", 
             selectedProviders.size()));
         messagePanel.add(messageLabel, BorderLayout.CENTER);
 
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        JButton deleteButton = new JButton("Löschen");
+        JButton deleteButton = new JButton("Lï¿½schen");
         JButton cancelButton = new JButton("Abbrechen");
 
         deleteButton.addActionListener(e -> {
@@ -76,9 +87,9 @@ public class DeleteProviderDialog extends JDialog {
 
             return true;
         } catch (Exception e) {
-            LOGGER.severe("Fehler beim Löschen der Provider: " + e.getMessage());
+            LOGGER.severe("Fehler beim Lï¿½schen der Provider: " + e.getMessage());
             JOptionPane.showMessageDialog(this,
-                "Fehler beim Löschen der Provider: " + e.getMessage(),
+                "Fehler beim Lï¿½schen der Provider: " + e.getMessage(),
                 "Fehler",
                 JOptionPane.ERROR_MESSAGE);
             return false;

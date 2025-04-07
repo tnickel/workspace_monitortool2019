@@ -1,8 +1,16 @@
 package ui;
 
-import java.awt.*;
-import java.awt.event.*;
-import java.net.URI;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.GridLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.text.SimpleDateFormat;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -10,8 +18,16 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
-import javax.swing.*;
-import javax.swing.border.TitledBorder;
+import javax.swing.AbstractAction;
+import javax.swing.Action;
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JComponent;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.KeyStroke;
 
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;

@@ -3,6 +3,7 @@ package utils;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+
 import data.Trade;
 
 public class TradeUtils {
@@ -40,7 +41,7 @@ public class TradeUtils {
            // Entferne zuerst alle Trades die bereits geschlossen wurden
            activeTrades.removeIf(t -> t.getCloseTime().compareTo(trade.getOpenTime()) <= 0);
            
-           // Füge den neuen Trade hinzu
+           // Fï¿½ge den neuen Trade hinzu
            activeTrades.add(trade);
            
            // Aktualisiere das Maximum
@@ -66,7 +67,7 @@ public class TradeUtils {
            // Entferne zuerst alle Trades die bereits geschlossen wurden
            activeTrades.removeIf(t -> t.getCloseTime().compareTo(trade.getOpenTime()) <= 0);
            
-           // Füge den neuen Trade hinzu
+           // Fï¿½ge den neuen Trade hinzu
            activeTrades.add(trade);
            
            // Berechne aktuelle Lots und aktualisiere Maximum
@@ -80,7 +81,7 @@ public class TradeUtils {
    }
    
    /**
-    * Gibt die Liste der aktiven Trades zu einem bestimmten Zeitpunkt zurück
+    * Gibt die Liste der aktiven Trades zu einem bestimmten Zeitpunkt zurï¿½ck
     */
    public static List<Trade> getActiveTradesAt(List<Trade> trades, LocalDateTime time) {
        List<Trade> activeTrades = new ArrayList<>();
