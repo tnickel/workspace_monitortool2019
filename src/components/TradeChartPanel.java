@@ -129,7 +129,7 @@ public class TradeChartPanel extends JPanel {
         @Override
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
-            if (trades == null || trades.isEmpty()) return;
+            if (trades == null || trades.isEmpty() || startTime == null) return;
 
             Graphics2D g2 = (Graphics2D) g;
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
@@ -158,12 +158,22 @@ public class TradeChartPanel extends JPanel {
             g2.setColor(new Color(240, 240, 240));
             
             LocalDateTime earliest = startTime;
-            LocalDateTime latest = trades.stream()
-                .map(Trade::getCloseTime)
-                .max(LocalDateTime::compareTo)
-                .orElse(startTime.plusDays(1));
+            LocalDateTime latest = earliest.plusHours(1); // Standardwert, falls keine Trades vorhanden sind
+            
+            // Finden des spätesten Close-Time unter den Trades
+            if (trades != null && !trades.isEmpty()) {
+                for (Trade trade : trades) {
+                    if (trade.getCloseTime().isAfter(latest)) {
+                        latest = trade.getCloseTime();
+                    }
+                }
+            }
 
             int timeRange = (int) java.time.Duration.between(earliest, latest).toHours();
+            
+            // Vermeidung von Division durch Null
+            if (timeRange <= 0) timeRange = 1;
+            
             int markInterval = Math.max(1, timeRange / 10);
 
             for (int i = 0; i <= timeRange; i += markInterval) {
@@ -178,16 +188,28 @@ public class TradeChartPanel extends JPanel {
         }
 
         private void drawTimeAxis(Graphics2D g2, int width, int height) {
+            if (startTime == null) return;
+            
             g2.setColor(Color.BLACK);
             g2.setFont(new Font("Arial", Font.PLAIN, 10));
             
             LocalDateTime earliest = startTime;
-            LocalDateTime latest = trades.stream()
-                .map(Trade::getCloseTime)
-                .max(LocalDateTime::compareTo)
-                .orElse(startTime.plusDays(1));
+            LocalDateTime latest = earliest.plusHours(1); // Standardwert, falls keine Trades vorhanden sind
+            
+            // Finden des spätesten Close-Time unter den Trades
+            if (trades != null && !trades.isEmpty()) {
+                for (Trade trade : trades) {
+                    if (trade.getCloseTime().isAfter(latest)) {
+                        latest = trade.getCloseTime();
+                    }
+                }
+            }
 
             int timeRange = (int) java.time.Duration.between(earliest, latest).toHours();
+            
+            // Vermeidung von Division durch Null
+            if (timeRange <= 0) timeRange = 1;
+            
             int markInterval = Math.max(1, timeRange / 10);
 
             for (int i = 0; i <= timeRange; i += markInterval) {
@@ -198,19 +220,35 @@ public class TradeChartPanel extends JPanel {
         }
 
         private void drawTrade(Graphics2D g2, Trade trade, int width, int y) {
-            long startDiff = java.time.Duration.between(startTime, trade.getOpenTime()).toMinutes();
+            if (startTime == null) return;
+            
+            // Berechne früheste und späteste Zeit
+            LocalDateTime earliest = startTime;
+            LocalDateTime latest = earliest.plusHours(1); // Standardwert, falls nur ein Trade vorhanden ist
+            
+            // Finden des spätesten Close-Time unter den Trades
+            if (trades != null && !trades.isEmpty()) {
+                for (Trade t : trades) {
+                    if (t.getCloseTime().isAfter(latest)) {
+                        latest = t.getCloseTime();
+                    }
+                }
+            }
+            
+            // Berechne Gesamtminuten für den Zeitraum
+            int totalMinutes = (int) java.time.Duration.between(earliest, latest).toMinutes();
+            
+            // Vermeidung von Division durch Null
+            if (totalMinutes <= 0) totalMinutes = 60; // Verwende 1 Stunde als Standard
+            
+            long startDiff = java.time.Duration.between(earliest, trade.getOpenTime()).toMinutes();
             long duration = java.time.Duration.between(trade.getOpenTime(), trade.getCloseTime()).toMinutes();
             
-            int totalMinutes = (int) java.time.Duration.between(
-                startTime, 
-                trades.stream()
-                    .map(Trade::getCloseTime)
-                    .max(LocalDateTime::compareTo)
-                    .orElse(startTime.plusDays(1))
-            ).toMinutes();
-
             int x1 = PADDING + (int)(startDiff * width / totalMinutes);
             int x2 = PADDING + (int)((startDiff + duration) * width / totalMinutes);
+            
+            // Minimum-Breite für sehr kurze Trades
+            if (x2 - x1 < 2) x2 = x1 + 2;
             
             int barHeight = (int)(ROW_HEIGHT * 0.6);
             barHeight *= (1 + Math.min(1.0, trade.getLots()));
