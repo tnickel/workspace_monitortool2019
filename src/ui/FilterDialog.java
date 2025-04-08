@@ -3,9 +3,11 @@ package ui;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.Font;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 
+import javax.swing.BorderFactory;
 import javax.swing.DefaultCellEditor;
 import javax.swing.JButton;
 import javax.swing.JDialog;
@@ -23,6 +25,7 @@ import models.FilterCriteria.FilterRange;
 
 public class FilterDialog extends JDialog {
     private final JTable filterTable;
+    private JTextField currencyPairsField; // Neu: Textfeld für Währungspaare
     private FilterCriteria currentFilters;
     
     private static final String[] COLUMN_NAMES = {
@@ -129,8 +132,35 @@ public class FilterDialog extends JDialog {
         
         setLayout(new BorderLayout(5, 5));
         
+        // Panel für Checkboxen und Währungspaar-Filter
+        JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
+        
         JScrollPane scrollPane = new JScrollPane(filterTable);
-        scrollPane.setPreferredSize(new Dimension(400, 500));
+        scrollPane.setPreferredSize(new Dimension(400, 400));
+        
+        // Panel für Währungspaar-Filter
+        JPanel currencyPanel = new JPanel(new BorderLayout(5, 0));
+        currencyPanel.setBorder(BorderFactory.createTitledBorder("Währungspaare Filter"));
+        
+        JLabel currencyLabel = new JLabel("Währungspaare (durch Komma getrennt):");
+        currencyPairsField = new JTextField(30);
+        currencyPairsField.setText(filters.getCurrencyPairsFilter());
+        
+        JPanel currencyFieldPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        currencyFieldPanel.add(currencyLabel);
+        currencyFieldPanel.add(currencyPairsField);
+        
+        JLabel currencyHintLabel = new JLabel(
+                "<html>Geben Sie Währungspaare ein, die alle vorhanden sein müssen (z.B. EURUSD, GBPUSD).<br>" +
+                "Die Einträge werden als Präfixe behandelt, d.h. EURUSD findet auch EURUSD.ru, EURUSD.X, etc.</html>");
+        currencyHintLabel.setFont(new Font("SansSerif", Font.ITALIC, 11));
+        
+        currencyPanel.add(currencyFieldPanel, BorderLayout.NORTH);
+        currencyPanel.add(currencyHintLabel, BorderLayout.CENTER);
+        
+        // Haupt-Panel zusammensetzen
+        mainPanel.add(scrollPane, BorderLayout.CENTER);
+        mainPanel.add(currencyPanel, BorderLayout.SOUTH);
         
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         JButton okButton = new JButton("Apply");
@@ -151,6 +181,7 @@ public class FilterDialog extends JDialog {
                 filterTable.setValueAt("", row, 1);
                 filterTable.setValueAt("", row, 2);
             }
+            currencyPairsField.setText(""); // Währungspaar-Feld zurücksetzen
         });
         
         buttonPanel.add(resetButton);
@@ -158,7 +189,7 @@ public class FilterDialog extends JDialog {
         buttonPanel.add(cancelButton);
         
         add(new JLabel("Set min/max values for filtering:"), BorderLayout.NORTH);
-        add(scrollPane, BorderLayout.CENTER);
+        add(mainPanel, BorderLayout.CENTER);
         add(buttonPanel, BorderLayout.SOUTH);
         
         addWindowListener(new java.awt.event.WindowAdapter() {
@@ -183,6 +214,14 @@ public class FilterDialog extends JDialog {
         
         FilterCriteria criteria = new FilterCriteria();
         boolean hasAnyFilter = false;
+        
+        // Währungspaar-Filter einstellen
+        String currencyFilter = currencyPairsField.getText().trim();
+        criteria.setCurrencyPairsFilter(currencyFilter);
+        
+        if (!currencyFilter.isEmpty()) {
+            hasAnyFilter = true;
+        }
         
         for (int row = 0; row < filterTable.getRowCount(); row++) {
             String minStr = ((String) filterTable.getValueAt(row, 1)).trim();

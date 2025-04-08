@@ -36,7 +36,7 @@ public class HighlightRenderer extends DefaultTableCellRenderer {
                 String columnName = table.getColumnName(column);
                 
                 if (providerName != null && model.getHtmlDatabase() != null) {
-                    // Tooltips f�r verschiedene Spalten basierend auf Spaltennamen
+                    // Tooltips für verschiedene Spalten basierend auf Spaltennamen
                     switch (columnName) {
                         case "3MPDD":
                             setToolTipText(model.getHtmlDatabase().getMPDDTooltip(providerName, 3));
@@ -75,7 +75,7 @@ public class HighlightRenderer extends DefaultTableCellRenderer {
                                 
                                 setToolTipText(tooltip.toString());
                             } else {
-                                setToolTipText("Keine Profitdaten verf�gbar");
+                                setToolTipText("Keine Profitdaten verfügbar");
                             }
                             break;
                         default:
@@ -85,17 +85,17 @@ public class HighlightRenderer extends DefaultTableCellRenderer {
                 }
             }
             
-            // Farbliche Hervorhebung f�r MPDD-Spalten
+            // Farbliche Hervorhebung für MPDD-Spalten
             String columnName = table.getColumnName(column);
             if ((columnName.equals("3MPDD") || columnName.equals("6MPDD") || 
                  columnName.equals("9MPDD") || columnName.equals("12MPDD")) && !isSelected) {
                 double mpddValue = (Double)value;
                 if (mpddValue > 1.0) {
-                    c.setBackground(new Color(200, 255, 200)); // Hellgr�n f�r gute Werte
+                    c.setBackground(new Color(200, 255, 200)); // Hellgrün für gute Werte
                 } else if (mpddValue < 0.5) {
-                    c.setBackground(new Color(255, 200, 200)); // Hellrot f�r schlechte Werte
+                    c.setBackground(new Color(255, 200, 200)); // Hellrot für schlechte Werte
                 } else {
-                    c.setBackground(new Color(255, 255, 200)); // Hellgelb f�r mittlere Werte
+                    c.setBackground(new Color(255, 255, 200)); // Hellgelb für mittlere Werte
                 }
             }
         }
@@ -120,6 +120,25 @@ public class HighlightRenderer extends DefaultTableCellRenderer {
         } else {
             if (!isSelected) {
                 c.setBackground(table.getBackground());
+            }
+        }
+        
+        // Währungspaar-Tooltip für die Signal Provider Spalte
+        if (column == 1 && value != null && table.getModel() instanceof HighlightTableModel) {
+            HighlightTableModel model = (HighlightTableModel)table.getModel();
+            String providerName = (String) value;
+            
+            try {
+                // Versuche, die ProviderStats über DataManager zu bekommen
+                data.ProviderStats stats = data.DataManager.getInstance().getStats().get(providerName);
+                if (stats != null) {
+                    // Erstelle Tooltip für Währungspaare
+                    String currencyPairsTooltip = model.buildCurrencyPairsTooltip(stats);
+                    setToolTipText(currencyPairsTooltip);
+                }
+            } catch (Exception e) {
+                // Falls DataManager.getInstance() nicht funktioniert, ignorieren wir den Tooltip
+                System.err.println("Konnte Währungspaar-Tooltip nicht erstellen: " + e.getMessage());
             }
         }
         

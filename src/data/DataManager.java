@@ -23,14 +23,30 @@ public class DataManager {
    
    private final Map<String, ProviderStats> signalProviderStats;
    
+   // Singleton-Instanz
+   private static DataManager instance;
+   
    public DataManager() {
        this.signalProviderStats = new HashMap<>();
+   }
+   
+   // Singleton-Methode
+   public static synchronized DataManager getInstance() {
+       if (instance == null) {
+           instance = new DataManager();
+       }
+       return instance;
+   }
+   
+   // Setter für die Instanz (für Testbarkeit)
+   public static void setInstance(DataManager manager) {
+       instance = manager;
    }
    
    private String extractProviderName(String fileName) {
        // Entferne die .csv Endung
        String name = fileName.toLowerCase().replace(".csv", "");
-       // Hier k�nnen weitere Bereinigungen des Provider-Namens erfolgen
+       // Hier können weitere Bereinigungen des Provider-Namens erfolgen
        return name;
    }
    
@@ -51,6 +67,11 @@ public class DataManager {
            }
        }
        LOGGER.info("Loaded " + signalProviderStats.size() + " providers");
+       
+       // Setze instance beim Laden, falls noch nicht gesetzt
+       if (instance == null) {
+           instance = this;
+       }
    }
 
    private void processFile(File file) {

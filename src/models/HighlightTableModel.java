@@ -1,12 +1,16 @@
 package models;
 
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 import javax.swing.table.DefaultTableModel;
 
 import data.ProviderStats;
+import data.Trade;
 import services.RiskAnalysisServ;
 import utils.HtmlDatabase;
 
@@ -232,6 +236,9 @@ public class HighlightTableModel extends DefaultTableModel {
 	    Map<String, Double> monthlyProfits = htmlDatabase.getMonthlyProfitPercentages(providerName);
 	    double steigung = 0.0;
 	    
+	    // Währungspaare für Tooltips sammeln
+	    String currencyPairsTooltip = buildCurrencyPairsTooltip(stats);
+	    
 	    // Sichere Behandlung der Steigungsberechnung
 	    if (!monthlyProfits.isEmpty()) {
 	        TreeMap<String, Double> sortedMonthProfits = new TreeMap<>(monthlyProfits);
@@ -250,7 +257,7 @@ public class HighlightTableModel extends DefaultTableModel {
 	    }
 
 	    long daysBetween = calculateDaysBetween(stats);
-
+	    
 	    return new Object[]{
 	        0, // Platzhalter für die Nummer
 	        providerName,
@@ -282,4 +289,41 @@ public class HighlightTableModel extends DefaultTableModel {
 	        maxDDGraphic // Neue Spalte
 	    };
 	}
+	
+	// Methode zum Erstellen eines Tooltips für Währungspaare
+    public String buildCurrencyPairsTooltip(ProviderStats stats) {
+        Map<String, Long> currencyPairCounts = stats.getTrades().stream()
+                .collect(Collectors.groupingBy(
+                    Trade::getSymbol,
+                    Collectors.counting()
+                ));
+        
+        // Sortiere nach Anzahl der Trades (absteigend)
+        List<Map.Entry<String, Long>> sortedPairs = currencyPairCounts.entrySet().stream()
+                .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+                .collect(Collectors.toList());
+        
+        StringBuilder tooltip = new StringBuilder("<html><b>Währungspaare:</b><br>");
+        for (Map.Entry<String, Long> entry : sortedPairs) {
+            tooltip.append(entry.getKey())
+                   .append(": ")
+                   .append(entry.getValue())
+                   .append(" Trades<br>");
+        }
+        tooltip.append("</html>");
+        
+        return tooltip.toString();
+    }
+    
+    /**
+     * Gibt alle verwendeten Währungspaare für einen Provider zurück
+     * 
+     * @param stats ProviderStats Objekt
+     * @return Set mit allen verwendeten Währungspaaren
+     */
+    public Set<String> getUsedCurrencyPairs(ProviderStats stats) {
+        return stats.getTrades().stream()
+                .map(Trade::getSymbol)
+                .collect(Collectors.toSet());
+    }
 }

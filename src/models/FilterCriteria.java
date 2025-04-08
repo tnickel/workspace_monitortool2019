@@ -8,133 +8,200 @@ import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import data.ProviderStats;
+import data.Trade;
 
 public class FilterCriteria
 {
-	private Map<Integer, FilterRange> columnFilters;
-	private static final String SAVE_FILE = "filter_criteria.ser"; // Datei zum Speichern der Filterwerte
-	
-	public FilterCriteria()
-	{
-		this.columnFilters = new HashMap<>();
-	}
-	
-	public void addFilter(int column, FilterRange range)
-	{
-		columnFilters.put(column, range);
-	}
-	
-	public boolean matches(ProviderStats stats, Object[] rowData)
-	{
-		for (Map.Entry<Integer, FilterRange> entry : columnFilters.entrySet())
-		{
-			int column = entry.getKey();
-			FilterRange range = entry.getValue();
-			
-			if (!range.matches(rowData[column]))
-			{
-				return false;
-			}
-		}
-		return true;
-	}
-	
-	public Map<Integer, FilterRange> getFilters()
-	{
-		return columnFilters;
-	}
-	
-	public void setFilters(Map<Integer, FilterRange> filters)
-	{
-		this.columnFilters = filters;
-	}
-	
-	public void saveFilters()
-	{
-		try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(SAVE_FILE)))
-		{
-			oos.writeObject(columnFilters);
-		} catch (IOException e)
-		{
-			e.printStackTrace();
-		}
-	}
-	
-	@SuppressWarnings("unchecked")
-	public void loadFilters()
-	{
-		try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(SAVE_FILE)))
-		{
-			columnFilters = (Map<Integer, FilterRange>) ois.readObject();
-		} catch (IOException | ClassNotFoundException e)
-		{
-			columnFilters = new HashMap<>(); // Falls Datei nicht existiert
-		}
-	}
-	
-	public static class FilterRange implements Serializable
-	{
-		private static final long serialVersionUID = 1L;
-		private final Double min;
-		private final Double max;
-		private final String textFilter;
-		
-		public FilterRange(Double min, Double max)
-		{
-			this.min = min;
-			this.max = max;
-			this.textFilter = null;
-		}
-		
-		public FilterRange(String textFilter)
-		{
-			this.min = null;
-			this.max = null;
-			this.textFilter = textFilter;
-		}
-		
-		public boolean matches(Object value)
-		{
-			if (value == null)
-				return false;
-			
-			if (textFilter != null)
-			{
-				return value.toString().toLowerCase().contains(textFilter.toLowerCase());
-			}
-			
-			try
-			{
-				double numValue = value instanceof Number ? ((Number) value).doubleValue()
-						: Double.parseDouble(value.toString());
-			
-				if (min != null && numValue < min)
-					return false;
-				if (max != null && numValue > max)
-					return false;
-				return true;
-			} catch (NumberFormatException e)
-			{
-				System.out.println("Number format exception for value: " + value);
-				return false;
-			}
-		}
-		
-		public Double getMin()
-		{
-			return min;
-		}
-		
-		public Double getMax()
-		{
-			return max;
-		}
-		
-		public String getTextFilter()
-		{
-			return textFilter;
-		}
-	}
+    private Map<Integer, FilterRange> columnFilters;
+    private static final String SAVE_FILE = "filter_criteria.ser"; // Datei zum Speichern der Filterwerte
+    private String currencyPairsFilter; // Neu: Filter für Währungspaare
+    
+    public FilterCriteria()
+    {
+        this.columnFilters = new HashMap<>();
+        this.currencyPairsFilter = ""; // Initialisierung
+    }
+    
+    public void addFilter(int column, FilterRange range)
+    {
+        columnFilters.put(column, range);
+    }
+    
+    public void setCurrencyPairsFilter(String filter) {
+        this.currencyPairsFilter = filter != null ? filter.trim() : "";
+    }
+    
+    public String getCurrencyPairsFilter() {
+        return currencyPairsFilter;
+    }
+    
+    public boolean matches(ProviderStats stats, Object[] rowData)
+    {
+        // Überprüfe zuerst die Spaltenfilter
+        for (Map.Entry<Integer, FilterRange> entry : columnFilters.entrySet())
+        {
+            int column = entry.getKey();
+            FilterRange range = entry.getValue();
+            
+            if (!range.matches(rowData[column]))
+            {
+                return false;
+            }
+        }
+        
+        // Wenn Währungspaar-Filter vorhanden ist, überprüfe ob alle angegebenen Währungspaare verwendet werden
+        if (currencyPairsFilter != null && !currencyPairsFilter.isEmpty()) {
+            return matchesCurrencyPairs(stats);
+        }
+        
+        return true;
+    }
+    
+    private boolean matchesCurrencyPairs(ProviderStats stats) {
+        if (currencyPairsFilter == null || currencyPairsFilter.isEmpty()) {
+            return true;
+        }
+        
+        // Trenne die Filter-Währungspaare durch Komma
+        String[] requestedPairs = currencyPairsFilter.split(",");
+        
+        // Erstelle eine Liste aller im Provider vorhandenen Währungspaare
+        Set<String> providerCurrencyPairs = stats.getTrades().stream()
+                .map(Trade::getSymbol)
+                .collect(Collectors.toSet());
+        
+        // Überprüfe, ob alle angeforderten Währungspaare (oder Präfixe) vorhanden sind
+        for (String requestedPair : requestedPairs) {
+            String trimmedPair = requestedPair.trim();
+            if (trimmedPair.isEmpty()) continue;
+            
+            boolean pairFound = false;
+            for (String providerPair : providerCurrencyPairs) {
+                if (providerPair.startsWith(trimmedPair)) {
+                    pairFound = true;
+                    break;
+                }
+            }
+            
+            if (!pairFound) {
+                return false;
+            }
+        }
+        
+        return true;
+    }
+    
+    public Map<Integer, FilterRange> getFilters()
+    {
+        return columnFilters;
+    }
+    
+    public void setFilters(Map<Integer, FilterRange> filters)
+    {
+        this.columnFilters = filters;
+    }
+    
+    public void saveFilters()
+    {
+        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(SAVE_FILE)))
+        {
+            // Speichere Spaltenfilter
+            oos.writeObject(columnFilters);
+            
+            // Speichere Währungspaar-Filter
+            oos.writeObject(currencyPairsFilter);
+        } catch (IOException e)
+        {
+            e.printStackTrace();
+        }
+    }
+    
+    @SuppressWarnings("unchecked")
+    public void loadFilters()
+    {
+        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(SAVE_FILE)))
+        {
+            // Lade Spaltenfilter
+            columnFilters = (Map<Integer, FilterRange>) ois.readObject();
+            
+            // Lade Währungspaar-Filter
+            try {
+                currencyPairsFilter = (String) ois.readObject();
+            } catch (Exception e) {
+                currencyPairsFilter = ""; // Falls das Format älter ist und keinen Währungspaar-Filter enthält
+            }
+        } catch (IOException | ClassNotFoundException e)
+        {
+            columnFilters = new HashMap<>(); // Falls Datei nicht existiert
+            currencyPairsFilter = "";
+        }
+    }
+    
+    public static class FilterRange implements Serializable
+    {
+        private static final long serialVersionUID = 1L;
+        private final Double min;
+        private final Double max;
+        private final String textFilter;
+        
+        public FilterRange(Double min, Double max)
+        {
+            this.min = min;
+            this.max = max;
+            this.textFilter = null;
+        }
+        
+        public FilterRange(String textFilter)
+        {
+            this.min = null;
+            this.max = null;
+            this.textFilter = textFilter;
+        }
+        
+        public boolean matches(Object value)
+        {
+            if (value == null)
+                return false;
+            
+            if (textFilter != null)
+            {
+                return value.toString().toLowerCase().contains(textFilter.toLowerCase());
+            }
+            
+            try
+            {
+                double numValue = value instanceof Number ? ((Number) value).doubleValue()
+                        : Double.parseDouble(value.toString());
+            
+                if (min != null && numValue < min)
+                    return false;
+                if (max != null && numValue > max)
+                    return false;
+                return true;
+            } catch (NumberFormatException e)
+            {
+                System.out.println("Number format exception for value: " + value);
+                return false;
+            }
+        }
+        
+        public Double getMin()
+        {
+            return min;
+        }
+        
+        public Double getMax()
+        {
+            return max;
+        }
+        
+        public String getTextFilter()
+        {
+            return textFilter;
+        }
+    }
 }
