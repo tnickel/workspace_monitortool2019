@@ -37,7 +37,9 @@ import javax.swing.table.DefaultTableModel;
 
 import org.jfree.chart.ChartPanel;
 
+import charts.CurrencyPairTradesChart;
 import charts.DurationProfitChart;
+import charts.EfficiencyChart;
 import charts.MonthlyTradeCountChart;
 import charts.ProviderStatHistoryChart;
 import charts.SymbolDistributionChart;
@@ -49,7 +51,6 @@ import db.HistoryDatabaseManager.HistoryEntry;
 import services.ProviderHistoryService;
 import utils.ChartFactoryUtil;
 import utils.HtmlDatabase;
-import charts.CurrencyPairTradesChart;
 
 public class PerformanceAnalysisDialog extends JFrame
 {
@@ -162,6 +163,13 @@ public class PerformanceAnalysisDialog extends JFrame
 		durationChart.setPreferredSize(chartSize);
 		durationChart.setAlignmentX(LEFT_ALIGNMENT);
 		mainPanel.add(durationChart);
+		mainPanel.add(javax.swing.Box.createRigidArea(new Dimension(0, 20)));
+		
+		// Neue EfficiencyChart hinzufügen
+		EfficiencyChart efficiencyChart = new EfficiencyChart(stats.getTrades());
+		efficiencyChart.setPreferredSize(chartSize);
+		efficiencyChart.setAlignmentX(LEFT_ALIGNMENT);
+		mainPanel.add(efficiencyChart);
 		mainPanel.add(javax.swing.Box.createRigidArea(new Dimension(0, 20)));
 		
 		// Neue MonthlyTradeCountChart hinzufügen
