@@ -51,6 +51,8 @@ import db.HistoryDatabaseManager.HistoryEntry;
 import services.ProviderHistoryService;
 import utils.ChartFactoryUtil;
 import utils.HtmlDatabase;
+import charts.EfficiencyChart;
+import charts.WeeklyLotsizeChart;
 
 public class PerformanceAnalysisDialog extends JFrame
 {
@@ -166,10 +168,18 @@ public class PerformanceAnalysisDialog extends JFrame
 		mainPanel.add(javax.swing.Box.createRigidArea(new Dimension(0, 20)));
 		
 		// Neue EfficiencyChart hinzufügen
+		// Neue EfficiencyChart hinzufügen
 		EfficiencyChart efficiencyChart = new EfficiencyChart(stats.getTrades());
 		efficiencyChart.setPreferredSize(chartSize);
 		efficiencyChart.setAlignmentX(LEFT_ALIGNMENT);
 		mainPanel.add(efficiencyChart);
+		mainPanel.add(javax.swing.Box.createRigidArea(new Dimension(0, 20)));
+
+		// Neue WeeklyLotsizeChart direkt nach der EfficiencyChart hinzufügen
+		WeeklyLotsizeChart lotsizeChart = new WeeklyLotsizeChart(stats.getTrades());
+		lotsizeChart.setPreferredSize(chartSize);
+		lotsizeChart.setAlignmentX(LEFT_ALIGNMENT);
+		mainPanel.add(lotsizeChart);
 		mainPanel.add(javax.swing.Box.createRigidArea(new Dimension(0, 20)));
 		
 		// Neue MonthlyTradeCountChart hinzufügen
