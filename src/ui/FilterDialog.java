@@ -6,6 +6,8 @@ import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
+import java.util.HashMap;
+import java.util.Map;
 
 import javax.swing.BorderFactory;
 import javax.swing.DefaultCellEditor;
@@ -177,11 +179,7 @@ public class FilterDialog extends JDialog {
         cancelButton.addActionListener(e -> dispose());
         
         resetButton.addActionListener(e -> {
-            for (int row = 0; row < filterTable.getRowCount(); row++) {
-                filterTable.setValueAt("", row, 1);
-                filterTable.setValueAt("", row, 2);
-            }
-            currencyPairsField.setText(""); // Währungspaar-Feld zurücksetzen
+            setupDefaultValues();
         });
         
         buttonPanel.add(resetButton);
@@ -207,6 +205,27 @@ public class FilterDialog extends JDialog {
         if (filterTable.isEditing()) {
             filterTable.getCellEditor().stopCellEditing();
         }
+    }
+    
+    // Neue Methode zum Setzen der Standardwerte
+    private void setupDefaultValues() {
+        // Standardwerte definieren - basierend auf dem Screenshot
+        Map<String, Double> defaultMinValues = new HashMap<>();
+        defaultMinValues.put("No.", 1.0);
+        defaultMinValues.put("3MPDD", 2.0);
+        defaultMinValues.put("Trades", 50.0);
+        
+        // Über alle Zeilen gehen und Standardwerte setzen wo vorhanden
+        for (int row = 0; row < filterTable.getRowCount(); row++) {
+            String columnName = (String) filterTable.getValueAt(row, 0);
+            if (defaultMinValues.containsKey(columnName)) {
+                filterTable.setValueAt(defaultMinValues.get(columnName).toString(), row, 1); // Min-Wert
+            } else {
+                filterTable.setValueAt("", row, 1); // Andere auf leer setzen
+            }
+            filterTable.setValueAt("", row, 2); // Max-Werte immer auf leer setzen
+        }
+        currencyPairsField.setText(""); // Währungspaar-Feld zurücksetzen
     }
     
     private boolean validateAndSaveFilters() {

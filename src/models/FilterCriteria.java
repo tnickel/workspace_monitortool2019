@@ -76,12 +76,13 @@ public class FilterCriteria
         
         // Überprüfe, ob alle angeforderten Währungspaare (oder Präfixe) vorhanden sind
         for (String requestedPair : requestedPairs) {
-            String trimmedPair = requestedPair.trim();
+            String trimmedPair = requestedPair.trim().toUpperCase(); // Zu Großbuchstaben konvertieren
             if (trimmedPair.isEmpty()) continue;
             
             boolean pairFound = false;
             for (String providerPair : providerCurrencyPairs) {
-                if (providerPair.startsWith(trimmedPair)) {
+                // Beide Strings in Großbuchstaben konvertieren beim Vergleich
+                if (providerPair.toUpperCase().startsWith(trimmedPair)) {
                     pairFound = true;
                     break;
                 }
