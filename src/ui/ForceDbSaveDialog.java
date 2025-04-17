@@ -1,6 +1,7 @@
 package ui;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
@@ -9,6 +10,8 @@ import java.util.List;
 import java.util.Map;
 
 import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
@@ -52,12 +55,15 @@ public class ForceDbSaveDialog extends JDialog {
         progressBar.setStringPainted(true);
         
         initUI();
-        setSize(600, 450); // Etwas größer für zusätzliche Buttons/Informationen
+        // Größere Höhe für den Dialog um sicherzustellen, dass alles sichtbar ist
+        setSize(600, 500);
         setLocationRelativeTo(parent);
     }
     
     private void initUI() {
-        setLayout(new BorderLayout(10, 10));
+        // Hauptlayout auf Box-Layout ändern für bessere Kontrolle
+        JPanel mainPanel = new JPanel();
+        mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
         
         // Informations-Panel am oberen Rand
         JPanel infoPanel = new JPanel(new BorderLayout(5, 5));
@@ -73,20 +79,34 @@ public class ForceDbSaveDialog extends JDialog {
             "Bei der normalen Datenbanknutzung werden nur neue oder geänderte Werte gespeichert. " +
             "Nutzen Sie diese Funktion nur, wenn Sie alle Werte explizit neu speichern möchten.</div></html>");
         
+        // Hinzufügen einer extra Anleitung in rot
+        JLabel instructionLabel = new JLabel("<html><font color='red'><b>Um den Speichervorgang zu starten, klicken Sie auf den \"Speicherung starten\" Button.</b></font></html>");
+        instructionLabel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
+        
+        // Infopanel zusammenbauen
         infoPanel.add(infoLabel, BorderLayout.CENTER);
+        infoPanel.add(instructionLabel, BorderLayout.SOUTH);
         
         // Log-Bereich
         JScrollPane scrollPane = new JScrollPane(logArea);
         scrollPane.setBorder(BorderFactory.createTitledBorder("Log"));
         scrollPane.setPreferredSize(new Dimension(580, 250));
         
+        // Initial Log-Eintrag anzeigen
+        logArea.setText("Bereit für den Start der Speicherung. Klicken Sie auf \"Speicherung starten\"...\n" +
+                        "Gefundene Provider: " + providers.size() + "\n");
+        
         // Progress-Panel
         JPanel progressPanel = new JPanel(new BorderLayout(5, 5));
         progressPanel.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
         progressPanel.add(progressBar, BorderLayout.CENTER);
         
-        // Button-Panel
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        // Button-Panel - explizite Größe setzen
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.setLayout(new FlowLayout(FlowLayout.RIGHT));
+        buttonPanel.setMaximumSize(new Dimension(Short.MAX_VALUE, 50));
+        buttonPanel.setPreferredSize(new Dimension(600, 50));
+        
         saveButton = new JButton("Speicherung starten");
         saveButton.addActionListener(new ActionListener() {
             @Override
@@ -111,15 +131,22 @@ public class ForceDbSaveDialog extends JDialog {
             }
         });
         
+        // Wichtig: Buttons in der richtigen Reihenfolge hinzufügen
         buttonPanel.add(backupButton);
         buttonPanel.add(saveButton);
         buttonPanel.add(closeButton);
         
-        // Layout zusammensetzen
-        add(infoPanel, BorderLayout.NORTH);
-        add(scrollPane, BorderLayout.CENTER);
-        add(progressPanel, BorderLayout.AFTER_LAST_LINE);
-        add(buttonPanel, BorderLayout.SOUTH);
+        // Hauptpanel zusammenbauen
+        mainPanel.add(infoPanel);
+        mainPanel.add(Box.createRigidArea(new Dimension(0, 5)));
+        mainPanel.add(scrollPane);
+        mainPanel.add(Box.createRigidArea(new Dimension(0, 5)));
+        mainPanel.add(progressPanel);
+        mainPanel.add(Box.createRigidArea(new Dimension(0, 5)));
+        mainPanel.add(buttonPanel);
+        
+        // ContentPane setzen
+        setContentPane(mainPanel);
     }
     
     private void createBackup() {
