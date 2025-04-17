@@ -71,7 +71,8 @@ public class CurrencyPairTradesChart extends JPanel {
         lotsChartPanel = new ChartPanel(lotsChart);
         
         tradesChartPanel.setPreferredSize(new Dimension(950, 300));
-        lotsChartPanel.setPreferredSize(new Dimension(950, 300));
+        // Erhöhe die Höhe des unteren Charts um 30%
+        lotsChartPanel.setPreferredSize(new Dimension(950, 390)); // Ursprünglich 300, jetzt 30% höher
         
         // Panel für die Checkboxen erstellen
         JPanel checkboxPanel = createCheckboxPanel();
@@ -130,6 +131,10 @@ public class CurrencyPairTradesChart extends JPanel {
         rangeAxis.setAutoRangeIncludesZero(true);
         rangeAxis.setLabelFont(new Font("SansSerif", Font.BOLD, 12));
         rangeAxis.setTickLabelFont(new Font("SansSerif", Font.PLAIN, 10));
+        
+        // Sicherstellen, dass die Y-Achsenbeschriftung sichtbar ist
+        rangeAxis.setVisible(true);
+        rangeAxis.setLabel(yAxisLabel);
         
         return chart;
     }
@@ -293,6 +298,15 @@ public class CurrencyPairTradesChart extends JPanel {
         // Farben für Serien zuweisen
         assignColors(tradesPlot);
         assignColors(lotsPlot);
+        
+        // Sicherstellen, dass die Y-Achsen-Labels korrekt angezeigt werden
+        NumberAxis tradesAxis = (NumberAxis) tradesPlot.getRangeAxis();
+        tradesAxis.setLabel("Anzahl Trades");
+        tradesAxis.setLabelFont(new Font("SansSerif", Font.BOLD, 12));
+        
+        NumberAxis lotsAxis = (NumberAxis) lotsPlot.getRangeAxis();
+        lotsAxis.setLabel("Anzahl Lots");
+        lotsAxis.setLabelFont(new Font("SansSerif", Font.BOLD, 12));
     }
     
     /**
