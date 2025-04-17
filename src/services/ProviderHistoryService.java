@@ -2,6 +2,7 @@ package services;
 
 import java.io.File;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
@@ -31,6 +32,16 @@ public class ProviderHistoryService {
     
     // Schlüssel für die Preferences
     private static final String PREF_LAST_WEEKLY_SAVE = "last_weekly_stat_save";
+    
+    // Neues Feld zur Speicherung des letzten Datenbestands
+    private int lastKnownDataCount = 0;
+    
+    // Konstante für die minimale Wartezeit zwischen automatischen Backups (in Stunden)
+    private static final int MIN_HOURS_BETWEEN_BACKUPS = 24;
+    
+    // Schlüssel für die Preferences
+    private static final String PREF_LAST_BACKUP_TIME = "last_database_backup_time";
+    private static final String PREF_LAST_DATA_COUNT = "last_known_data_count";
     
     // Singleton-Pattern
     private ProviderHistoryService() {
@@ -62,6 +73,12 @@ public class ProviderHistoryService {
         
         // Lade die zuletzt gespeicherten Werte für bestehende Provider
         loadExistingValues();
+        
+        // Lade den letzten bekannten Datenbestand
+        loadLastDataCount();
+        
+        // Prüfe die Datenintegrität beim Start
+        validateDatabaseIntegrity();
         
         LOGGER.info("Provider History Service mit Root-Pfad initialisiert: " + rootPath);
     }
@@ -117,6 +134,80 @@ public class ProviderHistoryService {
     }
     
     /**
+     * Lädt den letzten bekannten Datenbestand aus den Preferences
+     */
+    private void loadLastDataCount() {
+        lastKnownDataCount = prefs.getInt(PREF_LAST_DATA_COUNT, 0);
+        LOGGER.info("Letzter bekannter Datenbestand: " + lastKnownDataCount + " Einträge");
+    }
+    
+    /**
+     * Speichert den aktuellen Datenbestand in den Preferences
+     */
+    private void saveCurrentDataCount() {
+        int currentCount = dbManager.countAllEntries();
+        prefs.putInt(PREF_LAST_DATA_COUNT, currentCount);
+        lastKnownDataCount = currentCount;
+        LOGGER.info("Aktueller Datenbestand gespeichert: " + currentCount + " Einträge");
+    }
+    
+    /**
+     * Validiert die Integrität der Datenbank
+     */
+    private void validateDatabaseIntegrity() {
+        int currentCount = dbManager.countAllEntries();
+        
+        // Wenn der aktuelle Datenbestand kleiner ist als der letzte bekannte,
+        // könnte ein Datenverlust vorliegen
+        if (currentCount < lastKnownDataCount && lastKnownDataCount > 0) {
+            LOGGER.severe("MÖGLICHER DATENVERLUST ERKANNT! Aktuell: " + currentCount + 
+                    " Einträge, Zuvor bekannt: " + lastKnownDataCount + " Einträge");
+            
+            // Erstelle automatisch ein Backup
+            createBackupIfNeeded(true);
+            
+            // Eine Warnung ausgeben (könnte durch ein Dialogfenster ersetzt werden)
+            System.err.println("\n*** WARNUNG: MÖGLICHER DATENVERLUST ERKANNT! ***\n" +
+                    "Aktueller Datenbestand: " + currentCount + " Einträge\n" +
+                    "Letzter bekannter Bestand: " + lastKnownDataCount + " Einträge\n" +
+                    "Ein automatisches Backup wurde erstellt.\n");
+        } else {
+            LOGGER.info("Datenintegrität OK: " + currentCount + " Einträge");
+            
+            // Aktualisiere den gespeicherten Datenbestand
+            saveCurrentDataCount();
+            
+            // Erstelle ein reguläres Backup, falls erforderlich
+            createBackupIfNeeded(false);
+        }
+    }
+    
+    /**
+     * Erstellt ein Backup der Datenbank, wenn genügend Zeit seit dem letzten Backup vergangen ist
+     * oder wenn force=true
+     * 
+     * @param force Wenn true, wird ein Backup unabhängig von der vergangenen Zeit erstellt
+     */
+    private void createBackupIfNeeded(boolean force) {
+        long lastBackupTime = prefs.getLong(PREF_LAST_BACKUP_TIME, 0);
+        long currentTime = System.currentTimeMillis();
+        
+        // Berechne die verstrichene Zeit seit dem letzten Backup in Stunden
+        long hoursSinceLastBackup = (currentTime - lastBackupTime) / (60 * 60 * 1000);
+        
+        if (force || hoursSinceLastBackup >= MIN_HOURS_BETWEEN_BACKUPS) {
+            LOGGER.info("Erstelle Datenbank-Backup" + (force ? " (erzwungen)" : ""));
+            
+            boolean success = dbManager.createBackup();
+            if (success) {
+                // Speichere den Zeitpunkt des Backups
+                prefs.putLong(PREF_LAST_BACKUP_TIME, currentTime);
+                LOGGER.info("Datenbank-Backup erfolgreich erstellt");
+            }
+        }
+    }
+    
+    /**
      * Prüft, ob seit der letzten wöchentlichen Speicherung
      * genügend Zeit vergangen ist und führt die Speicherung durch, wenn nötig
      */
@@ -128,11 +219,17 @@ public class ProviderHistoryService {
         if (lastSaveDate == null || ChronoUnit.DAYS.between(lastSaveDate, today) >= 7) {
             LOGGER.info("Es sind mindestens 7 Tage seit der letzten wöchentlichen Speicherung vergangen. Führe Speicherung durch...");
             
+            // Validiere die Datenintegrität vor der Speicherung
+            validateDatabaseIntegrity();
+            
             // Speichere alle Werte
             storeAllStatValues(true);
             
             // Aktualisiere das Datum der letzten Speicherung
             saveLastWeeklySaveDate(today);
+            
+            // Aktualisiere den Datenbestand nach der Speicherung
+            saveCurrentDataCount();
             
             LOGGER.info("Wöchentliche Statistik-Speicherung abgeschlossen. Nächste Speicherung ab: " + today.plusDays(7));
         } else {
@@ -199,10 +296,13 @@ public class ProviderHistoryService {
                     (lastValue != null ? lastValue : 0.0), 
                     value));
                     
-            // Nur speichern, wenn der Wert sich geändert hat oder force=true
+            // Speichern (mit Sicherheitsmechanismen in HistoryDatabaseManager)
             boolean success = dbManager.storeStatValue(providerName, statType, value, force);
             if (success) {
                 providerCache.put(statType, value);
+                
+                // Aktualisiere den gespeicherten Datenbestand nach erfolgreicher Speicherung
+                saveCurrentDataCount();
             }
             return success;
         } else {
@@ -283,6 +383,9 @@ public class ProviderHistoryService {
         }
         
         try {
+            // Erstelle ein Backup vor der initialen Speicherung
+            createBackupIfNeeded(true);
+            
             // Hole alle CSV-Dateien im Root-Verzeichnis
             File downloadDirectory = new File(rootPath);
             if (downloadDirectory.exists() && downloadDirectory.isDirectory()) {
@@ -310,6 +413,9 @@ public class ProviderHistoryService {
                     }
                 }
             }
+            
+            // Aktualisiere den Datenbestand nach der Speicherung
+            saveCurrentDataCount();
             
             LOGGER.info("Initiale Speicherung abgeschlossen");
         } catch (Exception e) {
@@ -451,14 +557,45 @@ public class ProviderHistoryService {
             return false;
         }
     }
+    
+    /**
+     * Erstellt ein Backup der Datenbank
+     * 
+     * @return true wenn erfolgreich, false wenn fehlgeschlagen
+     */
+    public boolean createBackup() {
+        if (dbManager == null) {
+            LOGGER.warning("Keine Datenbankverbindung verfügbar");
+            return false;
+        }
+        
+        boolean success = dbManager.createBackup();
+        if (success) {
+            prefs.putLong(PREF_LAST_BACKUP_TIME, System.currentTimeMillis());
+            LOGGER.info("Manuelles Datenbank-Backup erfolgreich erstellt");
+        } else {
+            LOGGER.severe("Fehler beim Erstellen des manuellen Backups");
+        }
+        
+        return success;
+    }
 
     /**
      * Beendet den Service und gibt Ressourcen frei
      */
     public void shutdown() {
+        // Erstelle ein letztes Backup
+        createBackupIfNeeded(true);
+        
+        // Aktualisiere den gespeicherten Datenbestand
+        saveCurrentDataCount();
+        
+        // Datenintegrität prüfen
+        validateDatabaseIntegrity();
+        
         if (dbManager != null) {
             dbManager.closeConnection();
         }
         LOGGER.info("Provider History Service beendet");
     }
-    }
+}

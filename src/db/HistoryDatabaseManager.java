@@ -39,6 +39,24 @@ public class HistoryDatabaseManager {
     	    "FOREIGN KEY (provider_id) REFERENCES signal_providers(provider_id), " +
     	    "UNIQUE (provider_id, stat_type, recorded_date))";
     
+    // Neue Tabelle für gelöschte Einträge
+    private static final String CREATE_DELETED_RECORDS_LOG = 
+            "CREATE TABLE IF NOT EXISTS deleted_records_log (" +
+            "id INT AUTO_INCREMENT PRIMARY KEY, " +
+            "table_name VARCHAR(50) NOT NULL, " +
+            "record_id INT NOT NULL, " +
+            "deletion_date TIMESTAMP NOT NULL, " +
+            "reason VARCHAR(255))";
+    
+    // Neue Tabelle für Datenbankänderungen
+    private static final String CREATE_DB_CHANGE_LOG = 
+            "CREATE TABLE IF NOT EXISTS db_change_log (" +
+            "id INT AUTO_INCREMENT PRIMARY KEY, " +
+            "change_date TIMESTAMP NOT NULL, " +
+            "change_type VARCHAR(50) NOT NULL, " +
+            "table_name VARCHAR(50) NOT NULL, " +
+            "description VARCHAR(1000))";
+    
     private static final String INSERT_PROVIDER = 
             "INSERT INTO signal_providers (provider_name) VALUES (?)";
     
@@ -57,6 +75,9 @@ public class HistoryDatabaseManager {
     	    "SELECT recorded_date, \"value\" FROM stat_values " +
     	    "WHERE provider_id = ? AND stat_type = ? " +
     	    "ORDER BY recorded_date DESC";
+    
+    private static final String LOG_DB_CHANGE =
+            "INSERT INTO db_change_log (change_date, change_type, table_name, description) VALUES (?, ?, ?, ?)";
     
     /**
      * Privater Konstruktor für Singleton-Pattern
@@ -100,30 +121,8 @@ public class HistoryDatabaseManager {
                 "jdbc:h2:file:" + dbPath + ";DB_CLOSE_DELAY=-1;AUTO_SERVER=TRUE;DATABASE_TO_UPPER=false", 
                 "sa", "");
             
-            // Tabellen erstellen
-            try (Statement stmt = connection.createStatement()) {
-                // Tabelle für Provider erstellen
-                boolean result1 = stmt.execute(CREATE_PROVIDERS_TABLE);
-                LOGGER.info("Provider-Tabelle erstellt: " + result1);
-                
-                // Tabelle für statistische Werte erstellen
-                boolean result2 = stmt.execute(CREATE_STAT_VALUES_TABLE);
-                LOGGER.info("Statistik-Werte-Tabelle erstellt: " + result2);
-                
-                // Prüfen, ob Tabellen existieren
-                ResultSet rs1 = connection.getMetaData().getTables(null, null, "signal_providers", null);
-                boolean providersTableExists = rs1.next();
-                
-                ResultSet rs2 = connection.getMetaData().getTables(null, null, "stat_values", null);
-                boolean statValuesTableExists = rs2.next();
-                
-                LOGGER.info("Tabellen existieren: signal_providers=" + providersTableExists + 
-                            ", stat_values=" + statValuesTableExists);
-                
-                if (!providersTableExists || !statValuesTableExists) {
-                    LOGGER.severe("Tabellen konnten nicht erstellt werden!");
-                }
-            }
+            // Erstelle alle Tabellen
+            createDatabaseSchema();
             
             LOGGER.info("Provider History Datenbank erfolgreich initialisiert: " + dbPath);
         } catch (ClassNotFoundException | SQLException e) {
@@ -132,6 +131,69 @@ public class HistoryDatabaseManager {
         }
     }
     
+    /**
+     * Erstellt die Datenbankstruktur mit allen Tabellen
+     */
+    private void createDatabaseSchema() throws SQLException {
+        try (Statement stmt = connection.createStatement()) {
+            // Tabelle für Provider erstellen
+            stmt.execute(CREATE_PROVIDERS_TABLE);
+            
+            // Tabelle für statistische Werte erstellen
+            stmt.execute(CREATE_STAT_VALUES_TABLE);
+            
+            // Neue Tabelle für gelöschte Einträge erstellen
+            stmt.execute(CREATE_DELETED_RECORDS_LOG);
+            
+            // Neue Tabelle für Datenbankänderungen erstellen
+            stmt.execute(CREATE_DB_CHANGE_LOG);
+            
+            // Eintrag zur Initialisierung in die Änderungslog-Tabelle
+            logDbChange("INIT", "ALL", "Datenbank-Schema initialisiert oder überprüft");
+            
+            // Prüfen, ob alle Tabellen existieren
+            checkTables();
+        }
+    }
+    
+    /**
+     * Prüft, ob alle erforderlichen Tabellen existieren
+     */
+    private void checkTables() throws SQLException {
+        String[] tableNames = {"signal_providers", "stat_values", "deleted_records_log", "db_change_log"};
+        boolean allTablesExist = true;
+        
+        for (String tableName : tableNames) {
+            ResultSet rs = connection.getMetaData().getTables(null, null, tableName, null);
+            boolean tableExists = rs.next();
+            allTablesExist &= tableExists;
+            LOGGER.info("Tabelle " + tableName + " existiert: " + tableExists);
+        }
+        
+        if (!allTablesExist) {
+            LOGGER.severe("Nicht alle erforderlichen Tabellen konnten erstellt werden!");
+        }
+    }
+    
+    /**
+     * Fügt einen Eintrag zum Datenbankänderungslog hinzu
+     */
+    private void logDbChange(String changeType, String tableName, String description) {
+        try (PreparedStatement stmt = connection.prepareStatement(LOG_DB_CHANGE)) {
+            stmt.setObject(1, LocalDateTime.now());
+            stmt.setString(2, changeType);
+            stmt.setString(3, tableName);
+            stmt.setString(4, description);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            LOGGER.warning("Fehler beim Logging der Datenbankänderung: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Speichert einen statistischen Wert für einen Provider mit Sicherheitsmechanismus
+     * Es werden nur neue Werte hinzugefügt, keine bestehenden überschrieben oder gelöscht
+     */
     public boolean storeStatValue(String providerName, String statType, double value, boolean forceUpdate) {
         if (connection == null) {
             LOGGER.warning("Keine Datenbankverbindung verfügbar");
@@ -155,52 +217,39 @@ public class HistoryDatabaseManager {
             // Aktuelles Datum/Zeit
             LocalDateTime now = LocalDateTime.now();
             
-            // Für H2 angepasste Version
-            try {
-                // Zuerst prüfen, ob ein Eintrag mit identischem Schlüssel existiert
-                try (PreparedStatement checkStmt = connection.prepareStatement(
-                        "SELECT COUNT(*) FROM stat_values WHERE provider_id = ? AND stat_type = ? AND recorded_date = ?")) {
-                    checkStmt.setInt(1, providerId);
-                    checkStmt.setString(2, statType);
-                    checkStmt.setObject(3, now);
-                    
-                    ResultSet rs = checkStmt.executeQuery();
-                    if (rs.next() && rs.getInt(1) > 0) {
-                        // Eintrag existiert, UPDATE verwenden
-                        try (PreparedStatement updateStmt = connection.prepareStatement(
-                        		"UPDATE stat_values SET \"value\" = ? WHERE provider_id = ? AND stat_type = ? AND recorded_date = ?"
-                        		)) 
-                        {
-                            
-                        	updateStmt.setDouble(1, value);
-                            updateStmt.setInt(2, providerId);
-                            updateStmt.setString(3, statType);
-                            updateStmt.setObject(4, now);
-                            updateStmt.executeUpdate();
-                        }
-                    } else {
-                        // Eintrag existiert nicht, INSERT verwenden
-                        try (PreparedStatement insertStmt = connection.prepareStatement(
-                        		"INSERT INTO stat_values (provider_id, stat_type, recorded_date, \"value\") VALUES (?, ?, ?, ?)"
-                        		)) 
-                        {
-                            insertStmt.setInt(1, providerId);
-                            insertStmt.setString(2, statType);
-                            insertStmt.setObject(3, now);
-                            insertStmt.setDouble(4, value);
-                            insertStmt.executeUpdate();
-                        }
-                    }
-                }
+            // Sicherheitsabfrage: Prüfen ob genau derselbe Eintrag bereits existiert
+            try (PreparedStatement checkStmt = connection.prepareStatement(
+                    "SELECT COUNT(*) FROM stat_values WHERE provider_id = ? AND stat_type = ? AND recorded_date = ? AND \"value\" = ?")) {
+                checkStmt.setInt(1, providerId);
+                checkStmt.setString(2, statType);
+                checkStmt.setObject(3, now);
+                checkStmt.setDouble(4, value);
                 
-                LOGGER.info(String.format("%s-Wert %.4f für %s gespeichert (Datum: %s)", 
-                        statType, value, providerName, now.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)));
-                return true;
-            } catch (SQLException e) {
-                LOGGER.severe("Fehler beim Speichern des " + statType + "-Werts: " + e.getMessage());
-                e.printStackTrace();
-                return false;
+                ResultSet rs = checkStmt.executeQuery();
+                if (rs.next() && rs.getInt(1) > 0) {
+                    // Exakt derselbe Eintrag existiert bereits
+                    LOGGER.fine("Exakt derselbe Eintrag existiert bereits. Keine doppelte Speicherung.");
+                    return true;
+                }
             }
+            
+            // Speichern als NEUER Eintrag (niemals bestehende ersetzen)
+            try (PreparedStatement insertStmt = connection.prepareStatement(
+                    INSERT_STAT_VALUE)) {
+                insertStmt.setInt(1, providerId);
+                insertStmt.setString(2, statType);
+                insertStmt.setObject(3, now);
+                insertStmt.setDouble(4, value);
+                insertStmt.executeUpdate();
+                
+                logDbChange("INSERT", "stat_values", 
+                        String.format("Neuer %s-Wert %.4f für Provider %s hinzugefügt", 
+                                statType, value, providerName));
+            }
+            
+            LOGGER.info(String.format("%s-Wert %.4f für %s gespeichert (Datum: %s)", 
+                    statType, value, providerName, now.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)));
+            return true;
         } catch (SQLException e) {
             LOGGER.severe("Fehler beim Speichern des " + statType + "-Werts: " + e.getMessage());
             e.printStackTrace();
@@ -234,6 +283,9 @@ public class HistoryDatabaseManager {
                 throw new SQLException("Provider konnte nicht erstellt werden, keine Zeilen betroffen");
             }
             
+            // Log die Erstellung des neuen Providers
+            logDbChange("INSERT", "signal_providers", "Neuer Provider hinzugefügt: " + providerName);
+            
             // Hole generierte ID
             try (ResultSet rs = stmt.getGeneratedKeys()) {
                 if (rs.next()) {
@@ -259,6 +311,7 @@ public class HistoryDatabaseManager {
             throw e;
         }
     }
+    
     /**
      * Holt den letzten gespeicherten statistischen Wert für einen Provider
      * 
@@ -355,12 +408,178 @@ public class HistoryDatabaseManager {
     }
     
     /**
+     * Backup-Methode, um eine Sicherungskopie der Datenbank zu erstellen
+     * @return true wenn das Backup erfolgreich erstellt wurde
+     */
+    public boolean createBackup() {
+        if (connection == null) {
+            LOGGER.warning("Keine Datenbankverbindung verfügbar");
+            return false;
+        }
+        
+        try {
+            // Generiere Zeitstempel für den Backup-Dateinamen
+            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+            String backupFileName = "backup_" + timestamp + ".zip";
+            String backupPath = rootPath + File.separator + "database" + File.separator + "backups";
+            
+            // Stelle sicher, dass der Backup-Ordner existiert
+            File backupDir = new File(backupPath);
+            if (!backupDir.exists()) {
+                backupDir.mkdirs();
+            }
+            
+            // Vollständiger Pfad zur Backup-Datei
+            String backupFile = backupPath + File.separator + backupFileName;
+            
+            // H2-Backup-Befehl ausführen
+            try (Statement stmt = connection.createStatement()) {
+                stmt.execute("BACKUP TO '" + backupFile + "'");
+                
+                // Log die Backup-Erstellung
+                logDbChange("BACKUP", "ALL", "Datenbank-Backup erstellt: " + backupFile);
+                
+                LOGGER.info("Datenbank-Backup erfolgreich erstellt: " + backupFile);
+                return true;
+            }
+        } catch (SQLException e) {
+            LOGGER.severe("Fehler beim Erstellen des Datenbank-Backups: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
+    }
+    
+    /**
+     * Holt eine Liste aller Provider aus der Datenbank
+     * 
+     * @return Liste aller Providernamen
+     */
+    public List<String> getAllProviders() {
+        List<String> providers = new ArrayList<>();
+        
+        if (connection == null) {
+            LOGGER.warning("Keine Datenbankverbindung verfügbar");
+            return providers;
+        }
+        
+        try (Statement stmt = connection.createStatement()) {
+            String query = "SELECT provider_name FROM signal_providers ORDER BY provider_name";
+            ResultSet rs = stmt.executeQuery(query);
+            
+            while (rs.next()) {
+                providers.add(rs.getString(1));
+            }
+            
+            return providers;
+        } catch (SQLException e) {
+            LOGGER.severe("Fehler beim Abrufen aller Provider: " + e.getMessage());
+            e.printStackTrace();
+            return providers;
+        }
+    }
+    
+    /**
+     * Zählt die Gesamtanzahl der Einträge in der Datenbank
+     */
+    public int countAllEntries() {
+        if (connection == null) {
+            LOGGER.warning("Keine Datenbankverbindung verfügbar");
+            return 0;
+        }
+        
+        try (Statement stmt = connection.createStatement()) {
+            // Zähle Einträge in signal_providers
+            ResultSet rs1 = stmt.executeQuery("SELECT COUNT(*) FROM signal_providers");
+            int providerCount = rs1.next() ? rs1.getInt(1) : 0;
+            
+            // Zähle Einträge in stat_values
+            ResultSet rs2 = stmt.executeQuery("SELECT COUNT(*) FROM stat_values");
+            int statValueCount = rs2.next() ? rs2.getInt(1) : 0;
+            
+            return providerCount + statValueCount;
+        } catch (SQLException e) {
+            LOGGER.severe("Fehler beim Zählen der Datenbankeinträge: " + e.getMessage());
+            e.printStackTrace();
+            return 0;
+        }
+    }
+    
+    /**
+     * Prüft, ob die Datenbank Datenverluste aufweist, indem die Anzahl der Einträge überprüft wird
+     */
+    public boolean checkDataIntegrity() {
+        if (connection == null) {
+            LOGGER.warning("Keine Datenbankverbindung verfügbar");
+            return false;
+        }
+        
+        try (Statement stmt = connection.createStatement()) {
+            // Rufe den zuletzt protokollierten Eintragsstand ab
+            ResultSet rs = stmt.executeQuery(
+                "SELECT description FROM db_change_log " +
+                "WHERE change_type = 'INTEGRITY_CHECK' " +
+                "ORDER BY change_date DESC LIMIT 1");
+            
+            int lastRecordedCount = 0;
+            if (rs.next()) {
+                String desc = rs.getString(1);
+                // Extrahiere die Anzahl aus dem Format "Integritätsprüfung: XYZ Einträge vorhanden"
+                if (desc.contains(":")) {
+                    String countStr = desc.split(":")[1].trim().split(" ")[0];
+                    lastRecordedCount = Integer.parseInt(countStr);
+                }
+            }
+            
+            // Aktuelle Anzahl der Einträge
+            int currentCount = countAllEntries();
+            
+            // Wenn die aktuelle Anzahl kleiner ist als die letzte protokollierte Anzahl,
+            // könnte ein Datenverlust vorliegen
+            boolean dataLoss = currentCount < lastRecordedCount;
+            
+            if (dataLoss) {
+                LOGGER.severe("Möglicher Datenverlust erkannt! Aktuelle Einträge: " + currentCount + 
+                        ", Letzte bekannte Anzahl: " + lastRecordedCount);
+                
+                // Protokolliere den potentiellen Datenverlust
+                logDbChange("INTEGRITY_WARNING", "ALL", 
+                        "Möglicher Datenverlust! Aktuelle Einträge: " + currentCount + 
+                        ", Letzte bekannte Anzahl: " + lastRecordedCount);
+                
+                // Erstelle automatisch ein Backup
+                createBackup();
+            } else {
+                // Protokolliere den aktuellen Zustand für zukünftige Prüfungen
+                logDbChange("INTEGRITY_CHECK", "ALL", 
+                        "Integritätsprüfung: " + currentCount + " Einträge vorhanden");
+            }
+            
+            return !dataLoss;
+        } catch (SQLException e) {
+            LOGGER.severe("Fehler bei der Integritätsprüfung: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
+    }
+    
+    /**
      * Schließt die Datenbankverbindung
      */
     public void closeConnection() {
         if (connection != null) {
             try {
+                // Erstelle ein Backup vor dem Schließen
+                createBackup();
+                
+                // Prüfe die Datenintegrität
+                checkDataIntegrity();
+                
+                // Protokolliere das Schließen
+                logDbChange("SHUTDOWN", "ALL", "Datenbankverbindung wird ordnungsgemäß geschlossen");
+                
+                // Schließe die Verbindung
                 connection.close();
+                
                 LOGGER.info("Datenbankverbindung geschlossen");
             } catch (SQLException e) {
                 LOGGER.severe("Fehler beim Schließen der Datenbankverbindung: " + e.getMessage());
@@ -393,34 +612,6 @@ public class HistoryDatabaseManager {
         public String toString() {
             return String.format("[%s] %.4f", 
                     date.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME), value);
-        }
-    }
-    /**
-     * Holt eine Liste aller Provider aus der Datenbank
-     * 
-     * @return Liste aller Providernamen
-     */
-    public List<String> getAllProviders() {
-        List<String> providers = new ArrayList<>();
-        
-        if (connection == null) {
-            LOGGER.warning("Keine Datenbankverbindung verfügbar");
-            return providers;
-        }
-        
-        try (Statement stmt = connection.createStatement()) {
-            String query = "SELECT provider_name FROM signal_providers ORDER BY provider_name";
-            ResultSet rs = stmt.executeQuery(query);
-            
-            while (rs.next()) {
-                providers.add(rs.getString(1));
-            }
-            
-            return providers;
-        } catch (SQLException e) {
-            LOGGER.severe("Fehler beim Abrufen aller Provider: " + e.getMessage());
-            e.printStackTrace();
-            return providers;
         }
     }
 }
