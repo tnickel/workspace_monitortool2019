@@ -1,10 +1,8 @@
 package data;
 
-
-
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;  // Diese Zeile war bisher nicht da
+import java.io.FileReader;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
@@ -13,6 +11,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 import java.util.logging.Logger;
 
 public class DataManager {
@@ -23,11 +22,24 @@ public class DataManager {
    
    private final Map<String, ProviderStats> signalProviderStats;
    
+   // Fortschritts-Callback
+   private Consumer<Integer> progressCallback;
+   private Consumer<String> statusCallback;
+   
    // Singleton-Instanz
    private static DataManager instance;
    
    public DataManager() {
        this.signalProviderStats = new HashMap<>();
+   }
+   
+   // Setter für Callbacks
+   public void setProgressCallback(Consumer<Integer> progressCallback) {
+       this.progressCallback = progressCallback;
+   }
+   
+   public void setStatusCallback(Consumer<String> statusCallback) {
+       this.statusCallback = statusCallback;
    }
    
    // Singleton-Methode
@@ -61,12 +73,36 @@ public class DataManager {
            File[] files = downloadDirectory.listFiles((dir, name) -> name.toLowerCase().endsWith(".csv"));
            if (files != null) {
                LOGGER.info("Found " + files.length + " CSV files");
-               for (File file : files) {
+               
+               // Status melden
+               if (statusCallback != null) {
+                   statusCallback.accept("Lade Dateien: 0/" + files.length);
+               }
+               
+               // Fortschritt für alle Dateien
+               for (int i = 0; i < files.length; i++) {
+                   File file = files[i];
+                   // Status melden
+                   if (statusCallback != null) {
+                       statusCallback.accept("Lade Datei: " + file.getName() + " (" + (i+1) + "/" + files.length + ")");
+                   }
+                   
                    processFile(file);
+                   
+                   // Fortschritt aktualisieren
+                   if (progressCallback != null) {
+                       int progress = (int) ((i + 1) / (double) files.length * 100);
+                       progressCallback.accept(progress);
+                   }
                }
            }
        }
        LOGGER.info("Loaded " + signalProviderStats.size() + " providers");
+       
+       // Status melden
+       if (statusCallback != null) {
+           statusCallback.accept("Daten geladen: " + signalProviderStats.size() + " Provider");
+       }
        
        // Setze instance beim Laden, falls noch nicht gesetzt
        if (instance == null) {
