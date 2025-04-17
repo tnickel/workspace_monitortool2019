@@ -1,9 +1,14 @@
 package ui;
 
+
+
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.GradientPaint;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
@@ -11,6 +16,7 @@ import java.awt.event.WindowEvent;
 import java.util.List;
 import java.util.logging.Logger;
 
+import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
@@ -25,14 +31,17 @@ import javax.swing.JTextField;
 import javax.swing.JToolBar;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
-import javax.swing.border.BevelBorder;
+import javax.swing.UIManager;
 import javax.swing.border.EmptyBorder;
+import javax.swing.border.CompoundBorder;
+import javax.swing.border.LineBorder;
 
 import components.MainTable;
 import data.DataManager;
 import models.FilterCriteria;
 import services.ProviderHistoryService;
 import utils.MqlAnalyserConf;
+
 
 public class MainFrame extends JFrame {
     private static final Logger LOGGER = Logger.getLogger(MainFrame.class.getName());
@@ -44,23 +53,32 @@ public class MainFrame extends JFrame {
     private final ProviderHistoryService historyService;
     private int[] currentSearchIndex = {-1};
     private String rootPath_glob = null;
+    
+    // Definierte Farben für das neue Design
+    private static final Color PRIMARY_COLOR = new Color(26, 45, 90); // #1A2D5A - Dunkelblau
+    private static final Color SECONDARY_COLOR = new Color(62, 125, 204); // #3E7DCC - Helleres Blau
+    private static final Color ACCENT_COLOR = new Color(255, 209, 102); // #FFD166 - Gold/Gelb
+    private static final Color BG_COLOR = new Color(245, 247, 250); // #F5F7FA - Sehr helles Grau
+    private static final Color TEXT_COLOR = new Color(51, 51, 51); // #333333 - Dunkelgrau
+    private static final Color TEXT_SECONDARY_COLOR = new Color(85, 85, 85); // #555555 - Helleres Grau
 
     public MainFrame(DataManager dataManager, String rootPath, MqlAnalyserConf config) {
         super("Signal Providers Performance Analysis");
         this.dataManager = dataManager;
         this.config = config;
-        this.statusLabel = new JLabel();
-        this.searchField = new JTextField(20);
+        this.statusLabel = createStyledLabel("");
+        this.searchField = createStyledTextField(20);
         rootPath_glob = rootPath;
         
         // Provider History Service initialisieren
         this.historyService = ProviderHistoryService.getInstance();
         this.historyService.initialize(rootPath);
         
+        // UI-Komponenten mit dem neuen Stil
+        setUpUIDefaults();
+        
         mainTable = new MainTable(dataManager, config.getDownloadPath());
         mainTable.setStatusUpdateCallback(text -> updateStatusBar());
-        
-        // Die Zeile mit loadColumnVisibilitySettings() wurde entfernt, da dies jetzt in der MainTable-Klasse erfolgt
         
         setupUI();
         setupSearch();
@@ -74,6 +92,55 @@ public class MainFrame extends JFrame {
                 historyService.shutdown();
             }
         });
+    }
+    
+    private void setUpUIDefaults() {
+        // Globale UI-Einstellungen
+        UIManager.put("Panel.background", BG_COLOR);
+        UIManager.put("OptionPane.background", BG_COLOR);
+        UIManager.put("TextField.background", Color.WHITE);
+        UIManager.put("TextField.foreground", TEXT_COLOR);
+        UIManager.put("TextField.caretForeground", PRIMARY_COLOR);
+        UIManager.put("Button.background", SECONDARY_COLOR);
+        UIManager.put("Button.foreground", Color.WHITE);
+        UIManager.put("Button.font", new Font("SansSerif", Font.BOLD, 12));
+        UIManager.put("Label.foreground", TEXT_COLOR);
+        UIManager.put("MenuBar.background", PRIMARY_COLOR);
+        UIManager.put("MenuBar.foreground", Color.WHITE);
+        UIManager.put("Menu.background", PRIMARY_COLOR);
+        UIManager.put("Menu.foreground", Color.WHITE);
+        UIManager.put("Menu.selectionBackground", SECONDARY_COLOR);
+        UIManager.put("Menu.selectionForeground", Color.WHITE);
+        UIManager.put("MenuItem.background", BG_COLOR);
+        UIManager.put("MenuItem.foreground", TEXT_COLOR);
+        UIManager.put("MenuItem.selectionBackground", SECONDARY_COLOR);
+        UIManager.put("MenuItem.selectionForeground", Color.WHITE);
+        UIManager.put("Table.background", Color.WHITE);
+        UIManager.put("Table.foreground", TEXT_COLOR);
+        UIManager.put("Table.selectionBackground", SECONDARY_COLOR);
+        UIManager.put("Table.selectionForeground", Color.WHITE);
+        UIManager.put("Table.gridColor", new Color(230, 230, 230));
+        UIManager.put("ScrollPane.background", BG_COLOR);
+        UIManager.put("ToolBar.background", PRIMARY_COLOR);
+        UIManager.put("ToolBar.foreground", Color.WHITE);
+    }
+    
+    private JLabel createStyledLabel(String text) {
+        JLabel label = new JLabel(text);
+        label.setForeground(TEXT_COLOR);
+        label.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        return label;
+    }
+    
+    private JTextField createStyledTextField(int columns) {
+        JTextField textField = new JTextField(columns);
+        textField.setBackground(Color.WHITE);
+        textField.setForeground(TEXT_COLOR);
+        textField.setBorder(new CompoundBorder(
+            new LineBorder(SECONDARY_COLOR, 1),
+            new EmptyBorder(4, 6, 4, 6)
+        ));
+        return textField;
     }
 
     private void updateStatusBar() {
@@ -116,24 +183,51 @@ public class MainFrame extends JFrame {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setupMenuBar();
         
-        JPanel contentPane = new JPanel(new BorderLayout(5, 5));
+        // Hintergrund für das Hauptpanel
+        JPanel contentPane = new GradientPanel();
+        contentPane.setLayout(new BorderLayout(5, 5));
         contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
         setContentPane(contentPane);
         
         createToolBar();
         
+        // Tabelle mit schönem Rahmen
         JScrollPane scrollPane = new JScrollPane(mainTable);
+        scrollPane.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(SECONDARY_COLOR, 1),
+            BorderFactory.createEmptyBorder(0, 0, 0, 0)
+        ));
         contentPane.add(scrollPane, BorderLayout.CENTER);
         
         setSize(1200, 800);
         setLocationRelativeTo(null);
     }
+    
+    // Neues JPanel mit Farbverlauf für den Hintergrund
+    private class GradientPanel extends JPanel {
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+            Graphics2D g2d = (Graphics2D) g;
+            
+            // Heller Farbverlauf als Hintergrund
+            GradientPaint gradient = new GradientPaint(
+                0, 0, new Color(245, 247, 250), 
+                0, getHeight(), new Color(230, 238, 245)
+            );
+            g2d.setPaint(gradient);
+            g2d.fillRect(0, 0, getWidth(), getHeight());
+        }
+    }
 
     private void setupMenuBar() {
         JMenuBar menuBar = new JMenuBar();
+        menuBar.setBackground(PRIMARY_COLOR);
+        menuBar.setBorder(BorderFactory.createEmptyBorder(2, 2, 2, 2));
         
         // Config-Menü
         JMenu configMenu = new JMenu("Config");
+        configMenu.setForeground(Color.WHITE);
         
         JMenuItem pathMenuItem = new JMenuItem("Set Download Path");
         pathMenuItem.addActionListener(e -> setDownloadPath());
@@ -146,6 +240,7 @@ public class MainFrame extends JFrame {
         
         // Visual-Menü
         JMenu visualMenu = new JMenu("Visual");
+        visualMenu.setForeground(Color.WHITE);
         
         JMenuItem tableConfigMenuItem = new JMenuItem("Tabellenspalten anzeigen/verstecken");
         tableConfigMenuItem.addActionListener(e -> showColumnConfigDialog());
@@ -154,6 +249,7 @@ public class MainFrame extends JFrame {
         
         // Stats-Menü hinzufügen
         JMenu statsMenu = new JMenu("Statistik");
+        statsMenu.setForeground(Color.WHITE);
         
         JMenuItem historyMenuItem = new JMenuItem("3MPDD Verlauf anzeigen");
         historyMenuItem.addActionListener(e -> showMpddHistoryDialog());
@@ -209,42 +305,48 @@ public class MainFrame extends JFrame {
     private void createToolBar() {
         JToolBar toolBar = new JToolBar();
         toolBar.setFloatable(false);
+        toolBar.setBackground(PRIMARY_COLOR);
+        toolBar.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
         
         JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        searchPanel.add(new JLabel("Search: "));
+        searchPanel.setOpaque(false);
+        
+        JLabel searchLabel = new JLabel("Search: ");
+        searchLabel.setForeground(Color.WHITE);
+        searchPanel.add(searchLabel);
         searchPanel.add(searchField);
         
-        JButton searchButton = new JButton("Search");
+        JButton searchButton = createStyledButton("Search");
         searchButton.addActionListener(e -> performSearch());
         searchPanel.add(searchButton);
         
         // Neuer Delete Selected Button
-        JButton deleteSelectedButton = new JButton("Delete Selected");
+        JButton deleteSelectedButton = createStyledButton("Delete Selected");
         deleteSelectedButton.addActionListener(e -> deleteSelectedProviders());
         searchPanel.add(deleteSelectedButton);
         
         toolBar.add(searchPanel);
         toolBar.addSeparator();
         
-        JButton resetButton = new JButton("Reset");
+        JButton resetButton = createStyledButton("Reset");
         resetButton.addActionListener(e -> resetAll());
         toolBar.add(resetButton);
         
-        JButton filterButton = new JButton("Filter");
+        JButton filterButton = createStyledButton("Filter");
         filterButton.addActionListener(e -> showFilterDialog());
         toolBar.add(filterButton);
         
-        JButton showFavoritesButton = new JButton("Show Favorites");
+        JButton showFavoritesButton = createStyledButton("Show Favorites");
         showFavoritesButton.addActionListener(e -> {
             mainTable.filterFavorites();
         });
         toolBar.add(showFavoritesButton);
         
-        JButton compareButton = new JButton("Compare Equity Curves");
+        JButton compareButton = createStyledButton("Compare Equity Curves");
         compareButton.addActionListener(e -> showCompareDialog());
         toolBar.add(compareButton);
         
-        JButton showSignalProvidersButton = new JButton("Show Signal Providers");
+        JButton showSignalProvidersButton = createStyledButton("Show Signal Providers");
         showSignalProvidersButton.addActionListener(e -> {
             ShowSignalProviderList dialog = new ShowSignalProviderList(
                 this,
@@ -256,28 +358,28 @@ public class MainFrame extends JFrame {
         });
         toolBar.add(showSignalProvidersButton);
         
-        JButton compareOpenTradesButton = new JButton("Compare Open Trades");
+        JButton compareOpenTradesButton = createStyledButton("Compare Open Trades");
         compareOpenTradesButton.addActionListener(e -> {
             CompareOpenTradesDialog dialog = new CompareOpenTradesDialog(this, mainTable.getCurrentProviderStats());
             dialog.setVisible(true);
         });
         toolBar.add(compareOpenTradesButton);
 
-        JButton riskScoreButton = new JButton("Risk Score Explanation");
+        JButton riskScoreButton = createStyledButton("Risk Score Explanation");
         riskScoreButton.addActionListener(e -> {
             RiskScoreExplanationDialog dialog = new RiskScoreExplanationDialog(this);
             dialog.setVisible(true);
         });
         toolBar.add(riskScoreButton);
        
-        JButton dbViewerButton = new JButton("DB Einträge");
+        JButton dbViewerButton = createStyledButton("DB Einträge");
         dbViewerButton.addActionListener(e -> {
             DatabaseViewerDialog dialog = new DatabaseViewerDialog(this, historyService);
             dialog.setVisible(true);
         });
         toolBar.add(dbViewerButton);
         
-        JButton dbForceSaveButton = new JButton("DB Speicherung erzwingen");
+        JButton dbForceSaveButton = createStyledButton("DB Speicherung erzwingen");
         dbForceSaveButton.addActionListener(e -> {
             // Prüfen, ob bereits Einträge in der DB vorhanden sind
             if (!historyService.hasDatabaseEntries()) {
@@ -325,6 +427,18 @@ public class MainFrame extends JFrame {
         add(toolBar, BorderLayout.NORTH);
     }
     
+    private JButton createStyledButton(String text) {
+        JButton button = new JButton(text);
+        button.setBackground(SECONDARY_COLOR);
+        button.setForeground(Color.WHITE);
+        button.setFocusPainted(false);
+        button.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(50, 90, 150), 1),
+            BorderFactory.createEmptyBorder(4, 12, 4, 12)
+        ));
+        return button;
+    }
+    
     private void deleteSelectedProviders() {
         List<String> selectedProviders = mainTable.getSelectedProviders();
         if (selectedProviders.isEmpty()) {
@@ -358,12 +472,11 @@ public class MainFrame extends JFrame {
     
     private void setupStatusBar() {
         JPanel statusBar = new JPanel(new BorderLayout());
-        statusBar.setBorder(new BevelBorder(BevelBorder.LOWERED));
+        statusBar.setBackground(SECONDARY_COLOR);
+        statusBar.setBorder(BorderFactory.createEmptyBorder(4, 5, 4, 5));
         
-        statusLabel.setBorder(new EmptyBorder(2, 5, 2, 5));
-        statusLabel.setFont(new Font("SansSerif", Font.PLAIN, 12));
-        statusLabel.setOpaque(true);
-        statusLabel.setBackground(new Color(240, 240, 240));
+        statusLabel.setForeground(Color.WHITE);
+        statusLabel.setFont(new Font("SansSerif", Font.BOLD, 12));
         
         statusBar.add(statusLabel, BorderLayout.CENTER);
         add(statusBar, BorderLayout.SOUTH);

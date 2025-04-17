@@ -97,14 +97,13 @@ public class FilterDialog extends JDialog {
         
         // Model mit existierenden Filtern befüllen
         for (int i = 0; i < TABLE_COLUMNS.length; i++) {
+            // Max Drawdown komplett überspringen/auslassen
+            if (TABLE_COLUMNS[i].equals("Max Drawdown %")) {
+                continue; // Eintrag komplett auslassen
+            }
+            
             Object minValue = "";
             Object maxValue = "";
-            
-            // Für MaxDrawdown immer leere Werte setzen
-            if (TABLE_COLUMNS[i].equals("Max Drawdown %")) {
-                model.addRow(new Object[]{TABLE_COLUMNS[i], "", ""});
-                continue;
-            }
             
             if (filters.getFilters().containsKey(i)) {
                 FilterRange range = filters.getFilters().get(i);
@@ -136,11 +135,6 @@ public class FilterDialog extends JDialog {
                         int row = filterTable.getEditingRow();
                         String rowName = (String) filterTable.getValueAt(row, 0);
                         
-                        // Verhindere Bearbeitung der MaxDrawdown-Zeile
-                        if (rowName.equals("Max Drawdown %")) {
-                            return true;
-                        }
-                        
                         if (!(row == 1 || row == 23 || row == 24)) {  // Nicht für Text-Spalten
                             Double.parseDouble(value);
                         }
@@ -157,29 +151,6 @@ public class FilterDialog extends JDialog {
         filterTable.getColumnModel().getColumn(0).setPreferredWidth(150);
         filterTable.getColumnModel().getColumn(1).setPreferredWidth(100);
         filterTable.getColumnModel().getColumn(2).setPreferredWidth(100);
-        
-        // MaxDrawdown-Zeile grau hinterlegen
-        filterTable.setDefaultRenderer(Object.class, new javax.swing.table.DefaultTableCellRenderer() {
-            @Override
-            public Component getTableCellRendererComponent(JTable table, Object value,
-                                                         boolean isSelected, boolean hasFocus, int row, int column) {
-                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-                
-                // "Max Drawdown %"-Zeile grau hinterlegen
-                String rowName = (String) table.getValueAt(row, 0);
-                if (rowName.equals("Max Drawdown %")) {
-                    c.setBackground(java.awt.Color.LIGHT_GRAY);
-                    c.setForeground(java.awt.Color.GRAY);
-                    // Tooltip hinzufügen
-                    ((JLabel)c).setToolTipText("Diese Berechnung ist fehlerhaft und wurde deaktiviert.");
-                } else if (!isSelected) {
-                    c.setBackground(table.getBackground());
-                    c.setForeground(table.getForeground());
-                }
-                
-                return c;
-            }
-        });
         
         setLayout(new BorderLayout(5, 5));
         
@@ -256,22 +227,17 @@ public class FilterDialog extends JDialog {
         }
     }
     
-    // Neue Methode zum Setzen der Standardwerte
+    // Methode zum Setzen der Standardwerte - überarbeitet mit neuen Standardwerten
     private void setupDefaultValues() {
-        // Standardwerte definieren - basierend auf dem Screenshot
+        // Standardwerte definieren gemäß den Anforderungen
         Map<String, Double> defaultMinValues = new HashMap<>();
-        defaultMinValues.put("No.", 1.0);
-        defaultMinValues.put("3MPDD", 0.0);  // Geändert von 2.0 auf 0.0 gemäß dem neuen Screenshot
-        defaultMinValues.put("Trades", 0.0);  // Geändert von 50.0 auf 0.0 gemäß dem neuen Screenshot
+        defaultMinValues.put("No.", 1.0);         // Neue Standardwerte
+        defaultMinValues.put("3MPDD", 2.0);       // Geändert von 0.0 auf 2.0
+        defaultMinValues.put("Trades", 50.0);     // Geändert von 0.0 auf 50.0
         
         // Über alle Zeilen gehen und Standardwerte setzen wo vorhanden
         for (int row = 0; row < filterTable.getRowCount(); row++) {
             String columnName = (String) filterTable.getValueAt(row, 0);
-            
-            // MaxDrawdown-Zeile überspringen
-            if (columnName.equals("Max Drawdown %")) {
-                continue;
-            }
             
             if (defaultMinValues.containsKey(columnName)) {
                 filterTable.setValueAt(defaultMinValues.get(columnName).toString(), row, 1); // Min-Wert
@@ -299,11 +265,6 @@ public class FilterDialog extends JDialog {
         
         for (int row = 0; row < filterTable.getRowCount(); row++) {
             String columnName = (String) filterTable.getValueAt(row, 0);
-            
-            // MaxDrawdown-Zeile überspringen
-            if (columnName.equals("Max Drawdown %")) {
-                continue;
-            }
             
             String minStr = ((String) filterTable.getValueAt(row, 1)).trim();
             String maxStr = ((String) filterTable.getValueAt(row, 2)).trim();

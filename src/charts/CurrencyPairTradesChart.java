@@ -15,11 +15,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
+import javax.swing.BoxLayout;
 import javax.swing.JCheckBox;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.border.TitledBorder;
-
+import javax.swing.BoxLayout;
+import javax.swing.Box;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
@@ -48,20 +50,34 @@ public class CurrencyPairTradesChart extends JPanel {
     private final Map<String, TimeSeries> lotsSeries;
     private final List<Trade> allTrades;
     
+    // Verbesserte Farben für besseren Kontrast
+    private static final Color[] CHART_COLORS = {
+        new Color(0, 102, 204),    // Blau (EURUSD)
+        new Color(204, 0, 0),      // Rot (GBPUSD)
+        new Color(0, 153, 0),      // Grün (USDJPY)
+        new Color(153, 0, 153),    // Lila (USDCHF)
+        new Color(255, 153, 0),    // Orange (AUDUSD)
+        new Color(0, 153, 153),    // Türkis (NZDUSD)
+        new Color(153, 51, 0),     // Braun (USDCAD)
+        new Color(51, 51, 153),    // Dunkelblau
+        new Color(204, 102, 0),    // Dunkelorange
+        new Color(0, 102, 51)      // Dunkelgrün
+    };
+    
     /**
      * Konstruktor für die CurrencyPairTradesChart-Komponente
      * 
      * @param trades Liste aller Trades
      */
     public CurrencyPairTradesChart(List<Trade> trades) {
-        this.allTrades = trades;
+        this.allTrades = new ArrayList<>(trades);
         this.tradesDataset = new TimeSeriesCollection();
         this.lotsDataset = new TimeSeriesCollection();
         this.currencyPairCheckboxes = new HashMap<>();
         this.tradesSeries = new HashMap<>();
         this.lotsSeries = new HashMap<>();
         
-        setLayout(new BorderLayout(0, 10));
+        setLayout(new BorderLayout(0, 20)); // Größerer vertikaler Abstand zwischen den Charts
         
         // Erstelle die Charts
         tradesChart = createTimeSeriesChart("Offene Trades pro Währungspaar", "Anzahl Trades");
@@ -70,24 +86,38 @@ public class CurrencyPairTradesChart extends JPanel {
         tradesChartPanel = new ChartPanel(tradesChart);
         lotsChartPanel = new ChartPanel(lotsChart);
         
+        // Standard-Größen für die Charts
+        // Hier definieren wir ein vernünftiges Verhältnis - oberes Chart bleibt gleich,
+        // unteres Chart wird größer, aber nicht übermäßig groß
         tradesChartPanel.setPreferredSize(new Dimension(950, 300));
-        // Erhöhe die Höhe des unteren Charts um 30%
-        lotsChartPanel.setPreferredSize(new Dimension(950, 390)); // Ursprünglich 300, jetzt 30% höher
+        lotsChartPanel.setPreferredSize(new Dimension(950, 600)); // Doppelt so hoch wie das obere Chart
+        
+        // Setze Minimumgrößen, um sicherzustellen, dass die Charts nicht zu klein werden
+        tradesChartPanel.setMinimumSize(new Dimension(500, 250));
+        lotsChartPanel.setMinimumSize(new Dimension(500, 500));
         
         // Panel für die Checkboxen erstellen
         JPanel checkboxPanel = createCheckboxPanel();
         
-        // Layout zusammensetzen
-        JPanel chartsPanel = new JPanel(new BorderLayout(0, 10));
-        chartsPanel.add(tradesChartPanel, BorderLayout.NORTH);
-        chartsPanel.add(lotsChartPanel, BorderLayout.CENTER);
+        // Layout für die Charts: BoxLayout in Y-Richtung verwenden, 
+        // damit beide Charts ihre bevorzugte Größe behalten
+        JPanel chartsPanel = new JPanel();
+        chartsPanel.setLayout(new BoxLayout(chartsPanel, BoxLayout.Y_AXIS));
+        chartsPanel.add(tradesChartPanel);
         
+        // Abstand zwischen den Charts
+        chartsPanel.add(Box.createRigidArea(new Dimension(0, 20)));
+        
+        chartsPanel.add(lotsChartPanel);
+        
+        // Hauptlayout zusammensetzen
         add(checkboxPanel, BorderLayout.NORTH);
         add(chartsPanel, BorderLayout.CENTER);
         
         // Daten hinzufügen
         populateCharts();
     }
+
     
     /**
      * Erstellt ein leeres Zeitreihen-Chart mit den grundlegenden Einstellungen
@@ -122,19 +152,27 @@ public class CurrencyPairTradesChart extends JPanel {
         // Datumsachse (X-Achse) anpassen
         DateAxis dateAxis = (DateAxis) plot.getDomainAxis();
         dateAxis.setDateFormatOverride(new SimpleDateFormat("yyyy-MM-dd"));
-        dateAxis.setTickLabelFont(new Font("SansSerif", Font.PLAIN, 10));
-        dateAxis.setLabelFont(new Font("SansSerif", Font.BOLD, 12));
+        // Größere Schrift für bessere Lesbarkeit
+        dateAxis.setTickLabelFont(new Font("SansSerif", Font.PLAIN, 14));
+        dateAxis.setLabelFont(new Font("SansSerif", Font.BOLD, 16));
         
         // Y-Achse anpassen
         NumberAxis rangeAxis = (NumberAxis) plot.getRangeAxis();
         rangeAxis.setStandardTickUnits(NumberAxis.createIntegerTickUnits());
         rangeAxis.setAutoRangeIncludesZero(true);
-        rangeAxis.setLabelFont(new Font("SansSerif", Font.BOLD, 12));
-        rangeAxis.setTickLabelFont(new Font("SansSerif", Font.PLAIN, 10));
+        // Größere Schrift für bessere Lesbarkeit
+        rangeAxis.setLabelFont(new Font("SansSerif", Font.BOLD, 16));
+        rangeAxis.setTickLabelFont(new Font("SansSerif", Font.PLAIN, 14));
         
         // Sicherstellen, dass die Y-Achsenbeschriftung sichtbar ist
         rangeAxis.setVisible(true);
         rangeAxis.setLabel(yAxisLabel);
+        
+        // Titel größer machen
+        chart.getTitle().setFont(new Font("SansSerif", Font.BOLD, 18));
+        
+        // Legende verbessern
+        chart.getLegend().setItemFont(new Font("SansSerif", Font.PLAIN, 14));
         
         return chart;
     }
@@ -160,6 +198,7 @@ public class CurrencyPairTradesChart extends JPanel {
         
         // "Alles ausschalten" Checkbox am Anfang
         JCheckBox toggleAllCheckbox = new JCheckBox("Alles ausschalten");
+        toggleAllCheckbox.setFont(new Font("SansSerif", Font.BOLD, 12)); // Größere, fettere Schrift
         toggleAllCheckbox.addActionListener(e -> {
             boolean newState = !toggleAllCheckbox.isSelected();
             for (JCheckBox cb : currencyPairCheckboxes.values()) {
@@ -180,6 +219,7 @@ public class CurrencyPairTradesChart extends JPanel {
         // Checkboxen für jedes Währungspaar erstellen
         for (String symbol : uniqueSymbols.keySet()) {
             JCheckBox checkbox = new JCheckBox(symbol);
+            checkbox.setFont(new Font("SansSerif", Font.PLAIN, 12)); // Größere Schrift
             checkbox.setSelected(true);  // Standardmäßig alle ausgewählt
             checkbox.addActionListener(e -> updateVisibility(symbol, checkbox.isSelected()));
             currencyPairCheckboxes.put(symbol, checkbox);
@@ -235,6 +275,7 @@ public class CurrencyPairTradesChart extends JPanel {
         }
         
         // Für jedes Währungspaar eine Serie erstellen
+        int colorIndex = 0;
         for (Map.Entry<String, List<Trade>> entry : tradesBySymbol.entrySet()) {
             String symbol = entry.getKey();
             List<Trade> symbolTrades = entry.getValue();
@@ -286,6 +327,9 @@ public class CurrencyPairTradesChart extends JPanel {
             
             tradesDataset.addSeries(tradeSeries);
             lotsDataset.addSeries(lotSeries);
+            
+            // Nächste Farbe für das nächste Symbol
+            colorIndex = (colorIndex + 1) % CHART_COLORS.length;
         }
         
         // Datasets zu Charts hinzufügen
@@ -302,11 +346,11 @@ public class CurrencyPairTradesChart extends JPanel {
         // Sicherstellen, dass die Y-Achsen-Labels korrekt angezeigt werden
         NumberAxis tradesAxis = (NumberAxis) tradesPlot.getRangeAxis();
         tradesAxis.setLabel("Anzahl Trades");
-        tradesAxis.setLabelFont(new Font("SansSerif", Font.BOLD, 12));
+        tradesAxis.setLabelFont(new Font("SansSerif", Font.BOLD, 16));
         
         NumberAxis lotsAxis = (NumberAxis) lotsPlot.getRangeAxis();
         lotsAxis.setLabel("Anzahl Lots");
-        lotsAxis.setLabelFont(new Font("SansSerif", Font.BOLD, 12));
+        lotsAxis.setLabelFont(new Font("SansSerif", Font.BOLD, 16));
     }
     
     /**
@@ -319,13 +363,13 @@ public class CurrencyPairTradesChart extends JPanel {
         
         // Vorgegebene Farben für häufigste Währungspaare
         Map<String, Color> colorMap = new HashMap<>();
-        colorMap.put("EURUSD", new Color(0, 102, 204));   // Blau
-        colorMap.put("GBPUSD", new Color(204, 0, 0));     // Rot
-        colorMap.put("USDJPY", new Color(0, 153, 0));     // Grün
-        colorMap.put("USDCHF", new Color(153, 0, 153));   // Lila
-        colorMap.put("AUDUSD", new Color(255, 153, 0));   // Orange
-        colorMap.put("NZDUSD", new Color(0, 153, 153));   // Türkis
-        colorMap.put("USDCAD", new Color(153, 51, 0));    // Braun
+        colorMap.put("EURUSD", CHART_COLORS[0]);   // Blau
+        colorMap.put("GBPUSD", CHART_COLORS[1]);   // Rot
+        colorMap.put("USDJPY", CHART_COLORS[2]);   // Grün
+        colorMap.put("USDCHF", CHART_COLORS[3]);   // Lila
+        colorMap.put("AUDUSD", CHART_COLORS[4]);   // Orange
+        colorMap.put("NZDUSD", CHART_COLORS[5]);   // Türkis
+        colorMap.put("USDCAD", CHART_COLORS[6]);   // Braun
         
         // Farben für die Serien zuweisen
         int seriesCount = plot.getDataset().getSeriesCount();
@@ -340,7 +384,8 @@ public class CurrencyPairTradesChart extends JPanel {
             ));
             
             renderer.setSeriesPaint(i, color);
-            renderer.setSeriesStroke(i, new java.awt.BasicStroke(2.0f));
+            // Stärkere Linien für bessere Sichtbarkeit
+            renderer.setSeriesStroke(i, new java.awt.BasicStroke(3.0f));
             renderer.setSeriesShapesVisible(i, false); // Keine Punkte für diese Serie anzeigen
         }
     }
@@ -365,16 +410,22 @@ public class CurrencyPairTradesChart extends JPanel {
         this.allTrades.clear();
         this.allTrades.addAll(trades);
         
-        setLayout(new BorderLayout(0, 10));
+        setLayout(new BorderLayout(0, 20)); // Mehr vertikaler Abstand zwischen den Charts
         
         // Panel für die Checkboxen erstellen
         JPanel checkboxPanel = createCheckboxPanel();
         
-        // Layout zusammensetzen
-        JPanel chartsPanel = new JPanel(new BorderLayout(0, 10));
-        chartsPanel.add(tradesChartPanel, BorderLayout.NORTH);
-        chartsPanel.add(lotsChartPanel, BorderLayout.CENTER);
+        // Layout für die Charts mit BoxLayout
+        JPanel chartsPanel = new JPanel();
+        chartsPanel.setLayout(new BoxLayout(chartsPanel, BoxLayout.Y_AXIS));
+        chartsPanel.add(tradesChartPanel);
         
+        // Abstand zwischen den Charts
+        chartsPanel.add(Box.createRigidArea(new Dimension(0, 20)));
+        
+        chartsPanel.add(lotsChartPanel);
+        
+        // Hauptlayout zusammensetzen
         add(checkboxPanel, BorderLayout.NORTH);
         add(chartsPanel, BorderLayout.CENTER);
         
