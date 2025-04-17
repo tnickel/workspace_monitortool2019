@@ -411,6 +411,19 @@ public class MainTable extends JTable {
                         // Erste 2 Spalten sind immer sichtbar
                         if (i <= 1) continue;
                         
+                        String columnName = getColumnName(i);
+                        
+                        // MaxDrawdown-Spalte immer ausblenden
+                        if (columnName.equals("Max Drawdown %")) {
+                            TableColumn column = getColumnModel().getColumn(i);
+                            int originalWidth = column.getPreferredWidth();
+                            originalColumnWidths.put(i, originalWidth);
+                            column.setMinWidth(0);
+                            column.setPreferredWidth(0);
+                            column.setMaxWidth(0);
+                            continue;
+                        }
+                        
                         String key = "column_visible_" + i;
                         boolean visible = Boolean.parseBoolean(props.getProperty(key, "true"));
                         
@@ -448,6 +461,19 @@ public class MainTable extends JTable {
         // Standardeinstellungen: Nur wichtige Spalten anzeigen, andere ausblenden
         // Beispiel: Spalten 0, 1, 3, 4, 8, 11, 14, 19 sind sichtbar (Index-basiert)
         for (int i = 0; i < getColumnCount(); i++) {
+            String columnName = getColumnName(i);
+            
+            // MaxDrawdown-Spalte immer ausblenden
+            if (columnName.equals("Max Drawdown %")) {
+                TableColumn column = getColumnModel().getColumn(i);
+                int originalWidth = column.getPreferredWidth();
+                originalColumnWidths.put(i, originalWidth);
+                column.setMinWidth(0);
+                column.setPreferredWidth(0);
+                column.setMaxWidth(0);
+                continue;
+            }
+            
             // Wichtige Spalten standardmäßig sichtbar lassen
             boolean isStandardVisible = (i <= 1) || (i == 3) || (i == 4) || (i == 8) || 
                                        (i == 11) || (i == 14) || (i == 19);
@@ -485,6 +511,12 @@ public class MainTable extends JTable {
         
         // Verhindere, dass die ersten beiden Spalten jemals ausgeblendet werden
         if (columnIndex <= 1 && !visible) {
+            return;
+        }
+        
+        // Verhindere, dass die MaxDrawdown-Spalte jemals eingeblendet wird
+        String columnName = getColumnName(columnIndex);
+        if (columnName.equals("Max Drawdown %") && visible) {
             return;
         }
         

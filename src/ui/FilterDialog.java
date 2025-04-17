@@ -1,6 +1,7 @@
 package ui;
 
 import java.awt.BorderLayout;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
@@ -49,11 +50,22 @@ public class FilterDialog extends JDialog {
         DefaultTableModel model = new DefaultTableModel(COLUMN_NAMES, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
+                // "Max Drawdown %"-Zeile nicht editierbar machen
+                String rowName = (String) getValueAt(row, 0);
+                if (rowName.equals("Max Drawdown %")) {
+                    return false;
+                }
                 return column > 0; 
             }
             
             @Override
             public void setValueAt(Object value, int row, int col) {
+                // Verhindere Setzen von Werten für "Max Drawdown %"-Zeile
+                String rowName = (String) getValueAt(row, 0);
+                if (rowName.equals("Max Drawdown %")) {
+                    return;
+                }
+                
                 // Validiere Eingabe sofort
                 if (col > 0) {  // Nur für Min und Max Spalten
                     String strValue = value.toString().trim();
@@ -87,6 +99,13 @@ public class FilterDialog extends JDialog {
         for (int i = 0; i < TABLE_COLUMNS.length; i++) {
             Object minValue = "";
             Object maxValue = "";
+            
+            // Für MaxDrawdown immer leere Werte setzen
+            if (TABLE_COLUMNS[i].equals("Max Drawdown %")) {
+                model.addRow(new Object[]{TABLE_COLUMNS[i], "", ""});
+                continue;
+            }
+            
             if (filters.getFilters().containsKey(i)) {
                 FilterRange range = filters.getFilters().get(i);
                 minValue = range.getMin() != null ? range.getMin().toString() : "";
@@ -115,6 +134,13 @@ public class FilterDialog extends JDialog {
                     String value = textField.getText().trim();
                     if (!value.isEmpty()) {
                         int row = filterTable.getEditingRow();
+                        String rowName = (String) filterTable.getValueAt(row, 0);
+                        
+                        // Verhindere Bearbeitung der MaxDrawdown-Zeile
+                        if (rowName.equals("Max Drawdown %")) {
+                            return true;
+                        }
+                        
                         if (!(row == 1 || row == 23 || row == 24)) {  // Nicht für Text-Spalten
                             Double.parseDouble(value);
                         }
@@ -131,6 +157,29 @@ public class FilterDialog extends JDialog {
         filterTable.getColumnModel().getColumn(0).setPreferredWidth(150);
         filterTable.getColumnModel().getColumn(1).setPreferredWidth(100);
         filterTable.getColumnModel().getColumn(2).setPreferredWidth(100);
+        
+        // MaxDrawdown-Zeile grau hinterlegen
+        filterTable.setDefaultRenderer(Object.class, new javax.swing.table.DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value,
+                                                         boolean isSelected, boolean hasFocus, int row, int column) {
+                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                
+                // "Max Drawdown %"-Zeile grau hinterlegen
+                String rowName = (String) table.getValueAt(row, 0);
+                if (rowName.equals("Max Drawdown %")) {
+                    c.setBackground(java.awt.Color.LIGHT_GRAY);
+                    c.setForeground(java.awt.Color.GRAY);
+                    // Tooltip hinzufügen
+                    ((JLabel)c).setToolTipText("Diese Berechnung ist fehlerhaft und wurde deaktiviert.");
+                } else if (!isSelected) {
+                    c.setBackground(table.getBackground());
+                    c.setForeground(table.getForeground());
+                }
+                
+                return c;
+            }
+        });
         
         setLayout(new BorderLayout(5, 5));
         
@@ -212,12 +261,18 @@ public class FilterDialog extends JDialog {
         // Standardwerte definieren - basierend auf dem Screenshot
         Map<String, Double> defaultMinValues = new HashMap<>();
         defaultMinValues.put("No.", 1.0);
-        defaultMinValues.put("3MPDD", 2.0);
-        defaultMinValues.put("Trades", 50.0);
+        defaultMinValues.put("3MPDD", 0.0);  // Geändert von 2.0 auf 0.0 gemäß dem neuen Screenshot
+        defaultMinValues.put("Trades", 0.0);  // Geändert von 50.0 auf 0.0 gemäß dem neuen Screenshot
         
         // Über alle Zeilen gehen und Standardwerte setzen wo vorhanden
         for (int row = 0; row < filterTable.getRowCount(); row++) {
             String columnName = (String) filterTable.getValueAt(row, 0);
+            
+            // MaxDrawdown-Zeile überspringen
+            if (columnName.equals("Max Drawdown %")) {
+                continue;
+            }
+            
             if (defaultMinValues.containsKey(columnName)) {
                 filterTable.setValueAt(defaultMinValues.get(columnName).toString(), row, 1); // Min-Wert
             } else {
@@ -243,6 +298,13 @@ public class FilterDialog extends JDialog {
         }
         
         for (int row = 0; row < filterTable.getRowCount(); row++) {
+            String columnName = (String) filterTable.getValueAt(row, 0);
+            
+            // MaxDrawdown-Zeile überspringen
+            if (columnName.equals("Max Drawdown %")) {
+                continue;
+            }
+            
             String minStr = ((String) filterTable.getValueAt(row, 1)).trim();
             String maxStr = ((String) filterTable.getValueAt(row, 2)).trim();
             
@@ -250,10 +312,21 @@ public class FilterDialog extends JDialog {
                 continue;
             }
             
+            // Finde die entsprechende Spalten-ID
+            int columnId = -1;
+            for (int i = 0; i < TABLE_COLUMNS.length; i++) {
+                if (TABLE_COLUMNS[i].equals(columnName)) {
+                    columnId = i;
+                    break;
+                }
+            }
+            
+            if (columnId == -1) continue;
+            
             // Textfilter für Signal Provider, Start Date und End Date
-            if (row == 1 || row == 23 || row == 24) {
+            if (columnId == 1 || columnId == 23 || columnId == 24) {
                 if (!minStr.isEmpty()) {
-                    criteria.addFilter(row, new FilterRange(minStr));
+                    criteria.addFilter(columnId, new FilterRange(minStr));
                     hasAnyFilter = true;
                 }
                 continue;
@@ -273,7 +346,7 @@ public class FilterDialog extends JDialog {
                 }
                 
                 if (min != null || max != null) {
-                    criteria.addFilter(row, new FilterRange(min, max));
+                    criteria.addFilter(columnId, new FilterRange(min, max));
                     hasAnyFilter = true;
                 }
             } catch (NumberFormatException e) {

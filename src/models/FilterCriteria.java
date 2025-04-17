@@ -28,7 +28,10 @@ public class FilterCriteria
     
     public void addFilter(int column, FilterRange range)
     {
-        columnFilters.put(column, range);
+        // Ignoriere den Filter für MaxDrawdown (column 14)
+        if (column != 14) {
+            columnFilters.put(column, range);
+        }
     }
     
     public void setCurrencyPairsFilter(String filter) {
@@ -46,6 +49,11 @@ public class FilterCriteria
         {
             int column = entry.getKey();
             FilterRange range = entry.getValue();
+            
+            // Ignoriere den MaxDrawdown-Filter (column 14)
+            if (column == 14) {
+                continue;
+            }
             
             if (!range.matches(rowData[column]))
             {
@@ -98,20 +106,28 @@ public class FilterCriteria
     
     public Map<Integer, FilterRange> getFilters()
     {
+        // Entferne den MaxDrawdown-Filter, falls er versehentlich enthalten ist
+        columnFilters.remove(14);
         return columnFilters;
     }
     
     public void setFilters(Map<Integer, FilterRange> filters)
     {
-        this.columnFilters = filters;
+        this.columnFilters = new HashMap<>(filters);
+        // Entferne den MaxDrawdown-Filter, falls er enthalten ist
+        this.columnFilters.remove(14);
     }
     
     public void saveFilters()
     {
         try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(SAVE_FILE)))
         {
+            // Entferne den MaxDrawdown-Filter vor dem Speichern
+            Map<Integer, FilterRange> filtersToSave = new HashMap<>(columnFilters);
+            filtersToSave.remove(14);
+            
             // Speichere Spaltenfilter
-            oos.writeObject(columnFilters);
+            oos.writeObject(filtersToSave);
             
             // Speichere Währungspaar-Filter
             oos.writeObject(currencyPairsFilter);
@@ -128,6 +144,9 @@ public class FilterCriteria
         {
             // Lade Spaltenfilter
             columnFilters = (Map<Integer, FilterRange>) ois.readObject();
+            
+            // Entferne den MaxDrawdown-Filter, falls er enthalten ist
+            columnFilters.remove(14);
             
             // Lade Währungspaar-Filter
             try {

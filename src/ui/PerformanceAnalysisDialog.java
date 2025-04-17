@@ -45,14 +45,13 @@ import charts.ProviderStatHistoryChart;
 import charts.SymbolDistributionChart;
 import charts.ThreeMonthProfitChart;
 import charts.TradeStackingChart;
+import charts.WeeklyLotsizeChart;
 import data.FavoritesManager;
 import data.ProviderStats;
 import db.HistoryDatabaseManager.HistoryEntry;
 import services.ProviderHistoryService;
 import utils.ChartFactoryUtil;
 import utils.HtmlDatabase;
-import charts.EfficiencyChart;
-import charts.WeeklyLotsizeChart;
 
 public class PerformanceAnalysisDialog extends JFrame
 {
@@ -242,7 +241,7 @@ public class PerformanceAnalysisDialog extends JFrame
 	    
 	    // Zweite Zeile
 	    addStatField(statsGrid, "Avg Profit/Trade: ", df.format(stats.getAverageProfit()));
-	    addStatField(statsGrid, "Max Drawdown: ", pf.format(stats.getMaxDrawdown()));
+	    // MaxDrawdown-Feld entfernt
 	    addStatField(statsGrid, "Equity Drawdown: ", pf.format(equityDrawdown));
 	    addStatField(statsGrid, "3MPDD: ", df.format(mpdd3));
 	    addStatField(statsGrid, "6MPDD: ", df.format(mpdd6));

@@ -71,6 +71,13 @@ public class TableColumnConfigDialog extends JDialog {
                 checkbox.setToolTipText("Diese Spalte kann nicht ausgeblendet werden.");
             }
             
+            // MaxDrawdown-Spalte soll immer deaktiviert und unsichtbar sein
+            if (columnName.equals("Max Drawdown %")) {
+                checkbox.setEnabled(false);
+                checkbox.setSelected(false);
+                checkbox.setToolTipText("Diese Spalte enthält fehlerhafte Berechnungen und kann nicht angezeigt werden.");
+            }
+            
             columnCheckboxes.add(checkbox);
             checkboxPanel.add(checkbox);
         }
@@ -83,9 +90,11 @@ public class TableColumnConfigDialog extends JDialog {
         
         JButton selectAllButton = new JButton("Alle auswählen");
         selectAllButton.addActionListener(e -> {
-            for (int i = 2; i < columnCheckboxes.size(); i++) { // Erste 2 Spalten immer sichtbar
+            for (int i = 0; i < columnCheckboxes.size(); i++) { // Erste 2 Spalten immer sichtbar
                 JCheckBox cb = columnCheckboxes.get(i);
-                if (cb.isEnabled()) {
+                // MaxDrawdown-Spalte bleibt immer ausgeblendet
+                String colName = getColumnNames()[i];
+                if (cb.isEnabled() && !colName.equals("Max Drawdown %")) {
                     cb.setSelected(true);
                 }
             }
@@ -93,7 +102,7 @@ public class TableColumnConfigDialog extends JDialog {
         
         JButton selectNoneButton = new JButton("Alle abwählen");
         selectNoneButton.addActionListener(e -> {
-            for (int i = 2; i < columnCheckboxes.size(); i++) { // Erste 2 Spalten immer sichtbar
+            for (int i = 0; i < columnCheckboxes.size(); i++) { // Erste 2 Spalten immer sichtbar
                 JCheckBox cb = columnCheckboxes.get(i);
                 if (cb.isEnabled()) {
                     cb.setSelected(false);
@@ -142,6 +151,12 @@ public class TableColumnConfigDialog extends JDialog {
             JCheckBox checkbox = columnCheckboxes.get(i);
             boolean visible = checkbox.isSelected();
             
+            // MaxDrawdown-Spalte immer ausblenden, unabhängig von der Checkbox
+            String columnName = getColumnNames()[i];
+            if (columnName.equals("Max Drawdown %")) {
+                visible = false;
+            }
+            
             mainTable.setColumnVisible(i, visible);
         }
         
@@ -154,6 +169,13 @@ public class TableColumnConfigDialog extends JDialog {
         for (int i = 0; i < columnCheckboxes.size(); i++) {
             JCheckBox checkbox = columnCheckboxes.get(i);
             boolean visible = checkbox.isSelected();
+            
+            // MaxDrawdown-Spalte immer als unsichtbar speichern
+            String columnName = getColumnNames()[i];
+            if (columnName.equals("Max Drawdown %")) {
+                visible = false;
+            }
+            
             properties.setProperty(PREF_PREFIX + i, String.valueOf(visible));
         }
         
@@ -176,9 +198,14 @@ public class TableColumnConfigDialog extends JDialog {
                 // Aktualisiere Checkboxen basierend auf geladenen Properties
                 for (int i = 0; i < columnCheckboxes.size(); i++) {
                     JCheckBox checkbox = columnCheckboxes.get(i);
+                    String columnName = getColumnNames()[i];
+                    
                     if (i <= 1) {
                         // Erste 2 Spalten immer sichtbar
                         checkbox.setSelected(true);
+                    } else if (columnName.equals("Max Drawdown %")) {
+                        // MaxDrawdown-Spalte immer ausblenden
+                        checkbox.setSelected(false);
                     } else {
                         String key = PREF_PREFIX + i;
                         boolean visible = Boolean.parseBoolean(properties.getProperty(key, "true"));
