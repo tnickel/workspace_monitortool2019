@@ -13,12 +13,15 @@ import java.util.logging.Logger;
 public class HtmlDatabase {
     private static final Logger LOGGER = Logger.getLogger(HtmlDatabase.class.getName());
     
-    private final String rootPath;
+    private final String downloadPath;
     private final Map<String, Map<String, String>> dataCache;
     
-    public HtmlDatabase(String rootPath) {
-        this.rootPath = rootPath;
+    public HtmlDatabase(String downloadpath) {
+        this.downloadPath = downloadpath;
         this.dataCache = new HashMap<>();
+        
+        // Protokolliere den tatsächlich verwendeten Pfad
+        LOGGER.info("HtmlDatabase initialisiert mit Pfad: " + downloadPath);
     }
     
     private Map<String, String> getFileData(String csvFileName) {
@@ -27,10 +30,36 @@ public class HtmlDatabase {
         }
 
         String txtFileName = csvFileName.replace(".csv", "") + "_root.txt";  // Hier war der Fehler
-        File txtFile = new File(rootPath, txtFileName);
+        File txtFile = new File(downloadPath, txtFileName);
+        
+        // Protokolliere den vollständigen Pfad zur Datei
+        LOGGER.info("Versuche Textdatei zu lesen: " + txtFile.getAbsolutePath());
         
         if (!txtFile.exists()) {
             LOGGER.warning("Text file not found: " + txtFile.getAbsolutePath());
+            System.err.println("WARNUNG: Die Datei " + txtFile.getAbsolutePath() + " wurde nicht gefunden!");
+            
+            // Prüfe, ob das Verzeichnis überhaupt existiert
+            File dir = new File(downloadPath);
+            if (!dir.exists() || !dir.isDirectory()) {
+                LOGGER.severe("Das Verzeichnis existiert nicht: " + downloadPath);
+                System.err.println("FEHLER: Das Verzeichnis " + downloadPath + " existiert nicht!");
+            } else {
+                // Liste die Dateien im Verzeichnis auf, um zu debuggen
+                File[] files = dir.listFiles((d, name) -> name.endsWith("_root.txt"));
+                if (files != null && files.length > 0) {
+                    System.out.println("Gefundene _root.txt Dateien im Verzeichnis (" + files.length + "):");
+                    for (int i = 0; i < Math.min(files.length, 5); i++) {
+                        System.out.println(" - " + files[i].getName());
+                    }
+                    if (files.length > 5) {
+                        System.out.println(" ... und " + (files.length - 5) + " weitere");
+                    }
+                } else {
+                    System.err.println("Keine _root.txt Dateien im Verzeichnis gefunden: " + downloadPath);
+                }
+            }
+            
             return new HashMap<>();
         }
         
@@ -78,15 +107,25 @@ public class HtmlDatabase {
             }
             
             dataCache.put(csvFileName, data);
+            
+            // Log die gelesenen Schlüssel
+            LOGGER.info("Gelesen aus " + txtFileName + ", gefundene Schlüssel: " + data.keySet());
+            
             return data;
         } catch (IOException e) {
             LOGGER.severe("Error reading text file: " + e.getMessage());
+            System.err.println("FEHLER beim Lesen der Datei " + txtFile.getAbsolutePath() + ": " + e.getMessage());
             return new HashMap<>();
         }
     }
     
     public double getBalance(String csvFileName) {
         Map<String, String> data = getFileData(csvFileName);
+        if (data.isEmpty()) {
+            LOGGER.warning("Keine Daten für " + csvFileName + " gefunden");
+            return 0.0;
+        }
+        
         String balanceStr = data.getOrDefault("Balance", "0,00")
                                .replace(",", ".")
                                .replace(" ", "");
@@ -100,13 +139,45 @@ public class HtmlDatabase {
     
     public double getEquityDrawdown(String csvFileName) {
         Map<String, String> data = getFileData(csvFileName);
+        if (data.isEmpty()) {
+            LOGGER.warning("Keine Daten für " + csvFileName + " gefunden");
+            // Standardwert zurückgeben, um Division durch Null zu vermeiden
+            return 1.0;
+        }
+        
         String drawdownStr = data.getOrDefault("EquityDrawdown", "0,00")
                                 .replace(",", ".")
                                 .replace(" ", "");
         try {
-            return Double.parseDouble(drawdownStr);
+            double value = Double.parseDouble(drawdownStr);
+            
+            // Stelle sicher, dass der Wert positiv ist (wir erwarten einen positiven Prozentsatz)
+            if (value <= 0.0) {
+                LOGGER.warning("EquityDrawdown ist 0 oder negativ: " + value + " für " + csvFileName);
+                return 1.0; // Standardwert, um Division durch Null zu vermeiden
+            }
+            
+            return value;
         } catch (NumberFormatException e) {
             LOGGER.warning("Could not parse equity drawdown: " + drawdownStr);
+            return 1.0; // Standardwert
+        }
+    }
+    
+    public double getEquityDrawdownGraphic(String csvFileName) {
+        Map<String, String> data = getFileData(csvFileName);
+        if (data.isEmpty()) {
+            LOGGER.warning("Keine Daten für " + csvFileName + " gefunden");
+            return 0.0;
+        }
+        
+        String drawdownGraphicStr = data.getOrDefault("MaxDDGraphic", "0")
+                                   .replace(",", ".")
+                                   .replace(" ", "");
+        try {
+            return Double.parseDouble(drawdownGraphicStr);
+        } catch (NumberFormatException e) {
+            LOGGER.warning("Could not parse max drawdown graphic: " + drawdownGraphicStr);
             return 0.0;
         }
     }
@@ -114,6 +185,11 @@ public class HtmlDatabase {
     public Map<String, Double> getMonthlyProfitPercentages(String csvFileName) {
         Map<String, String> data = getFileData(csvFileName);
         Map<String, Double> monthlyProfits = new HashMap<>();
+        
+        if (data.isEmpty()) {
+            LOGGER.warning("Keine Daten für " + csvFileName + " gefunden");
+            return monthlyProfits;
+        }
         
         String profitData = data.get("MonthProfitProz");
         if (profitData == null || profitData.trim().isEmpty()) {
@@ -139,11 +215,16 @@ public class HtmlDatabase {
     
     public double getAvr3MonthProfit(String csvFileName) {
         Map<String, String> data = getFileData(csvFileName);
+        if (data.isEmpty()) {
+            LOGGER.warning("Keine Daten für " + csvFileName + " gefunden");
+            return 0.0;
+        }
+        
         String profitStr = data.getOrDefault("Average3MonthProfit", "0,00")
                               .replace(",", ".")
                               .replace(" ", "");
                               
-        // Berechne die Details f�r den Tooltip
+        // Berechne die Details für den Tooltip
         updateAvr3MonthProfitCalculation(csvFileName);
                               
         try {
@@ -164,11 +245,11 @@ public class HtmlDatabase {
         sortedMonths.sort((a, b) -> b.compareTo(a)); // Absteigend sortieren
         
         StringBuilder details = new StringBuilder();
-        details.append("Verwendete Monate f�r die Berechnung:\n");
+        details.append("Verwendete Monate für die Berechnung:\n");
         
         double sum = 0.0;
         int count = 0;
-        int maxMonths = Math.min(3, sortedMonths.size() - 1); // -1 f�r aktuellen Monat
+        int maxMonths = Math.min(3, sortedMonths.size() - 1); // -1 für aktuellen Monat
         
         for (int i = 1; i <= maxMonths; i++) {
             String month = sortedMonths.get(i);
@@ -179,7 +260,7 @@ public class HtmlDatabase {
         }
         
         double average = count > 0 ? sum / count : 0.0;
-        details.append(String.format("\nDurchschnitt �ber %d Monate: %.2f%%", count, average));
+        details.append(String.format("\nDurchschnitt über %d Monate: %.2f%%", count, average));
         
         Map<String, String> data = getFileData(csvFileName);
         data.put("3MonthProfitCalculation", details.toString());
@@ -188,10 +269,14 @@ public class HtmlDatabase {
     
     public String get3MonthProfitTooltip(String csvFileName) {
         Map<String, String> data = getFileData(csvFileName);
+        if (data.isEmpty()) {
+            return "Keine Berechnungsdetails verfügbar (Daten nicht gefunden)";
+        }
+        
         String details = data.get("3MonthProfitCalculation");
         
         if (details == null || details.trim().isEmpty()) {
-            return "Keine Berechnungsdetails verf�gbar";
+            return "Keine Berechnungsdetails verfügbar";
         }
 
         StringBuilder tooltip = new StringBuilder();
@@ -220,6 +305,11 @@ public class HtmlDatabase {
     public double getMPDD(String csvFileName, int months) {
         updateMPDDCalculation(csvFileName, months);
         Map<String, String> data = getFileData(csvFileName);
+        if (data.isEmpty()) {
+            LOGGER.warning("Keine Daten für " + csvFileName + " gefunden");
+            return 0.0;
+        }
+        
         String mpddStr = data.getOrDefault(months + "MPDD", "0,00")
                             .replace(",", ".")
                             .replace(" ", "");
@@ -233,10 +323,14 @@ public class HtmlDatabase {
     
     public String getMPDDTooltip(String csvFileName, int months) {
         Map<String, String> data = getFileData(csvFileName);
+        if (data.isEmpty()) {
+            return String.format("Keine Berechnungsdetails für %d-Monats-Drawdown verfügbar (Daten nicht gefunden)", months);
+        }
+        
         String details = data.get(months + "MPDDCalculation");
         
         if (details == null || details.trim().isEmpty()) {
-            return String.format("Keine Berechnungsdetails f�r %d-Monats-Drawdown verf�gbar", months);
+            return String.format("Keine Berechnungsdetails für %d-Monats-Drawdown verfügbar", months);
         }
 
         StringBuilder tooltip = new StringBuilder();
@@ -281,7 +375,7 @@ public class HtmlDatabase {
         sortedMonths.sort((a, b) -> b.compareTo(a));
         
         StringBuilder details = new StringBuilder();
-        details.append(String.format("Verwendete Monate f�r %d-Monats-Drawdown Berechnung:\n", months));
+        details.append(String.format("Verwendete Monate für %d-Monats-Drawdown Berechnung:\n", months));
         
         double maxDrawdown = 0.0;
         int maxStart = 0;
@@ -318,7 +412,7 @@ public class HtmlDatabase {
                 }
             }
         } else {
-            details.append("\nNicht gen�gend Monate f�r die Berechnung verf�gbar.");
+            details.append("\nNicht genügend Monate für die Berechnung verfügbar.");
         }
         
         Map<String, String> data = getFileData(csvFileName);
@@ -341,6 +435,11 @@ public class HtmlDatabase {
     
     public double getStabilitaetswert(String csvFileName) {
         Map<String, String> data = getFileData(csvFileName);
+        if (data.isEmpty()) {
+            LOGGER.warning("Keine Daten für " + csvFileName + " gefunden");
+            return 1.0;
+        }
+        
         String stabilityStr = data.getOrDefault("StabilityValue", "1,00")
                                  .replace(",", ".")
                                  .replace(" ", "");
@@ -354,15 +453,19 @@ public class HtmlDatabase {
     
     public String getStabilitaetswertDetails(String csvFileName) {
         Map<String, String> data = getFileData(csvFileName);
+        if (data.isEmpty()) {
+            return "Keine Stabilitätsdetails verfügbar (Daten nicht gefunden)";
+        }
+        
         String details = data.get("Stability Details");
         
         if (details == null || details.trim().isEmpty()) {
-            return "Keine Stabilit�tsdetails verf�gbar";
+            return "Keine Stabilitätsdetails verfügbar";
         }
 
         StringBuilder formattedDetails = new StringBuilder();
         formattedDetails.append("<html><div style='padding: 5px; white-space: nowrap;'>");
-        formattedDetails.append("<b>Stabilit�tsanalyse:</b><br>");
+        formattedDetails.append("<b>Stabilitätsanalyse:</b><br>");
         formattedDetails.append("<br>");
 
         String[] lines = details.split("\n");
@@ -406,46 +509,81 @@ public class HtmlDatabase {
     public double getAverageMonthlyProfit(String csvFileName, int n) {
         Map<String, Double> monthlyProfits = getMonthlyProfitPercentages(csvFileName);
         if (monthlyProfits.isEmpty() || n <= 0) {
+            LOGGER.warning("Keine monatlichen Profite für " + csvFileName + " gefunden oder n <= 0");
             return 0.0;
         }
         
         List<String> sortedMonths = new ArrayList<>(monthlyProfits.keySet());
+        if (sortedMonths.isEmpty()) {
+            LOGGER.warning("Keine sortierten Monate für " + csvFileName + " verfügbar");
+            return 0.0;
+        }
+        
         sortedMonths.sort((a, b) -> b.compareTo(a)); // Absteigend sortieren
         
-        // Nach Abzug des aktuellen Monats verf�gbare Monate
-        int availableMonths = sortedMonths.size() - 1; // -1 f�r aktuellen Monat
+        // Debug-Ausgabe
+        LOGGER.info("Berechne " + n + "-Monats-Profit für " + csvFileName);
+        LOGGER.info("Sortierte Monate: " + sortedMonths);
         
-        // Wenn nicht gen�gend Monate f�r die angeforderte Berechnung verf�gbar sind
+        // Überprüfe, ob überhaupt genug Monate vorhanden sind
+        if (sortedMonths.size() < 2) { // Mindestens aktuellen Monat + 1 weiteren benötigen wir
+            LOGGER.warning("Zu wenige Monate für " + csvFileName + ": " + sortedMonths.size());
+            return 0.0;
+        }
+        
+        // Nach Abzug des aktuellen Monats verfügbare Monate
+        int availableMonths = sortedMonths.size() - 1; // -1 für aktuellen Monat
+        
+        // Wenn nicht genügend Monate für die angeforderte Berechnung verfügbar sind
         if (n == 3) {
-            // F�r 3MPDD bisheriges Verhalten beibehalten
+            // Für 3MPDD bisheriges Verhalten beibehalten
             int monthsToUse = Math.min(n, availableMonths);
             if (monthsToUse <= 0) {
+                LOGGER.warning("Keine Monate für 3MPDD nutzbar");
                 return 0.0;
             }
             
             double sum = 0.0;
             for (int i = 0; i < monthsToUse; i++) {
-                sum += monthlyProfits.get(sortedMonths.get(i + 1)); // +1 um aktuellen Monat zu �berspringen
+                String month = sortedMonths.get(i + 1); // +1 um aktuellen Monat zu überspringen
+                double profit = monthlyProfits.get(month);
+                sum += profit;
+                LOGGER.info("Monat " + month + ": " + profit);
             }
-            return sum / monthsToUse;
+            
+            double average = sum / monthsToUse;
+            LOGGER.info("Durchschnitt über " + monthsToUse + " Monate: " + average);
+            return average;
         } else {
-            // F�r 6, 9 und 12 MPDD: Nur berechnen wenn gen�gend Monate verf�gbar
-            int requiredMonths = n + 1; // +1 weil aktueller Monat nicht ber�cksichtigt wird
+            // Für 6, 9 und 12 MPDD: Nur berechnen wenn genügend Monate verfügbar
+            int requiredMonths = n + 1; // +1 weil aktueller Monat nicht berücksichtigt wird
             if (sortedMonths.size() < requiredMonths) {
+                LOGGER.warning("Nicht genug Monate für " + n + "-MPDD: " + sortedMonths.size() + "/" + requiredMonths);
                 return 0.0;
             }
             
             double sum = 0.0;
             for (int i = 0; i < n; i++) {
-                sum += monthlyProfits.get(sortedMonths.get(i + 1)); // +1 um aktuellen Monat zu �berspringen
+                String month = sortedMonths.get(i + 1); // +1 um aktuellen Monat zu überspringen
+                double profit = monthlyProfits.get(month);
+                sum += profit;
+                LOGGER.info("Monat " + month + ": " + profit);
             }
-            return sum / n;
+            
+            double average = sum / n;
+            LOGGER.info("Durchschnitt über " + n + " Monate: " + average);
+            return average;
         }
     }
     
     public List<String> getLastThreeMonthsDetails(String csvFileName) {
         Map<String, String> data = getFileData(csvFileName);
         List<String> details = new ArrayList<>();
+        
+        if (data.isEmpty()) {
+            LOGGER.warning("Keine Daten für " + csvFileName + " gefunden");
+            return details;
+        }
         
         String monthsSection = data.get("Last 3 Months Details");
         if (monthsSection != null) {
@@ -460,14 +598,22 @@ public class HtmlDatabase {
         
         return details;
     }
+    
     public void saveSteigungswert(String csvFileName, double steigung) {
         Map<String, String> data = getFileData(csvFileName);
-        data.put("Steigungswert", String.format("%.2f", steigung).replace(',', '.'));
-        dataCache.put(csvFileName, data);
+        if (!data.isEmpty()) {
+            data.put("Steigungswert", String.format("%.2f", steigung).replace(',', '.'));
+            dataCache.put(csvFileName, data);
+        }
     }
 
     public double getSteigungswert(String csvFileName) {
         Map<String, String> data = getFileData(csvFileName);
+        if (data.isEmpty()) {
+            LOGGER.warning("Keine Daten für " + csvFileName + " gefunden");
+            return 0.0;
+        }
+        
         String steigungStr = data.getOrDefault("Steigungswert", "0.00")
                                  .replace(",", ".")
                                  .replace(" ", "");
@@ -478,23 +624,35 @@ public class HtmlDatabase {
             return 0.0;
         }
     }
- // In der Klasse HtmlDatabase.java
-    public double getEquityDrawdownGraphic(String csvFileName) {
-        Map<String, String> data = getFileData(csvFileName);
-        String drawdownGraphicStr = data.getOrDefault("MaxDDGraphic", "0")
-                                   .replace(",", ".")
-                                   .replace(" ", "");
-        try {
-            return Double.parseDouble(drawdownGraphicStr);
-        } catch (NumberFormatException e) {
-            LOGGER.warning("Could not parse max drawdown graphic: " + drawdownGraphicStr);
-            return 0.0;
-        }
-    }
-
-	public String getRootPath()
-	{
-		return rootPath;
-	}
     
+    // Neue Hilfsmethode zum Überprüfen des Zugriffs auf das Dateisystem
+    public boolean checkFileAccess() {
+        File dir = new File(downloadPath);
+        if (!dir.exists()) {
+            LOGGER.severe("Das Verzeichnis existiert nicht: " + downloadPath);
+            return false;
+        }
+        
+        if (!dir.isDirectory()) {
+            LOGGER.severe("Der Pfad ist kein Verzeichnis: " + downloadPath);
+            return false;
+        }
+        
+        if (!dir.canRead()) {
+            LOGGER.severe("Keine Leseberechtigung für: " + downloadPath);
+            return false;
+        }
+        
+        File[] files = dir.listFiles();
+        if (files == null || files.length == 0) {
+            LOGGER.warning("Verzeichnis leer oder Zugriff nicht möglich: " + downloadPath);
+            return false;
+        }
+        
+        return true;
+    }
+    
+    public String getRootPath() {
+        return downloadPath;
+    }
 }

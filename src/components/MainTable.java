@@ -35,6 +35,7 @@ import services.ProviderHistoryService;
 import ui.PerformanceAnalysisDialog;
 import ui.ShowSignalProviderList;
 import utils.HtmlDatabase;
+import utils.MqlAnalyserConf;
 
 public class MainTable extends JTable {
     private final HighlightTableModel model;
@@ -55,7 +56,11 @@ public class MainTable extends JTable {
         
         // Extrahiere Hauptpfad und Download-Pfad korrekt
         this.rootPath = rootPathStr;
-        this.downloadPath = rootPathStr + File.separator + "download";
+
+        
+        MqlAnalyserConf config = new MqlAnalyserConf(rootPathStr);
+        this.downloadPath = config.getDownloadPath();
+      
         
         this.model = new HighlightTableModel(downloadPath);
         this.renderer = new HighlightRenderer();

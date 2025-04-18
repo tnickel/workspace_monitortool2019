@@ -1,7 +1,5 @@
 package ui;
 
-
-
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.FlowLayout;
@@ -13,6 +11,7 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.io.File;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -32,16 +31,16 @@ import javax.swing.JToolBar;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.UIManager;
-import javax.swing.border.EmptyBorder;
 import javax.swing.border.CompoundBorder;
+import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 
 import components.MainTable;
 import data.DataManager;
 import models.FilterCriteria;
 import services.ProviderHistoryService;
+import utils.HtmlDatabase;
 import utils.MqlAnalyserConf;
-
 
 public class MainFrame extends JFrame {
     private static final Logger LOGGER = Logger.getLogger(MainFrame.class.getName());
@@ -83,6 +82,9 @@ public class MainFrame extends JFrame {
         setupUI();
         setupSearch();
         setupStatusBar();
+        
+        // Prüfe Dateisystemzugriff
+        SwingUtilities.invokeLater(() -> verifyFileSystemAccess());
         
         // Hinzufügen eines WindowListeners für sauberes Herunterfahren
         this.addWindowListener(new WindowAdapter() {
@@ -187,6 +189,9 @@ public class MainFrame extends JFrame {
                 JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
                 reloadData(newPath);
             }
+            
+            // Nach der Änderung des Pfades erneut überprüfen
+            verifyFileSystemAccess();
         }
     }
   
@@ -444,6 +449,42 @@ public class MainFrame extends JFrame {
         toolBar.add(dbForceSaveButton);
         
         add(toolBar, BorderLayout.NORTH);
+    }
+    
+    // Methode zur Überprüfung des Dateisystemzugriffs
+    private void verifyFileSystemAccess() {
+        HtmlDatabase htmlDb = mainTable.getHtmlDatabase();
+        if (htmlDb != null) {
+            boolean accessOk = htmlDb.checkFileAccess();
+            if (!accessOk) {
+                JOptionPane.showMessageDialog(
+                    this,
+                    "WARNUNG: Es gibt Probleme beim Zugriff auf das Datenverzeichnis:\n" +
+                    htmlDb.getRootPath() + "\n\n" +
+                    "Dies kann zu fehlenden Daten wie 3MPDD-Werten führen.\n" +
+                    "Bitte überprüfen Sie den Pfad in den Einstellungen.",
+                    "Dateizugriffsproblem",
+                    JOptionPane.WARNING_MESSAGE
+                );
+            } else {
+                // Prüfe auf _root.txt Dateien
+                File dir = new File(htmlDb.getRootPath());
+                File[] rootTxtFiles = dir.listFiles((d, name) -> name.endsWith("_root.txt"));
+                if (rootTxtFiles == null || rootTxtFiles.length == 0) {
+                    JOptionPane.showMessageDialog(
+                        this,
+                        "WARNUNG: Im Datenverzeichnis wurden keine _root.txt Dateien gefunden:\n" +
+                        htmlDb.getRootPath() + "\n\n" +
+                        "Dies führt dazu, dass 3MPDD-Werte und andere Statistiken nicht berechnet werden können.\n" +
+                        "Bitte überprüfen Sie den Pfad in den Einstellungen.",
+                        "Fehlende Datendateien",
+                        JOptionPane.WARNING_MESSAGE
+                    );
+                } else {
+                    LOGGER.info("Gefunden " + rootTxtFiles.length + " _root.txt Dateien im Verzeichnis " + htmlDb.getRootPath());
+                }
+            }
+        }
     }
     
     private JButton createStyledButton(String text) {
