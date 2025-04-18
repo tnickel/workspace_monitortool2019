@@ -172,6 +172,12 @@ public class PerformanceAnalysisDialog extends JFrame {
     
     // Hilfsmethode zum Hinzufügen eines Charts zum Panel
     private void addChartToPanel(JPanel panel, Component chartComponent, String title, Dimension size) {
+        // Besondere Größe für Duration vs Profit Chart
+        if (title.contains("Duration vs Profit")) {
+            // Größeres Panel für die Duration-Grafik
+            size = new Dimension(size.width, 500); // Höhe von 240 auf 500 erhöht
+        }
+        
         // Chart-Größe anpassen
         chartComponent.setPreferredSize(size);
         chartComponent.setMaximumSize(size);

@@ -2,11 +2,11 @@ package charts;
 
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Font;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.List;
@@ -117,21 +117,26 @@ public class EfficiencyChart extends JPanel {
         renderer.setSeriesPaint(0, new Color(0, 120, 0));  // Grün für positive Effizienz
         renderer.setSeriesPaint(1, new Color(220, 0, 0));  // Rot für negative Effizienz
         
-        // Anpassen der Balkenbreite
-        renderer.setMaximumBarWidth(0.05);  // Schmälere Balken für bessere Übersichtlichkeit
+        // Anpassen der Balkenbreite - schmaler
+        renderer.setMaximumBarWidth(0.03);  // Schmälere Balken für bessere Übersichtlichkeit
         
         // X-Achse anpassen (die Wochen)
         CategoryAxis domainAxis = plot.getDomainAxis();
         
-        // Verbesserte X-Achsen-Beschriftung
-        domainAxis.setTickLabelFont(new java.awt.Font("Dialog", java.awt.Font.PLAIN, 8));
+        // Verbesserte X-Achsen-Beschriftung - größere Schrift und mehr Platz
+        domainAxis.setTickLabelFont(new java.awt.Font("Dialog", java.awt.Font.BOLD, 10));
         domainAxis.setMaximumCategoryLabelLines(3); // Mehrzeilige Labels erlauben
         
-        // Zeige nur jede 4. Woche auf der X-Achse
-        domainAxis.setTickLabelsVisible(true);
-        domainAxis.setCategoryMargin(0.01); // Verringere den Abstand zwischen Kategorien
+        // Mehr Abstand für X-Achsenbeschriftungen
+        domainAxis.setCategoryMargin(0.02); // Leicht erhöht für mehr Platz
+        domainAxis.setLowerMargin(0.02);
+        domainAxis.setUpperMargin(0.02);
         
-        // Wir verstecken die meisten Labels, jedoch nicht alle
+        // Rotation der Labels für bessere Lesbarkeit
+        domainAxis.setCategoryLabelPositions(
+            org.jfree.chart.axis.CategoryLabelPositions.UP_45);
+        
+        // Zeige nur jede 4. Woche auf der X-Achse
         int categoryCount = dataset.getColumnCount();
         for (int i = 0; i < categoryCount; i++) {
             if (i % 4 != 0) { // Zeige nur jede 4. Woche an

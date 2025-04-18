@@ -1,8 +1,8 @@
-
 package charts;
 
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Font;
 import java.time.Duration;
 import java.util.List;
 
@@ -11,6 +11,7 @@ import javax.swing.JPanel;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
+import org.jfree.chart.axis.NumberAxis;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.XYItemRenderer;
 import org.jfree.data.xy.XYSeries;
@@ -51,12 +52,28 @@ public class DurationProfitChart extends JPanel {
         plot.setDomainGridlinePaint(Color.LIGHT_GRAY);
         plot.setRangeGridlinePaint(Color.LIGHT_GRAY);
         
+        // Verbessere die Achsenbeschriftung
+        NumberAxis domainAxis = (NumberAxis) plot.getDomainAxis();
+        domainAxis.setLabelFont(new Font("SansSerif", Font.BOLD, 14));
+        domainAxis.setTickLabelFont(new Font("SansSerif", Font.PLAIN, 12));
+        
+        NumberAxis rangeAxis = (NumberAxis) plot.getRangeAxis();
+        rangeAxis.setLabelFont(new Font("SansSerif", Font.BOLD, 14));
+        rangeAxis.setTickLabelFont(new Font("SansSerif", Font.PLAIN, 12));
+        
+        // Titel größer machen
+        chart.getTitle().setFont(new Font("SansSerif", Font.BOLD, 16));
+        
+        // Verbessere die Punktdarstellung
         XYItemRenderer renderer = plot.getRenderer();
-        renderer.setSeriesPaint(0, new Color(130, 202, 157));
-        renderer.setSeriesPaint(1, new Color(255, 118, 117));
+        renderer.setSeriesPaint(0, new Color(34, 177, 76));  // Dunkleres Grün für Gewinner
+        renderer.setSeriesPaint(1, new Color(237, 28, 36));  // Kräftigeres Rot für Verlierer
+        renderer.setSeriesShape(0, new java.awt.geom.Ellipse2D.Double(-4, -4, 8, 8));
+        renderer.setSeriesShape(1, new java.awt.geom.Ellipse2D.Double(-4, -4, 8, 8));
         
         ChartPanel chartPanel = new ChartPanel(chart);
-        chartPanel.setPreferredSize(new Dimension(1300, 250));
+        // Größer machen: 1300 -> 1500 Breite, 250 -> 400 Höhe
+        chartPanel.setPreferredSize(new Dimension(1500, 400));
         
         add(chartPanel);
     }
