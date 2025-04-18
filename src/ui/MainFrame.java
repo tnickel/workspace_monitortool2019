@@ -170,7 +170,7 @@ public class MainFrame extends JFrame {
         statusLabel.setText(statusText);
     }
 
-    private void setDownloadPath() {
+   private void setDownloadPath() {
         String currentPath = config.getDownloadPath();
         JFileChooser chooser = new JFileChooser(currentPath);
         chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
@@ -182,6 +182,9 @@ public class MainFrame extends JFrame {
             
             // History Service mit neuem Pfad aktualisieren
             historyService.initialize(newPath);
+            
+            // Statusleiste aktualisieren, um den neuen Pfad anzuzeigen
+            updateStatusBar();
             
             if (JOptionPane.showConfirmDialog(this, 
                 "Download path updated. Reload data?", 
