@@ -77,7 +77,7 @@ public class MainFrame extends JFrame {
         // UI-Komponenten mit dem neuen Stil
         setUpUIDefaults();
         
-        mainTable = new MainTable(dataManager, config.getDownloadPath());
+        mainTable = new MainTable(dataManager, rootPath_glob);
         mainTable.setStatusUpdateCallback(text -> updateStatusBar());
         
         setupUI();

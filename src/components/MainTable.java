@@ -42,6 +42,7 @@ public class MainTable extends JTable {
     private final RiskScoreRenderer riskRenderer;
     private final DataManager dataManager;
     private String rootPath;
+    private String downloadPath;
     private FilterCriteria currentFilter;
     private Consumer<String> statusUpdateCallback;
     private final HtmlDatabase htmlDatabase;
@@ -49,13 +50,17 @@ public class MainTable extends JTable {
     private final ProviderHistoryService historyService;
 
     
-    public MainTable(DataManager dataManager, String downloadPath) {
+    public MainTable(DataManager dataManager, String rootPathStr) {
         this.dataManager = dataManager;
-        this.rootPath = downloadPath;
-        this.model = new HighlightTableModel(rootPath);
+        
+        // Extrahiere Hauptpfad und Download-Pfad korrekt
+        this.rootPath = rootPathStr;
+        this.downloadPath = rootPathStr + File.separator + "download";
+        
+        this.model = new HighlightTableModel(downloadPath);
         this.renderer = new HighlightRenderer();
         this.riskRenderer = new RiskScoreRenderer();
-        this.htmlDatabase = new HtmlDatabase(rootPath);
+        this.htmlDatabase = new HtmlDatabase(downloadPath);
         this.currentFilter = new FilterCriteria();
         
         // Provider History Service initialisieren
@@ -162,6 +167,7 @@ public class MainTable extends JTable {
                         String providerId = providerName.substring(providerName.lastIndexOf("_") + 1).replace(".csv", "");
                         
                         if (stats != null) {
+                            // Verwende den korrekten rootPath für den PerformanceAnalysisDialog
                             PerformanceAnalysisDialog detailFrame = new PerformanceAnalysisDialog(
                                 providerName, stats, providerId, htmlDatabase, rootPath);
                             detailFrame.setVisible(true);
@@ -191,7 +197,8 @@ public class MainTable extends JTable {
             status.append(" (filtered)");
         }
 
-        status.append(" | Download Path: " + rootPath);
+        status.append(" | Download Path: " + downloadPath);
+        status.append(" | Root Path: " + rootPath);
 
         return status.toString();
     }
@@ -387,6 +394,7 @@ public class MainTable extends JTable {
         // Fallback
         return providerName;
     }
+    
     public void loadColumnVisibilitySettings() {
         File configFile = new File("column_config.properties");
         Properties props = new Properties();
