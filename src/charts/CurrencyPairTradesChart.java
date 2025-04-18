@@ -5,6 +5,7 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -15,18 +16,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
+import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JCheckBox;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.border.TitledBorder;
-import javax.swing.BoxLayout;
-import javax.swing.Box;
+
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.DateAxis;
 import org.jfree.chart.axis.NumberAxis;
+import org.jfree.chart.axis.NumberTickUnit;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import org.jfree.data.time.Millisecond;
@@ -86,15 +88,14 @@ public class CurrencyPairTradesChart extends JPanel {
         tradesChartPanel = new ChartPanel(tradesChart);
         lotsChartPanel = new ChartPanel(lotsChart);
         
-        // Standard-Größen für die Charts
-        // Hier definieren wir ein vernünftiges Verhältnis - oberes Chart bleibt gleich,
-        // unteres Chart wird größer, aber nicht übermäßig groß
+        // Standard-Größen für die Charts anpassen
+        // Oberes Chart bleibt gleich, unteres Chart wird halb so hoch gemacht
         tradesChartPanel.setPreferredSize(new Dimension(950, 300));
-        lotsChartPanel.setPreferredSize(new Dimension(950, 600)); // Doppelt so hoch wie das obere Chart
+        lotsChartPanel.setPreferredSize(new Dimension(950, 300)); // Von 600 auf 300 reduziert
         
         // Setze Minimumgrößen, um sicherzustellen, dass die Charts nicht zu klein werden
         tradesChartPanel.setMinimumSize(new Dimension(500, 250));
-        lotsChartPanel.setMinimumSize(new Dimension(500, 500));
+        lotsChartPanel.setMinimumSize(new Dimension(500, 250)); // Von 500 auf 250 reduziert
         
         // Panel für die Checkboxen erstellen
         JPanel checkboxPanel = createCheckboxPanel();
@@ -158,8 +159,13 @@ public class CurrencyPairTradesChart extends JPanel {
         
         // Y-Achse anpassen
         NumberAxis rangeAxis = (NumberAxis) plot.getRangeAxis();
-        rangeAxis.setStandardTickUnits(NumberAxis.createIntegerTickUnits());
+        
+        // WICHTIG: Standard-Tick-Units NICHT setzen, sondern eigene definieren
+        // rangeAxis.setStandardTickUnits(NumberAxis.createIntegerTickUnits());
+        
         rangeAxis.setAutoRangeIncludesZero(true);
+        rangeAxis.setNumberFormatOverride(new DecimalFormat("0.00"));
+        
         // Größere Schrift für bessere Lesbarkeit
         rangeAxis.setLabelFont(new Font("SansSerif", Font.BOLD, 16));
         rangeAxis.setTickLabelFont(new Font("SansSerif", Font.PLAIN, 14));
@@ -343,14 +349,48 @@ public class CurrencyPairTradesChart extends JPanel {
         assignColors(tradesPlot);
         assignColors(lotsPlot);
         
-        // Sicherstellen, dass die Y-Achsen-Labels korrekt angezeigt werden
+        // WICHTIG: Benutzerdefinierte Tick-Units NACH dem Hinzufügen der Daten setzen
+        // Dies ermöglicht es, den Bereich basierend auf den Daten zu bestimmen
+        
+        // Für Trades-Achse
         NumberAxis tradesAxis = (NumberAxis) tradesPlot.getRangeAxis();
         tradesAxis.setLabel("Anzahl Trades");
         tradesAxis.setLabelFont(new Font("SansSerif", Font.BOLD, 16));
         
+        // Bestimme den Maximalwert für bessere Skalierung
+        double maxTradeValue = 0;
+        for (int i = 0; i < tradesDataset.getSeriesCount(); i++) {
+            for (int j = 0; j < tradesDataset.getItemCount(i); j++) {
+                double value = tradesDataset.getYValue(i, j);
+                if (value > maxTradeValue) maxTradeValue = value;
+            }
+        }
+        
+        // Setze einen sinnvollen Tick-Abstand (etwa 4-5 Tick-Markierungen)
+        double tradeTickSize = Math.ceil(maxTradeValue / 4.0);
+        if (tradeTickSize < 1) tradeTickSize = 1;  // Mindestens 1
+        tradesAxis.setTickUnit(new NumberTickUnit(tradeTickSize));
+        
+        // Für Lots-Achse
         NumberAxis lotsAxis = (NumberAxis) lotsPlot.getRangeAxis();
         lotsAxis.setLabel("Anzahl Lots");
         lotsAxis.setLabelFont(new Font("SansSerif", Font.BOLD, 16));
+        
+        // Bestimme den Maximalwert für bessere Skalierung
+        double maxLotValue = 0;
+        for (int i = 0; i < lotsDataset.getSeriesCount(); i++) {
+            for (int j = 0; j < lotsDataset.getItemCount(i); j++) {
+                double value = lotsDataset.getYValue(i, j);
+                if (value > maxLotValue) maxLotValue = value;
+            }
+        }
+        
+        // Setze einen sinnvollen Tick-Abstand (etwa 4-5 Tick-Markierungen)
+        double lotTickSize = Math.ceil(maxLotValue * 4) / 16.0;  // Ergibt in etwa 4 Unterteilungen
+        if (lotTickSize < 0.25) lotTickSize = 0.25;  // Mindestens 0.25
+        lotsAxis.setTickUnit(new NumberTickUnit(lotTickSize));
+        lotsAxis.setNumberFormatOverride(new DecimalFormat("0.00"));
+    
     }
     
     /**
