@@ -145,8 +145,27 @@ public class MainFrame extends JFrame {
 
     private void updateStatusBar() {
         String providerCount = mainTable.getStatusText();
-        String downloadPath = "Download Path: " + config.getDownloadPath();
-        statusLabel.setText(providerCount + " | " + downloadPath);
+        
+        // Extrahiere den relevanten Teil aus dem Text (enthält bereits den Pfad)
+        String statusText = providerCount;
+        
+        // Entferne doppelte Pfadanzeigen, behalte nur den letzten (korrekten) Pfad
+        if (statusText.contains("Download Path:")) {
+            int lastOccurrence = statusText.lastIndexOf("Download Path:");
+            if (lastOccurrence > 0) {
+                // Behalte nur den Text vor dem ersten "Download Path:" und den letzten Pfad
+                String prefix = statusText.substring(0, statusText.indexOf("Download Path:"));
+                String lastPath = statusText.substring(lastOccurrence);
+                statusText = prefix + " | " + lastPath;
+            }
+        }
+        
+        // Füge Root Path hinzu, falls nicht enthalten
+        if (!statusText.contains("Root Path:")) {
+            statusText += " | Root Path: " + config.getDownloadPath();
+        }
+        
+        statusLabel.setText(statusText);
     }
 
     private void setDownloadPath() {
