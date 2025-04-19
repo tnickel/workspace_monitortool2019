@@ -20,6 +20,9 @@ import javax.swing.JButton;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
+import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -76,6 +79,9 @@ public class MainFrame extends JFrame {
         mainTable = new MainTable(dataManager, rootPath_glob);
         mainTable.setStatusUpdateCallback(text -> updateStatusBar());
         
+        // Menüleiste erstellen
+        createMenuBar();
+        
         setupUI();
         setupSearch();
         setupStatusBar();
@@ -122,6 +128,199 @@ public class MainFrame extends JFrame {
         UIManager.put("ScrollPane.background", BG_COLOR);
         UIManager.put("ToolBar.background", PRIMARY_COLOR);
         UIManager.put("ToolBar.foreground", Color.WHITE);
+    }
+    
+    /**
+     * Erstellt die Menüleiste für die Anwendung
+     */
+    private void createMenuBar() {
+        JMenuBar menuBar = new JMenuBar();
+        menuBar.setBackground(PRIMARY_COLOR);
+        menuBar.setBorder(BorderFactory.createEmptyBorder(2, 2, 2, 2));
+        
+        // Datei-Menü
+        JMenu fileMenu = new JMenu("Datei");
+        fileMenu.setForeground(Color.WHITE);
+        
+        // Menüpunkt zum Setzen des Download-Pfads
+        JMenuItem setPathItem = new JMenuItem("Download-Pfad setzen");
+        setPathItem.addActionListener(e -> setDownloadPath());
+        
+        // Menüpunkt für Spalten-Konfiguration
+        JMenuItem configColumnsItem = new JMenuItem("Spalten konfigurieren");
+        configColumnsItem.addActionListener(e -> {
+            TableColumnConfigDialog dialog = new TableColumnConfigDialog(this, mainTable);
+            dialog.showDialog();
+        });
+        
+        // Menüpunkt zum Beenden
+        JMenuItem exitItem = new JMenuItem("Beenden");
+        exitItem.addActionListener(e -> {
+            int result = JOptionPane.showConfirmDialog(
+                this,
+                "Möchten Sie die Anwendung wirklich beenden?",
+                "Beenden",
+                JOptionPane.YES_NO_OPTION);
+            
+            if (result == JOptionPane.YES_OPTION) {
+                historyService.shutdown();
+                dispose();
+                System.exit(0);
+            }
+        });
+        
+        fileMenu.add(setPathItem);
+        fileMenu.add(configColumnsItem);
+        fileMenu.addSeparator();
+        fileMenu.add(exitItem);
+        
+        // Datenbank-Menü
+        JMenu dbMenu = new JMenu("Datenbank");
+        dbMenu.setForeground(Color.WHITE);
+        
+        // Menüpunkt für Datenbank-Einträge anzeigen
+        JMenuItem viewDbItem = new JMenuItem("Datenbank-Einträge anzeigen");
+        viewDbItem.addActionListener(e -> {
+            DatabaseViewerDialog dialog = new DatabaseViewerDialog(this, historyService);
+            dialog.setVisible(true);
+        });
+        
+        // Menüpunkt für DB-Speicherung erzwingen
+        JMenuItem forceDbSaveItem = new JMenuItem("DB-Speicherung erzwingen");
+        forceDbSaveItem.addActionListener(e -> {
+            if (!historyService.hasDatabaseEntries()) {
+                int answer = JOptionPane.showConfirmDialog(
+                    this,
+                    "Es wurden keine Einträge in der Datenbank gefunden. Möchten Sie eine initiale Speicherung für alle Provider erzwingen?",
+                    "Datenbank leer",
+                    JOptionPane.YES_NO_OPTION
+                );
+                
+                if (answer == JOptionPane.YES_OPTION) {
+                    // Initiale Speicherung im Hintergrund ausführen
+                    new SwingWorker<Void, Void>() {
+                        @Override
+                        protected Void doInBackground() throws Exception {
+                            historyService.forceInitialSave();
+                            return null;
+                        }
+                        
+                        @Override
+                        protected void done() {
+                            JOptionPane.showMessageDialog(
+                                MainFrame.this,
+                                "Initiale Speicherung abgeschlossen. Die Datenbank enthält nun Einträge für alle Provider.",
+                                "Speicherung abgeschlossen",
+                                JOptionPane.INFORMATION_MESSAGE
+                            );
+                        }
+                    }.execute();
+                }
+            } else {
+                // Detaillierten Dialog zum Erzwingen der Speicherung öffnen
+                ForceDbSaveDialog dialog = new ForceDbSaveDialog(
+                    this,
+                    historyService,
+                    dataManager.getStats(),
+                    config.getDownloadPath()
+                );
+                dialog.setVisible(true);
+            }
+        });
+        
+        // Menüpunkt für DB-Backup erstellen
+        JMenuItem backupDbItem = new JMenuItem("Datenbank-Backup erstellen");
+        backupDbItem.addActionListener(e -> {
+            boolean success = historyService.createBackup();
+            if (success) {
+                JOptionPane.showMessageDialog(
+                    this,
+                    "Datenbank-Backup wurde erfolgreich erstellt.",
+                    "Backup erfolgreich",
+                    JOptionPane.INFORMATION_MESSAGE
+                );
+            } else {
+                JOptionPane.showMessageDialog(
+                    this,
+                    "Fehler beim Erstellen des Datenbank-Backups.",
+                    "Backup-Fehler",
+                    JOptionPane.ERROR_MESSAGE
+                );
+            }
+        });
+        
+        dbMenu.add(viewDbItem);
+        dbMenu.add(forceDbSaveItem);
+        dbMenu.add(backupDbItem);
+        
+        // Ansicht-Menü
+        JMenu viewMenu = new JMenu("Ansicht");
+        viewMenu.setForeground(Color.WHITE);
+        
+        // Menüpunkt für Equity Curves anzeigen
+        JMenuItem showEquityCurvesItem = new JMenuItem("Equity Curves anzeigen");
+        showEquityCurvesItem.addActionListener(e -> showCompareDialog());
+        
+        // Menüpunkt für Signal Provider Liste
+        JMenuItem showSignalProvidersItem = new JMenuItem("Signal Provider Liste");
+        showSignalProvidersItem.addActionListener(e -> {
+            ShowSignalProviderList dialog = new ShowSignalProviderList(
+                this,
+                mainTable.getCurrentProviderStats(),
+                mainTable.getHtmlDatabase(),
+                rootPath_glob
+            );
+            dialog.setVisible(true);
+        });
+        
+        // Menüpunkt für Open Trades vergleichen
+        JMenuItem compareOpenTradesItem = new JMenuItem("Open Trades vergleichen");
+        compareOpenTradesItem.addActionListener(e -> {
+            CompareOpenTradesDialog dialog = new CompareOpenTradesDialog(
+                this,
+                mainTable.getCurrentProviderStats()
+            );
+            dialog.setVisible(true);
+        });
+        
+        viewMenu.add(showEquityCurvesItem);
+        viewMenu.add(showSignalProvidersItem);
+        viewMenu.add(compareOpenTradesItem);
+        
+        // Hilfe-Menü
+        JMenu helpMenu = new JMenu("Hilfe");
+        helpMenu.setForeground(Color.WHITE);
+        
+        // Menüpunkt für Risk Score Erklärung
+        JMenuItem riskScoreHelpItem = new JMenuItem("Risk Score Erklärung");
+        riskScoreHelpItem.addActionListener(e -> {
+            RiskScoreExplanationDialog dialog = new RiskScoreExplanationDialog(this);
+            dialog.setVisible(true);
+        });
+        
+        // Menüpunkt für Über
+        JMenuItem aboutItem = new JMenuItem("Über");
+        aboutItem.addActionListener(e -> {
+            JOptionPane.showMessageDialog(
+                this,
+                "MQL Analyzer\nVersion 1.0\n\nEine Anwendung zur Analyse von MQL5 Signal Providern.\n" +
+                "Entwickelt für die Analyse von Trading-Performance und Risikobewertung.",
+                "Über MQL Analyzer",
+                JOptionPane.INFORMATION_MESSAGE
+            );
+        });
+        
+        helpMenu.add(riskScoreHelpItem);
+        helpMenu.add(aboutItem);
+        
+        // Menüs zur Menüleiste hinzufügen
+        menuBar.add(fileMenu);
+        menuBar.add(dbMenu);
+        menuBar.add(viewMenu);
+        menuBar.add(helpMenu);
+        
+        // Menüleiste zur Anwendung hinzufügen
+        setJMenuBar(menuBar);
     }
     
     private JLabel createStyledLabel(String text) {
