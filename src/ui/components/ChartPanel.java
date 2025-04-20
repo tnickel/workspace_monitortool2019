@@ -8,7 +8,7 @@ import java.awt.Font;
 import javax.swing.BorderFactory;
 import javax.swing.JPanel;
 
-import ui.UIConstants;
+import utils.UIStyle;
 
 /**
  * Dekorationsklasse für Chart-Komponenten, die einen einheitlichen Rahmen und Titel hinzufügt
@@ -29,18 +29,18 @@ public class ChartPanel extends JPanel {
         // Rahmen mit Titel erstellen
         setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createTitledBorder(
-                BorderFactory.createLineBorder(UIConstants.SECONDARY_COLOR, 1),
+                BorderFactory.createLineBorder(UIStyle.SECONDARY_COLOR, 1),
                 title,
                 javax.swing.border.TitledBorder.LEFT,
                 javax.swing.border.TitledBorder.TOP,
                 new Font("SansSerif", Font.BOLD, 12),
-                UIConstants.SECONDARY_COLOR
+                UIStyle.SECONDARY_COLOR
             ),
             BorderFactory.createEmptyBorder(
-                UIConstants.CHART_PADDING, 
-                UIConstants.CHART_PADDING, 
-                UIConstants.CHART_PADDING, 
-                UIConstants.CHART_PADDING
+                UIStyle.CHART_PADDING, 
+                UIStyle.CHART_PADDING, 
+                UIStyle.CHART_PADDING, 
+                UIStyle.CHART_PADDING
             )
         ));
         

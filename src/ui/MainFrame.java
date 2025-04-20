@@ -27,12 +27,12 @@ import components.MainTable;
 import data.DataManager;
 import models.FilterCriteria;
 import services.ProviderHistoryService;
-import ui.components.AppUIStyle;
 import ui.components.MenuManager;
 import ui.components.SearchManager;
 import ui.components.ToolbarManager;
 import utils.HtmlDatabase;
 import utils.MqlAnalyserConf;
+import utils.UIStyle;
 
 public class MainFrame extends JFrame {
     private static final Logger LOGGER = Logger.getLogger(MainFrame.class.getName());
@@ -46,7 +46,6 @@ public class MainFrame extends JFrame {
     private String rootPath;
     
     // Manager für UI-Komponenten
-    private final AppUIStyle appuistyle;
     private final MenuManager menuManager;
     private final ToolbarManager toolbarManager;
     private final SearchManager searchManager;
@@ -58,12 +57,11 @@ public class MainFrame extends JFrame {
         this.rootPath = rootPathStr;
         
         // UI-Manager initialisieren
-        this.appuistyle = new AppUIStyle();
-        AppUIStyle.setUpUIDefaults();
+        UIStyle.setUpUIDefaults();
         
         // Status-Label und Such-Feld erstellen
-        this.statusLabel = AppUIStyle.createStyledLabel("");
-        this.searchField = AppUIStyle.createStyledTextField(20);
+        this.statusLabel = UIStyle.createStyledLabel("");
+        this.searchField = UIStyle.createStyledTextField(20);
         
         // Provider History Service initialisieren
         this.historyService = ProviderHistoryService.getInstance();
@@ -112,7 +110,7 @@ public class MainFrame extends JFrame {
         // Tabelle mit schönem Rahmen
         JScrollPane scrollPane = new JScrollPane(mainTable);
         scrollPane.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(AppUIStyle.SECONDARY_COLOR, 1),
+            BorderFactory.createLineBorder(UIStyle.SECONDARY_COLOR, 1),
             BorderFactory.createEmptyBorder(0, 0, 0, 0)
         ));
         contentPane.add(scrollPane, BorderLayout.CENTER);
@@ -140,7 +138,7 @@ public class MainFrame extends JFrame {
     
     private void setupStatusBar() {
         JPanel statusBar = new JPanel(new BorderLayout());
-        statusBar.setBackground(AppUIStyle.SECONDARY_COLOR);
+        statusBar.setBackground(UIStyle.SECONDARY_COLOR);
         statusBar.setBorder(BorderFactory.createEmptyBorder(4, 5, 4, 5));
         
         statusLabel.setForeground(Color.WHITE);

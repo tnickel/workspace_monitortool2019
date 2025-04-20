@@ -19,6 +19,7 @@ import ui.FilterDialog;
 import ui.ForceDbSaveDialog;
 import ui.MainFrame;
 import ui.RiskScoreExplanationDialog;
+import utils.UIStyle;
 
 public class ToolbarManager {
     private final MainFrame parentFrame;
@@ -49,7 +50,7 @@ public class ToolbarManager {
     
     private void createToolBar() {
         toolBar.setFloatable(false);
-        toolBar.setBackground(AppUIStyle.PRIMARY_COLOR);
+        toolBar.setBackground(UIStyle.PRIMARY_COLOR);
         toolBar.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
         
         JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
@@ -60,47 +61,47 @@ public class ToolbarManager {
         searchPanel.add(searchLabel);
         searchPanel.add(searchField);
         
-        JButton searchButton = AppUIStyle.createStyledButton("Search");
+        JButton searchButton = UIStyle.createStyledButton("Search");
         searchButton.addActionListener(e -> performSearch());
         searchPanel.add(searchButton);
         
         // Neuer Delete Selected Button
-        JButton deleteSelectedButton = AppUIStyle.createStyledButton("Delete Selected");
+        JButton deleteSelectedButton = UIStyle.createStyledButton("Delete Selected");
         deleteSelectedButton.addActionListener(e -> parentFrame.deleteSelectedProviders());
         searchPanel.add(deleteSelectedButton);
         
         toolBar.add(searchPanel);
         toolBar.addSeparator();
         
-        JButton resetButton = AppUIStyle.createStyledButton("Reset");
+        JButton resetButton = UIStyle.createStyledButton("Reset");
         resetButton.addActionListener(e -> parentFrame.resetAll());
         toolBar.add(resetButton);
         
-        JButton filterButton = AppUIStyle.createStyledButton("Filter");
+        JButton filterButton = UIStyle.createStyledButton("Filter");
         filterButton.addActionListener(e -> showFilterDialog());
         toolBar.add(filterButton);
         
-        JButton showFavoritesButton = AppUIStyle.createStyledButton("Show Favorites");
+        JButton showFavoritesButton = UIStyle.createStyledButton("Show Favorites");
         showFavoritesButton.addActionListener(e -> {
             mainTable.filterFavorites();
         });
         toolBar.add(showFavoritesButton);
         
-        JButton riskScoreButton = AppUIStyle.createStyledButton("Risk Score Explanation");
+        JButton riskScoreButton = UIStyle.createStyledButton("Risk Score Explanation");
         riskScoreButton.addActionListener(e -> {
             RiskScoreExplanationDialog dialog = new RiskScoreExplanationDialog(parentFrame);
             dialog.setVisible(true);
         });
         toolBar.add(riskScoreButton);
        
-        JButton dbViewerButton = AppUIStyle.createStyledButton("DB Einträge");
+        JButton dbViewerButton = UIStyle.createStyledButton("DB Einträge");
         dbViewerButton.addActionListener(e -> {
             DatabaseViewerDialog dialog = new DatabaseViewerDialog(parentFrame, historyService);
             dialog.setVisible(true);
         });
         toolBar.add(dbViewerButton);
         
-        JButton dbForceSaveButton = AppUIStyle.createStyledButton("DB Speicherung erzwingen");
+        JButton dbForceSaveButton = UIStyle.createStyledButton("DB Speicherung erzwingen");
         dbForceSaveButton.addActionListener(e -> {
             // Prüfen, ob bereits Einträge in der DB vorhanden sind
             if (!historyService.hasDatabaseEntries()) {

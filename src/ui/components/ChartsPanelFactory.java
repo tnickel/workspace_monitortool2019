@@ -17,9 +17,9 @@ import charts.ThreeMonthProfitChart;
 import charts.TradeStackingChart;
 import charts.WeeklyLotsizeChart;
 import data.ProviderStats;
-import ui.UIConstants;
 import utils.ChartFactoryUtil;
 import utils.HtmlDatabase;
+import utils.UIStyle;
 
 /**
  * Factory-Klasse zur Erstellung aller Chart-Panels für die Performanceanalyse
@@ -95,12 +95,12 @@ public class ChartsPanelFactory {
         for (int i = 0; i < standardCharts.length; i++) {
             boolean isDurationChart = i == 5; // DurationProfitChart ist an Position 5
             Dimension chartSize = isDurationChart ? 
-                    UIConstants.DURATION_CHART_SIZE : UIConstants.DEFAULT_CHART_SIZE;
+                    UIStyle.DURATION_CHART_SIZE : UIStyle.DEFAULT_CHART_SIZE;
             
             ChartPanel decoratedChart = new ChartPanel(
                     standardCharts[i], chartTitles[i], chartSize);
             panel.add(decoratedChart);
-            panel.add(Box.createRigidArea(new Dimension(0, UIConstants.PANEL_SPACING)));
+            panel.add(Box.createRigidArea(new Dimension(0, UIStyle.PANEL_SPACING)));
         }
     }
     
@@ -111,7 +111,7 @@ public class ChartsPanelFactory {
         // CurrencyPairTradesChart - Dieses Chart braucht eine spezielle Größe
         CurrencyPairTradesChart currencyPairTradesChart = new CurrencyPairTradesChart(stats.getTrades());
         ChartPanel currencyPairPanel = new ChartPanel(
-                currencyPairTradesChart, "Currency Pair Analysis", UIConstants.CURRENCY_PAIR_CHART_SIZE);
+                currencyPairTradesChart, "Currency Pair Analysis", UIStyle.CURRENCY_PAIR_CHART_SIZE);
         panel.add(currencyPairPanel);
     }
     

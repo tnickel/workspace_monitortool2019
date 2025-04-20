@@ -22,6 +22,7 @@ import ui.ShowSignalProviderList;
 import ui.TableColumnConfigDialog;
 import utils.HtmlDatabase;
 import utils.MqlAnalyserConf;
+import utils.UIStyle;
 
 public class MenuManager {
     private final MainFrame parentFrame;
@@ -51,7 +52,7 @@ public class MenuManager {
     }
     
     private void createMenuBar() {
-        menuBar.setBackground(AppUIStyle.PRIMARY_COLOR);
+        menuBar.setBackground(UIStyle.PRIMARY_COLOR);
         menuBar.setBorder(BorderFactory.createEmptyBorder(2, 2, 2, 2));
         
         // Datei-Menü

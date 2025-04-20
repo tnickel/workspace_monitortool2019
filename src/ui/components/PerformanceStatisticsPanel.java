@@ -5,11 +5,9 @@ import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Desktop;
 import java.awt.FlowLayout;
-import java.awt.Font;
 import java.awt.GridLayout;
 import java.net.URI;
 import java.text.DecimalFormat;
-import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 
 import javax.swing.JButton;
@@ -22,9 +20,9 @@ import javax.swing.border.LineBorder;
 import data.FavoritesManager;
 import data.ProviderStats;
 import ui.TradeListFrame;
-import ui.UIConstants;
 import ui.dialogs.DatabaseInfoDialog;
 import utils.HtmlDatabase;
+import utils.UIStyle;
 
 /**
  * Panel zur Anzeige der wichtigsten Statistiken eines Signal Providers
@@ -58,7 +56,7 @@ public class PerformanceStatisticsPanel extends JPanel {
         setLayout(new BorderLayout());
         setOpaque(false);
         setBorder(new CompoundBorder(
-            new LineBorder(UIConstants.SECONDARY_COLOR, 1),
+            new LineBorder(UIStyle.SECONDARY_COLOR, 1),
             new EmptyBorder(10, 10, 10, 10)
         ));
         
@@ -97,17 +95,17 @@ public class PerformanceStatisticsPanel extends JPanel {
         
         // Provider-Name als Titel
         JLabel titleLabel = new JLabel(providerName);
-        titleLabel.setFont(UIConstants.TITLE_FONT);
-        titleLabel.setForeground(UIConstants.PRIMARY_COLOR);
+        titleLabel.setFont(UIStyle.TITLE_FONT);
+        titleLabel.setForeground(UIStyle.PRIMARY_COLOR);
         headerPanel.add(titleLabel, BorderLayout.WEST);
         
         // URL als klickbarer Link
         String urlText = String.format(
-                "<html><u>" + UIConstants.SIGNAL_PROVIDER_URL_FORMAT + "</u></html>",
+                "<html><u>" + UIStyle.SIGNAL_PROVIDER_URL_FORMAT + "</u></html>",
                 providerId);
         JLabel urlLabel = new JLabel(urlText);
-        urlLabel.setFont(UIConstants.REGULAR_FONT);
-        urlLabel.setForeground(UIConstants.SECONDARY_COLOR);
+        urlLabel.setFont(UIStyle.REGULAR_FONT);
+        urlLabel.setForeground(UIStyle.SECONDARY_COLOR);
         urlLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         
         urlLabel.addMouseListener(new java.awt.event.MouseAdapter() {
@@ -115,7 +113,7 @@ public class PerformanceStatisticsPanel extends JPanel {
             public void mouseClicked(java.awt.event.MouseEvent evt) {
                 try {
                     Desktop.getDesktop().browse(new URI(String.format(
-                            UIConstants.SIGNAL_PROVIDER_URL_FORMAT,
+                            UIStyle.SIGNAL_PROVIDER_URL_FORMAT,
                             providerId)));
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -178,15 +176,15 @@ public class PerformanceStatisticsPanel extends JPanel {
         FavoritesManager favoritesManager = new FavoritesManager(rootPath);
         boolean isFavorite = favoritesManager.isFavorite(providerId);
         
-        favoriteButton = UIComponentFactory.createStyledButton(
+        favoriteButton = UIStyle.createStyledButton(
                 isFavorite ? "Remove Favorite" : "Set Favorite");
         if (isFavorite) {
-            favoriteButton.setBackground(UIConstants.ACCENT_COLOR);
-            favoriteButton.setForeground(UIConstants.TEXT_COLOR);
+            favoriteButton.setBackground(UIStyle.ACCENT_COLOR);
+            favoriteButton.setForeground(UIStyle.TEXT_COLOR);
         }
         
-        JButton showTradesButton = UIComponentFactory.createStyledButton("Show Trade List");
-        JButton showDbInfoButton = UIComponentFactory.createStyledButton("Show DB Info");
+        JButton showTradesButton = UIStyle.createStyledButton("Show Trade List");
+        JButton showDbInfoButton = UIStyle.createStyledButton("Show DB Info");
         
         favoriteButton.addActionListener(e -> {
             favoritesManager.toggleFavorite(providerId);
@@ -194,10 +192,10 @@ public class PerformanceStatisticsPanel extends JPanel {
             favoriteButton.setText(isNowFavorite ? "Remove Favorite" : "Set Favorite");
             
             if (isNowFavorite) {
-                favoriteButton.setBackground(UIConstants.ACCENT_COLOR);
-                favoriteButton.setForeground(UIConstants.TEXT_COLOR);
+                favoriteButton.setBackground(UIStyle.ACCENT_COLOR);
+                favoriteButton.setForeground(UIStyle.TEXT_COLOR);
             } else {
-                favoriteButton.setBackground(UIConstants.SECONDARY_COLOR);
+                favoriteButton.setBackground(UIStyle.SECONDARY_COLOR);
                 favoriteButton.setForeground(Color.WHITE);
             }
             
@@ -231,12 +229,12 @@ public class PerformanceStatisticsPanel extends JPanel {
         fieldPanel.setOpaque(false);
         
         JLabel labelComponent = new JLabel(label);
-        labelComponent.setFont(UIConstants.BOLD_FONT);
-        labelComponent.setForeground(UIConstants.TEXT_COLOR);
+        labelComponent.setFont(UIStyle.BOLD_FONT);
+        labelComponent.setForeground(UIStyle.TEXT_COLOR);
         fieldPanel.add(labelComponent);
         
         JLabel valueComponent = new JLabel(value);
-        valueComponent.setFont(UIConstants.BOLD_LARGE_FONT);
+        valueComponent.setFont(UIStyle.BOLD_LARGE_FONT);
         
         // Farbliche Formatierung je nach Wert
         if (label.contains("Profit") || label.contains("Win Rate") || 
@@ -244,17 +242,17 @@ public class PerformanceStatisticsPanel extends JPanel {
             try {
                 double numValue = Double.parseDouble(value.replace("%", "").replace(",", "."));
                 if (numValue > 0) {
-                    valueComponent.setForeground(UIConstants.POSITIVE_COLOR);
+                    valueComponent.setForeground(UIStyle.POSITIVE_COLOR);
                 } else if (numValue < 0) {
-                    valueComponent.setForeground(UIConstants.NEGATIVE_COLOR);
+                    valueComponent.setForeground(UIStyle.NEGATIVE_COLOR);
                 } else {
-                    valueComponent.setForeground(UIConstants.TEXT_COLOR);
+                    valueComponent.setForeground(UIStyle.TEXT_COLOR);
                 }
             } catch (NumberFormatException e) {
-                valueComponent.setForeground(UIConstants.TEXT_COLOR);
+                valueComponent.setForeground(UIStyle.TEXT_COLOR);
             }
         } else {
-            valueComponent.setForeground(UIConstants.TEXT_SECONDARY_COLOR);
+            valueComponent.setForeground(UIStyle.TEXT_SECONDARY_COLOR);
         }
         
         fieldPanel.add(valueComponent);
