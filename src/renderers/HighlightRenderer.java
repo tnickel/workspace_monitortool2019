@@ -78,6 +78,31 @@ public class HighlightRenderer extends DefaultTableCellRenderer {
                                 setToolTipText("Keine Profitdaten verfügbar");
                             }
                             break;
+                        case "Steigung":
+                            StringBuilder tooltipBuilder = new StringBuilder("<html><div style='width:400px;'>");
+                            tooltipBuilder.append("<b>Steigungsberechnung:</b><br><br>");
+                            tooltipBuilder.append("Die Steigung bewertet den Trend der letzten Monate wie folgt:<br><br>");
+                            
+                            tooltipBuilder.append("<b>Bei mindestens 3 Monaten:</b><br>");
+                            tooltipBuilder.append("• slope1 = profit2 - profit1 (Veränderung zwischen ältestem und mittlerem Monat)<br>");
+                            tooltipBuilder.append("• slope2 = profit3 - profit2 (Veränderung zwischen mittlerem und neuestem Monat)<br>");
+                            tooltipBuilder.append("• Beide Steigungen positiv: steigung = (slope1 + slope2) / 2.0<br>");
+                            tooltipBuilder.append("• Nur eine Steigung positiv: steigung = Math.max(slope1, slope2) / 4.0<br>");
+                            tooltipBuilder.append("• Beide Steigungen negativ: steigung = (slope1 + slope2) / 2.0<br><br>");
+                            
+                            tooltipBuilder.append("<b>Bei nur 2 Monaten:</b><br>");
+                            tooltipBuilder.append("• slope = profit2 - profit1 (Veränderung zwischen älterem und neuerem Monat)<br>");
+                            tooltipBuilder.append("• steigung = slope * 0.8<br><br>");
+                            
+                            tooltipBuilder.append("<b>Bei nur 1 Monat:</b><br>");
+                            tooltipBuilder.append("• steigung = profit * 0.2<br><br>");
+                            
+                            tooltipBuilder.append("<i>Ein hoher positiver Wert zeigt einen starken positiven Trend an,<br>");
+                            tooltipBuilder.append("während ein negativer Wert auf einen abnehmenden Trend hinweist.</i>");
+                            tooltipBuilder.append("</div></html>");
+                            
+                            setToolTipText(tooltipBuilder.toString());
+                            break;
                         default:
                             setToolTipText(null);
                             break;
@@ -96,6 +121,22 @@ public class HighlightRenderer extends DefaultTableCellRenderer {
                     c.setBackground(new Color(255, 200, 200)); // Hellrot für schlechte Werte
                 } else {
                     c.setBackground(new Color(255, 255, 200)); // Hellgelb für mittlere Werte
+                }
+            }
+            
+            // Farbliche Hervorhebung für Steigung
+            if (columnName.equals("Steigung") && !isSelected) {
+                double steigungValue = (Double)value;
+                if (steigungValue > 5.0) {
+                    c.setBackground(new Color(150, 255, 150)); // Kräftiges Grün für starken positiven Trend
+                } else if (steigungValue > 2.0) {
+                    c.setBackground(new Color(200, 255, 200)); // Hellgrün für positiven Trend
+                } else if (steigungValue < -2.0) {
+                    c.setBackground(new Color(255, 200, 200)); // Hellrot für negativen Trend
+                } else if (steigungValue < -5.0) {
+                    c.setBackground(new Color(255, 150, 150)); // Kräftiges Rot für starken negativen Trend
+                } else {
+                    c.setBackground(new Color(255, 255, 200)); // Hellgelb für neutralen Trend
                 }
             }
         }

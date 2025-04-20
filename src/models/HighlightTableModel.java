@@ -87,46 +87,81 @@ public class HighlightTableModel extends DefaultTableModel {
   }
   
   private double calculateTrend(Map<String, Double> monthlyProfits, String currentMonth) {
-       // Wenn monthlyProfits leer ist oder kein currentMonth vorhanden ist, gib 0.0 zurück
-       if (monthlyProfits.isEmpty() || currentMonth == null) {
-           return 0.0;
-       }
-       
-       // Hole die vorherigen 3 Monate (ohne den aktuellen)
-       TreeMap<String, Double> sortedProfits = new TreeMap<>(monthlyProfits);
-       
-       // Sicherheitsprüfung für den currentMonth
-       if (!sortedProfits.containsKey(currentMonth)) {
-           return 0.0;
-       }
-       
-       String[] months = sortedProfits.headMap(currentMonth, false).keySet().toArray(new String[0]);
-       
-       if (months.length < 3) {
-           return 0.0;
-       }
-       
-       // Hole die letzten 3 Monate
-       double profit1 = sortedProfits.get(months[months.length - 3]);  // Ältester Monat
-       double profit2 = sortedProfits.get(months[months.length - 2]);  // Mittlerer Monat
-       double profit3 = sortedProfits.get(months[months.length - 1]);  // Neuester Monat
-       
-       // Berechne die Steigungen zwischen den Punkten
-       double slope1 = profit2 - profit1;  // Steigung zwischen Monat 1 und 2
-       double slope2 = profit3 - profit2;  // Steigung zwischen Monat 2 und 3
-       
-       // Wenn beide Steigungen positiv sind (durchgehend steigend)
-       if (slope1 > 0 && slope2 > 0) {
-           // Berechne Durchschnittssteigung und verstärke den Effekt
-           return (slope1 + slope2) / 2.0;
-       } else if (slope1 > 0 || slope2 > 0) {
-           // Wenn nur eine Steigung positiv ist, gib einen kleineren Wert zurück
-           return Math.max(slope1, slope2) / 4.0;
-       } else {
-           // Wenn beide Steigungen negativ sind, gib einen negativen Wert zurück
-           return (slope1 + slope2) / 2.0;
-       }
-   }
+	    // Wenn monthlyProfits leer ist oder kein currentMonth vorhanden ist, gib 0.0 zurück
+	    if (monthlyProfits.isEmpty() || currentMonth == null) {
+	        return 0.0;
+	    }
+	    
+	    // Hole die vorherigen Monate (ohne den aktuellen)
+	    TreeMap<String, Double> sortedProfits = new TreeMap<>(monthlyProfits);
+	    
+	    // Sicherheitsprüfung für den currentMonth
+	    if (!sortedProfits.containsKey(currentMonth)) {
+	        return 0.0;
+	    }
+	    
+	    String[] months = sortedProfits.headMap(currentMonth, false).keySet().toArray(new String[0]);
+	    int monthsAvailable = months.length;
+	    
+	    // Wenn keine vorherigen Monate verfügbar sind
+	    if (monthsAvailable == 0) {
+	        return 0.0;
+	    }
+	    
+	    // Fall 1: Mindestens 3 Monate verfügbar - ursprüngliche Berechnung
+	    if (monthsAvailable >= 3) {
+	        double profit1 = sortedProfits.get(months[monthsAvailable - 3]);  // Ältester Monat
+	        double profit2 = sortedProfits.get(months[monthsAvailable - 2]);  // Mittlerer Monat
+	        double profit3 = sortedProfits.get(months[monthsAvailable - 1]);  // Neuester Monat
+	        
+	        // Berechne die Steigungen zwischen den Punkten
+	        double slope1 = profit2 - profit1;  // Steigung zwischen Monat 1 und 2
+	        double slope2 = profit3 - profit2;  // Steigung zwischen Monat 2 und 3
+	        
+	        // Wenn beide Steigungen positiv sind (durchgehend steigend)
+	        if (slope1 > 0 && slope2 > 0) {
+	            // Berechne Durchschnittssteigung und verstärke den Effekt
+	            return (slope1 + slope2) / 2.0;
+	        } else if (slope1 > 0 || slope2 > 0) {
+	            // Wenn nur eine Steigung positiv ist, gib einen kleineren Wert zurück
+	            return Math.max(slope1, slope2) / 4.0;
+	        } else {
+	            // Wenn beide Steigungen negativ sind, gib einen negativen Wert zurück
+	            return (slope1 + slope2) / 2.0;
+	        }
+	    }
+	    // Fall 2: Nur 2 Monate verfügbar - neue Berechnung
+	    else if (monthsAvailable == 2) {
+	        double profit1 = sortedProfits.get(months[monthsAvailable - 2]);  // Älterer Monat
+	        double profit2 = sortedProfits.get(months[monthsAvailable - 1]);  // Neuerer Monat
+	        
+	        // Berechne die Steigung zwischen den beiden Monaten
+	        double slope = profit2 - profit1;
+	        
+	        // Wenn die Steigung positiv ist (zunehmender Trend)
+	        if (slope > 0) {
+	            // Gib die Steigung zurück, aber etwas reduziert, da wir weniger Datenpunkte haben
+	            return slope * 0.8; // 80% der Steigung als konservativere Schätzung
+	        } else {
+	            // Bei negativer Steigung gib einen negativen Wert zurück
+	            return slope * 0.8;
+	        }
+	    }
+	    // Fall 3: Nur 1 Monat verfügbar
+	    else if (monthsAvailable == 1) {
+	        double profit = sortedProfits.get(months[0]);
+	        
+	        // Wenn der Profit positiv ist, gib einen kleinen positiven Wert zurück
+	        if (profit > 0) {
+	            return profit * 0.2; // 20% des Profits als vorsichtige Schätzung
+	        } else {
+	            return profit * 0.2; // Gleichermaßen für negative Werte
+	        }
+	    }
+	    
+	    // Fallback (sollte nie erreicht werden)
+	    return 0.0;
+	}
 
   public void populateData(Map<String, ProviderStats> statsMap) {
 	    setRowCount(0);
