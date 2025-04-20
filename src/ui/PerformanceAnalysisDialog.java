@@ -31,13 +31,11 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.KeyStroke;
-import javax.swing.border.EmptyBorder;
 import javax.swing.border.CompoundBorder;
+import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
-
-import org.jfree.chart.ChartPanel;
 
 import charts.CurrencyPairTradesChart;
 import charts.DurationProfitChart;
@@ -265,6 +263,9 @@ public class PerformanceAnalysisDialog extends JFrame {
         double mpdd6 = calculateMPDD(sixMonthProfit, equityDrawdown);
         double mpdd9 = calculateMPDD(nineMonthProfit, equityDrawdown);
         
+        // Steigungswert von der HtmlDatabase holen statt zu berechnen
+        //double steigungswert = htmlDatabase.getSteigungswert(csvFileName);
+        
         // Erste Zeile mit Statistiken
         addStatField(statsGrid, "Total Trades: ", String.format("%d", stats.getTrades().size()));
         addStatField(statsGrid, "Win Rate: ", pf.format(stats.getWinRate()));
@@ -280,7 +281,7 @@ public class PerformanceAnalysisDialog extends JFrame {
         addStatField(statsGrid, "3MPDD: ", df.format(mpdd3));
         addStatField(statsGrid, "6MPDD: ", df.format(mpdd6));
         addStatField(statsGrid, "9MPDD: ", df.format(mpdd9));
-        addStatField(statsGrid, "Steigung: ", df.format(htmlDatabase.getSteigungswert(csvFileName)));
+        //addStatField(statsGrid, "Steigung: ", df.format(steigungswert));
         
         // Buttons für Aktionen
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
