@@ -247,8 +247,8 @@ public class MenuManager {
             String newPath = chooser.getSelectedFile().getAbsolutePath();
             config.setDownloadPath(newPath);
             
-            // History Service mit neuem Pfad aktualisieren
-            historyService.initialize(newPath);
+            // History Service mit rootPath aktualisieren, nicht mit dem newPath
+            historyService.initialize(rootPath);
             
             // Statusleiste aktualisieren, um den neuen Pfad anzuzeigen
             parentFrame.updateStatusBar();
