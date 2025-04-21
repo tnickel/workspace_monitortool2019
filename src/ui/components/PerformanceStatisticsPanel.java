@@ -5,6 +5,7 @@ import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Desktop;
 import java.awt.FlowLayout;
+import java.awt.Font;
 import java.awt.GridLayout;
 import java.net.URI;
 import java.text.DecimalFormat;
@@ -14,6 +15,7 @@ import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
 import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
@@ -24,6 +26,8 @@ import ui.TradeListFrame;
 import ui.dialogs.DatabaseInfoDialog;
 import utils.HtmlDatabase;
 import utils.UIStyle;
+import utils.WebsiteAnalyzer;
+import utils.WebsiteAnalyzer.WebsiteStatus;
 
 /**
  * Panel zur Anzeige der wichtigsten Statistiken eines Signal Providers
@@ -39,10 +43,17 @@ public class PerformanceStatisticsPanel extends JPanel {
     private final String providerName;
     private final String rootPath;
     private final HtmlDatabase htmlDatabase;
+    private final WebsiteAnalyzer websiteAnalyzer;
     
     // UI-Komponenten
     private JButton favoriteButton;
     private JButton badProviderButton; // Neuer Bad Provider Button
+    private JLabel statusLight;
+    
+    // Statusfarben für die Webseite
+    private static final Color STATUS_GREEN = new Color(0, 180, 0);
+    private static final Color STATUS_YELLOW = new Color(220, 220, 0);
+    private static final Color STATUS_RED = new Color(220, 0, 0);
     
     /**
      * Konstruktor für das StatisticsPanel
@@ -54,6 +65,7 @@ public class PerformanceStatisticsPanel extends JPanel {
         this.providerName = providerName;
         this.htmlDatabase = htmlDatabase;
         this.rootPath = rootPath;
+        this.websiteAnalyzer = new WebsiteAnalyzer(rootPath);
         
         setLayout(new BorderLayout());
         setOpaque(false);
@@ -63,6 +75,9 @@ public class PerformanceStatisticsPanel extends JPanel {
         ));
         
         initializeUI();
+        
+        // Starte den Hintergrundprozess zum Laden der Webseite nach dem UI initialisiert ist
+        SwingUtilities.invokeLater(this::analyzeProviderWebsite);
     }
     
     /**
@@ -89,6 +104,32 @@ public class PerformanceStatisticsPanel extends JPanel {
     }
     
     /**
+     * Startet die Analyse der Provider-Webseite
+     */
+    private void analyzeProviderWebsite() {
+        String url = String.format(UIStyle.SIGNAL_PROVIDER_URL_FORMAT, providerId);
+        String fileName = "provider_" + providerId + ".html";
+        
+        websiteAnalyzer.analyzeWebsiteAsync(url, fileName, (status, message) -> {
+            // Rufe den Callback im EDT-Thread auf, um UI-Aktualisierungen sicher durchzuführen
+            SwingUtilities.invokeLater(() -> {
+                switch (status) {
+                    case LOADING:
+                        setStatusLightColor(STATUS_YELLOW, "Status: " + message);
+                        break;
+                    case AVAILABLE:
+                        setStatusLightColor(STATUS_GREEN, "Status: " + message);
+                        break;
+                    case UNAVAILABLE:
+                    case ERROR:
+                        setStatusLightColor(STATUS_RED, "Status: " + message);
+                        break;
+                }
+            });
+        });
+    }
+    
+    /**
      * Erstellt das Header-Panel mit Titel und URL
      */
     private JPanel createHeaderPanel() {
@@ -100,6 +141,16 @@ public class PerformanceStatisticsPanel extends JPanel {
         titleLabel.setFont(UIStyle.TITLE_FONT);
         titleLabel.setForeground(UIStyle.PRIMARY_COLOR);
         headerPanel.add(titleLabel, BorderLayout.WEST);
+        
+        // Panel für URL und Statuslicht
+        JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        rightPanel.setOpaque(false);
+        
+        // Statuslicht erstellen - initial gelb
+        statusLight = new JLabel("\u25CF");  // Unicode für gefüllten Kreis
+        statusLight.setFont(new Font(statusLight.getFont().getName(), Font.BOLD, 16));
+        statusLight.setForeground(STATUS_YELLOW);
+        statusLight.setToolTipText("Status: Wird geladen...");
         
         // URL als klickbarer Link
         String urlText = String.format(
@@ -123,9 +174,12 @@ public class PerformanceStatisticsPanel extends JPanel {
             }
         });
         
+        rightPanel.add(statusLight);
+        rightPanel.add(urlLabel);
+        
         JPanel urlPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         urlPanel.setOpaque(false);
-        urlPanel.add(urlLabel);
+        urlPanel.add(rightPanel);
         headerPanel.add(urlPanel, BorderLayout.EAST);
         
         return headerPanel;
@@ -314,5 +368,15 @@ public class PerformanceStatisticsPanel extends JPanel {
             return 0.0; // Verhindert Division durch Null
         }
         return monthlyProfitPercent / maxEquityDrawdown;
+    }
+    
+    /**
+     * Setzt den Status des Statuslichts
+     */
+    private void setStatusLightColor(Color color, String tooltip) {
+        if (statusLight != null) {
+            statusLight.setForeground(color);
+            statusLight.setToolTipText(tooltip);
+        }
     }
 }
