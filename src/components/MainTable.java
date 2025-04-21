@@ -138,7 +138,7 @@ public class MainTable extends JTable {
         // Setze die Renderer für die Spalten
         for (int i = 0; i < getColumnCount(); i++) {
             // Finde die Risk Score Spalte basierend auf dem Index
-            if (i == 19) { // Risk Score ist an Position 19 im COLUMN_NAMES Array
+            if (i == 20) { // Risk Score ist tatsächlich an Position 20 im COLUMN_NAMES Array
                 getColumnModel().getColumn(i).setCellRenderer(riskRenderer);
             } else {
                 getColumnModel().getColumn(i).setCellRenderer(renderer);
@@ -256,6 +256,9 @@ public class MainTable extends JTable {
         
         // Prüfen, ob wöchentliche Speicherung erforderlich ist
         historyService.checkAndPerformWeeklySave();
+        
+        // Tabelle neu zeichnen nach Aktualisierung
+        repaint();
         
         // Bei jeder Aktualisierung auf geänderte 3MPDD-Werte prüfen und ggf. speichern
         for (Map.Entry<String, ProviderStats> entry : dataManager.getStats().entrySet()) {

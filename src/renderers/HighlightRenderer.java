@@ -124,7 +124,7 @@ public class HighlightRenderer extends DefaultTableCellRenderer {
             }
         }
         
-        // Prüfe, ob Provider ein Favorit oder Bad Provider ist - Diese Prüfung muss für jede Zeile und jede Zelle erfolgen
+        // Prüfe, ob Provider ein Favorit oder Bad Provider ist
         if (table.getModel() instanceof HighlightTableModel) {
             HighlightTableModel model = (HighlightTableModel) table.getModel();
             
@@ -150,7 +150,7 @@ public class HighlightRenderer extends DefaultTableCellRenderer {
                     }
                     
                     if (providerId != null) {
-                        // Hole Root-Pfad aus dem Model
+                        // Hole Root-Pfad aus den Konstanten
                         String rootPath = ApplicationConstants.ROOT_PATH;
                         
                         // Initialisiere FavoritesManager mit dem Pfad
@@ -179,7 +179,7 @@ public class HighlightRenderer extends DefaultTableCellRenderer {
             }
         }
         
-        // Suchtext-Highlighting (nicht verändern)
+        // Suchtext-Highlighting
         if (!searchText.isEmpty() && value != null) {
             String text = value.toString().toLowerCase();
             if (text.contains(searchText)) {

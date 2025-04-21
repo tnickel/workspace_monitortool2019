@@ -59,6 +59,7 @@ public class TableFilterManager {
         if (currentFilter == null) {
             tableModel.populateData(dataManager.getStats());
             mainTable.updateStatus();
+            mainTable.repaint(); // Wichtig: Tabelle neu zeichnen
             return;
         }
         
@@ -128,6 +129,7 @@ public class TableFilterManager {
                     // Zeige die gefilterten Daten an
                     tableModel.populateData(filteredStats);
                     mainTable.updateStatus();
+                    mainTable.repaint(); // Wichtig: Tabelle neu zeichnen
                     progressDialog.complete();
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -145,6 +147,7 @@ public class TableFilterManager {
         // Für kleine Datenmengen oder programmatische Aufrufe ohne Fortschrittsanzeige
         if (currentFilter == null) {
             tableModel.populateData(dataManager.getStats());
+            mainTable.repaint(); // Wichtig: Tabelle neu zeichnen
         } else {
             Map<String, ProviderStats> filteredStats = dataManager.getStats().entrySet().stream()
                 .filter(entry -> {
@@ -169,6 +172,7 @@ public class TableFilterManager {
                 
             // Zeige die gefilterten Daten an
             tableModel.populateData(filteredStats);
+            mainTable.repaint(); // Wichtig: Tabelle neu zeichnen
         }
         mainTable.updateStatus();
     }

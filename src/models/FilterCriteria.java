@@ -9,16 +9,20 @@ import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import data.ProviderStats;
 import data.Trade;
 
-public class FilterCriteria
+public class FilterCriteria implements Serializable
 {
+    private static final long serialVersionUID = 1L;
+    private static final Logger LOGGER = Logger.getLogger(FilterCriteria.class.getName());
+    
     private Map<Integer, FilterRange> columnFilters;
     private static final String SAVE_FILE = "filter_criteria.ser"; // Datei zum Speichern der Filterwerte
-    private String currencyPairsFilter; // Neu: Filter für Währungspaare
+    private String currencyPairsFilter; // Filter für Währungspaare
     
     public FilterCriteria()
     {
@@ -52,6 +56,12 @@ public class FilterCriteria
             
             // Ignoriere den MaxDrawdown-Filter (column 14)
             if (column == 14) {
+                continue;
+            }
+            
+            // Prüfe dass wir keinen Index-Bereich überschreiten
+            if (column >= rowData.length) {
+                LOGGER.warning("Filter für Spalte " + column + " übersteigt verfügbare Spalten (" + rowData.length + ")");
                 continue;
             }
             
@@ -131,8 +141,11 @@ public class FilterCriteria
             
             // Speichere Währungspaar-Filter
             oos.writeObject(currencyPairsFilter);
+            
+            LOGGER.info("Filter wurden gespeichert.");
         } catch (IOException e)
         {
+            LOGGER.severe("Fehler beim Speichern der Filter: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -154,10 +167,13 @@ public class FilterCriteria
             } catch (Exception e) {
                 currencyPairsFilter = ""; // Falls das Format älter ist und keinen Währungspaar-Filter enthält
             }
+            
+            LOGGER.info("Filter wurden geladen.");
         } catch (IOException | ClassNotFoundException e)
         {
             columnFilters = new HashMap<>(); // Falls Datei nicht existiert
             currencyPairsFilter = "";
+            LOGGER.info("Keine gespeicherten Filter gefunden oder Fehler beim Laden.");
         }
     }
     
@@ -204,7 +220,7 @@ public class FilterCriteria
                 return true;
             } catch (NumberFormatException e)
             {
-                System.out.println("Number format exception for value: " + value);
+                Logger.getLogger(FilterRange.class.getName()).warning("Number format exception for value: " + value);
                 return false;
             }
         }
