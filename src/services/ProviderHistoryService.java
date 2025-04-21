@@ -13,6 +13,7 @@ import java.util.prefs.Preferences;
 
 import db.HistoryDatabaseManager;
 import db.HistoryDatabaseManager.HistoryEntry;
+import utils.ApplicationConstants;
 import utils.HtmlDatabase;
 
 /**
@@ -66,6 +67,9 @@ public class ProviderHistoryService {
      * @param rootPath Pfad zum Root-Verzeichnis mit den CSV-Dateien
      */
     public void initialize(String rootPath) {
+        // Validiere den Pfad und korrigiere ihn, falls nötig
+        rootPath = ApplicationConstants.validateRootPath(rootPath, "ProviderHistoryService.initialize");
+        
         this.rootPath = rootPath;
         
         // HistoryDatabaseManager mit dem Pfad initialisieren

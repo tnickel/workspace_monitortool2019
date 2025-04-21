@@ -30,6 +30,7 @@ import services.ProviderHistoryService;
 import ui.components.MenuManager;
 import ui.components.SearchManager;
 import ui.components.ToolbarManager;
+import utils.ApplicationConstants;
 import utils.HtmlDatabase;
 import utils.MqlAnalyserConf;
 import utils.UIStyle;
@@ -52,6 +53,10 @@ public class MainFrame extends JFrame {
     
     public MainFrame(DataManager dataManager, String rootPathStr, MqlAnalyserConf config) {
         super("Signal Providers Performance Analysis");
+        
+        // Validiere den Pfad und korrigiere ihn, falls nötig
+        rootPathStr = ApplicationConstants.validateRootPath(rootPathStr, "MainFrame.constructor");
+        
         this.dataManager = dataManager;
         this.config = config;
         this.rootPath = rootPathStr;

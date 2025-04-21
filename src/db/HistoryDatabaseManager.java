@@ -13,6 +13,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
 
+import utils.ApplicationConstants;
+
 /**
  * Verwaltet die H2-Datenbankverbindung und Operationen für die Speicherung
  * von historischen Werten für Signal Provider
@@ -83,7 +85,9 @@ public class HistoryDatabaseManager {
      * Privater Konstruktor für Singleton-Pattern
      */
     private HistoryDatabaseManager(String rootPath) {
-        this.rootPath = rootPath;
+        // Validiere den Pfad und korrigiere ihn, falls nötig
+        this.rootPath = ApplicationConstants.validateRootPath(rootPath, "HistoryDatabaseManager.constructor");
+        
         initDatabase();
     }
 

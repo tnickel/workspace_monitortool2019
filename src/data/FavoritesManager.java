@@ -12,6 +12,8 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.logging.Logger;
 
+import utils.ApplicationConstants;
+
 public class FavoritesManager {
     private static final Logger LOGGER = Logger.getLogger(FavoritesManager.class.getName());
     private final Set<String> favorites;
@@ -20,6 +22,9 @@ public class FavoritesManager {
     private final Path badProvidersFile; // Neue Datei für Bad Provider
     
     public FavoritesManager(String rootPath) {
+        // Validiere den Pfad und korrigiere ihn, falls nötig
+        rootPath = ApplicationConstants.validateRootPath(rootPath, "FavoritesManager.constructor");
+        
         this.favorites = new HashSet<>();
         this.badProviders = new HashSet<>(); // Initialisiere Bad Provider Set
         

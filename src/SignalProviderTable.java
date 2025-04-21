@@ -1,5 +1,3 @@
-
-
 import java.awt.Dimension;
 import java.util.logging.Logger;
 
@@ -9,6 +7,7 @@ import javax.swing.SwingWorker;
 import data.DataManager;
 import ui.MainFrame;
 import ui.SplashScreen;
+import utils.ApplicationConstants;
 import utils.MqlAnalyserConf;
 
 public class SignalProviderTable {
@@ -18,7 +17,11 @@ public class SignalProviderTable {
     private final MqlAnalyserConf config;
     
     public static void main(String[] args) {
-        String rootPath = args.length > 0 ? args[0] : "c:\\Forex\\MqlAnalyzer";
+        // Verwende die Konstante, aber prüfe auch Kommandozeilenargumente
+        String rootPath = args.length > 0 ? args[0] : ApplicationConstants.ROOT_PATH;
+        
+        // Validiere den Pfad und korrigiere ihn, falls nötig
+        rootPath = ApplicationConstants.validateRootPath(rootPath, "SignalProviderTable.main");
         
         // Splash-Screen anzeigen
         SplashScreen splash = new SplashScreen();
@@ -49,6 +52,9 @@ public class SignalProviderTable {
     }
     
     public SignalProviderTable(String rootPathStr, SplashScreen splash) {
+        // Validiere den Pfad und korrigiere ihn, falls nötig
+        rootPathStr = ApplicationConstants.validateRootPath(rootPathStr, "SignalProviderTable.constructor");
+        
         this.config = new MqlAnalyserConf(rootPathStr);
         this.dataManager = new DataManager();
         
