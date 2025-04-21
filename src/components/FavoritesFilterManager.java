@@ -1,12 +1,12 @@
 package components;
 
-import data.FavoritesManager;
-import data.ProviderStats;
-import models.HighlightTableModel;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Logger;
+
+import data.FavoritesManager;
+import data.ProviderStats;
+import models.HighlightTableModel;
 
 public class FavoritesFilterManager {
     private static final Logger LOGGER = Logger.getLogger(FavoritesFilterManager.class.getName());
@@ -36,6 +36,28 @@ public class FavoritesFilterManager {
             
             if (favoritesManager.isFavorite(providerId)) {
                 LOGGER.fine("  -> Ist ein Favorit!");
+                filteredStats.put(providerName, entry.getValue());
+            }
+        }
+        
+        tableModel.populateData(filteredStats);
+        mainTable.updateStatus();
+    }
+    
+    // Neue Methode, um nur die Bad Provider zu filtern
+    public void filterByBadProviders() {
+        LOGGER.info("Filterung nach Bad Providern");
+        
+        Map<String, ProviderStats> filteredStats = new HashMap<>();
+        
+        for (Map.Entry<String, ProviderStats> entry : allStats.entrySet()) {
+            String providerName = entry.getKey();
+            String providerId = extractProviderId(providerName);
+            
+            LOGGER.fine("Prüfe Provider: " + providerName + " mit ID: " + providerId);
+            
+            if (favoritesManager.isBadProvider(providerId)) {
+                LOGGER.fine("  -> Ist ein Bad Provider!");
                 filteredStats.put(providerName, entry.getValue());
             }
         }

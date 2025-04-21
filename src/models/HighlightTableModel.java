@@ -1,5 +1,7 @@
 package models;
 
+
+
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +41,11 @@ public class HighlightTableModel extends DefaultTableModel {
 
   public HtmlDatabase getHtmlDatabase() {
       return this.htmlDatabase;
+  }
+
+  // Neue Methode zum Bereitstellen des Rootpaths
+  public String getRootPath() {
+      return this.htmlDatabase.getRootPath();
   }
 
   @Override

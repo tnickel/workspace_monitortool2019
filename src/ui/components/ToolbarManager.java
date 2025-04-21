@@ -11,6 +11,7 @@ import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.JToolBar;
 
+import components.FavoritesFilterManager;
 import components.MainTable;
 import models.FilterCriteria;
 import services.ProviderHistoryService;
@@ -86,6 +87,15 @@ public class ToolbarManager {
             mainTable.filterFavorites();
         });
         toolBar.add(showFavoritesButton);
+        
+        // Neuer Button für Bad Provider Filter
+        JButton showBadProvidersButton = UIStyle.createStyledButton("Show Bad Providers");
+        showBadProvidersButton.setBackground(UIStyle.NEGATIVE_COLOR);
+        showBadProvidersButton.addActionListener(e -> {
+            // Cast FavoritesManager zu FavoritesFilterManager, um die neue Methode aufzurufen
+            ((FavoritesFilterManager)mainTable.getFavoritesManager()).filterByBadProviders();
+        });
+        toolBar.add(showBadProvidersButton);
         
         JButton riskScoreButton = UIStyle.createStyledButton("Risk Score Explanation");
         riskScoreButton.addActionListener(e -> {

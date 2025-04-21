@@ -10,6 +10,7 @@ import javax.swing.JLabel;
 import javax.swing.JTable;
 import javax.swing.table.DefaultTableCellRenderer;
 
+import data.FavoritesManager;
 import models.HighlightTableModel;
 
 public class HighlightRenderer extends DefaultTableCellRenderer {
@@ -141,7 +142,53 @@ public class HighlightRenderer extends DefaultTableCellRenderer {
             }
         }
         
-        // Suchtext-Highlighting
+        // Prüfe, ob Provider ein Bad Provider ist
+        if (table.getModel() instanceof HighlightTableModel) {
+            HighlightTableModel model = (HighlightTableModel) table.getModel();
+            
+            // Extrahiere providerId aus dem Providernamen in Spalte 1
+            String providerName = (String) table.getValueAt(row, 1);
+            if (providerName != null) {
+                try {
+                    // Extrahiere providerId
+                    String providerId = null;
+                    if (providerName.contains("_")) {
+                        providerId = providerName.substring(providerName.lastIndexOf("_") + 1).replace(".csv", "");
+                    } else {
+                        // Fallback für den Fall, dass der Name nicht dem erwarteten Format entspricht
+                        StringBuilder digits = new StringBuilder();
+                        for (char ch : providerName.toCharArray()) {
+                            if (Character.isDigit(ch)) {
+                                digits.append(ch);
+                            }
+                        }
+                        if (digits.length() > 0) {
+                            providerId = digits.toString();
+                        }
+                    }
+                    
+                    if (providerId != null) {
+                        // Hole Root-Pfad aus dem Model
+                        String rootPath = model.getRootPath();
+                        
+                        // Initialisiere FavoritesManager mit dem Pfad
+                        FavoritesManager favoritesManager = new FavoritesManager(rootPath);
+                        
+                        // Wenn es ein Bad Provider ist, graue die Zeile aus
+                        if (favoritesManager.isBadProvider(providerId) && !isSelected) {
+                            // Grauer Hintergrund und heller Text für Bad Provider
+                            c.setBackground(new Color(230, 230, 230)); // Hellgrau
+                            c.setForeground(new Color(150, 150, 150)); // Dunkelgrau
+                        }
+                    }
+                } catch (Exception e) {
+                    // Fehlerbehandlung
+                    System.err.println("Fehler bei der Prüfung auf Bad Provider: " + e.getMessage());
+                }
+            }
+        }
+        
+        // Suchtext-Highlighting (nicht verändern)
         if (!searchText.isEmpty() && value != null) {
             String text = value.toString().toLowerCase();
             if (text.contains(searchText)) {
@@ -154,13 +201,10 @@ public class HighlightRenderer extends DefaultTableCellRenderer {
                 );
                 ((JLabel)c).setText("<html>" + highlightedText + "</html>");
             } else {
-                if (!isSelected) {
+                // Nur wenn es sich nicht um einen Bad Provider handelt (damit die Ausgrauung nicht überschrieben wird)
+                if (!isSelected && c.getBackground().equals(table.getBackground())) {
                     c.setBackground(table.getBackground());
                 }
-            }
-        } else {
-            if (!isSelected) {
-                c.setBackground(table.getBackground());
             }
         }
         

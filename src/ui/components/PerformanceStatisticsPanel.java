@@ -10,6 +10,7 @@ import java.net.URI;
 import java.text.DecimalFormat;
 import java.time.temporal.ChronoUnit;
 
+import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -41,6 +42,7 @@ public class PerformanceStatisticsPanel extends JPanel {
     
     // UI-Komponenten
     private JButton favoriteButton;
+    private JButton badProviderButton; // Neuer Bad Provider Button
     
     /**
      * Konstruktor für das StatisticsPanel
@@ -175,12 +177,27 @@ public class PerformanceStatisticsPanel extends JPanel {
         // Den FavoritesManager initialisieren
         FavoritesManager favoritesManager = new FavoritesManager(rootPath);
         boolean isFavorite = favoritesManager.isFavorite(providerId);
+        boolean isBadProvider = favoritesManager.isBadProvider(providerId); // Prüfe, ob Bad Provider
         
         favoriteButton = UIStyle.createStyledButton(
                 isFavorite ? "Remove Favorite" : "Set Favorite");
         if (isFavorite) {
             favoriteButton.setBackground(UIStyle.ACCENT_COLOR);
             favoriteButton.setForeground(UIStyle.TEXT_COLOR);
+        }
+        
+        // Bad Provider Button erstellen
+        badProviderButton = UIStyle.createStyledButton(
+                isBadProvider ? "Remove from Bad List" : "Set as Bad Provider");
+        if (isBadProvider) {
+            badProviderButton.setBackground(UIStyle.NEGATIVE_COLOR);
+            badProviderButton.setForeground(Color.WHITE);
+        } else {
+            // Roter Rand für den Button, wenn er noch nicht aktiv ist
+            badProviderButton.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(UIStyle.NEGATIVE_COLOR, 2),
+                BorderFactory.createEmptyBorder(3, 8, 3, 8)
+            ));
         }
         
         JButton showTradesButton = UIStyle.createStyledButton("Show Trade List");
@@ -202,6 +219,28 @@ public class PerformanceStatisticsPanel extends JPanel {
             System.out.println("Favorit-Status für Provider " + providerId + " geändert: " + isNowFavorite);
         });
         
+        // Action Listener für Bad Provider Button
+        badProviderButton.addActionListener(e -> {
+            favoritesManager.toggleBadProvider(providerId);
+            boolean isNowBadProvider = favoritesManager.isBadProvider(providerId);
+            badProviderButton.setText(isNowBadProvider ? "Remove from Bad List" : "Set as Bad Provider");
+            
+            if (isNowBadProvider) {
+                badProviderButton.setBackground(UIStyle.NEGATIVE_COLOR);
+                badProviderButton.setForeground(Color.WHITE);
+                badProviderButton.setBorder(UIStyle.createButtonBorder());
+            } else {
+                badProviderButton.setBackground(UIStyle.SECONDARY_COLOR);
+                badProviderButton.setForeground(Color.WHITE);
+                badProviderButton.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(UIStyle.NEGATIVE_COLOR, 2),
+                    BorderFactory.createEmptyBorder(3, 8, 3, 8)
+                ));
+            }
+            
+            System.out.println("Bad Provider-Status für Provider " + providerId + " geändert: " + isNowBadProvider);
+        });
+        
         showTradesButton.addActionListener(e -> {
             TradeListFrame tradeListFrame = new TradeListFrame(providerName, stats);
             tradeListFrame.setVisible(true);
@@ -215,6 +254,7 @@ public class PerformanceStatisticsPanel extends JPanel {
         });
         
         buttonPanel.add(favoriteButton);
+        buttonPanel.add(badProviderButton); // Füge Bad Provider Button hinzu
         buttonPanel.add(showTradesButton);
         buttonPanel.add(showDbInfoButton);
         

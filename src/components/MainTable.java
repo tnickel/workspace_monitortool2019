@@ -30,21 +30,23 @@ import ui.ShowSignalProviderList;
 import utils.HtmlDatabase;
 import utils.MqlAnalyserConf;
 
-public class MainTable extends JTable {
-    private static final Logger LOGGER = Logger.getLogger(MainTable.class.getName());
-    private final HighlightTableModel model;
-    private final HighlightRenderer renderer;
-    private final RiskScoreRenderer riskRenderer;
-    private final DataManager dataManager;
-    private final String rootPath;
-    private Consumer<String> statusUpdateCallback;
-    private final HtmlDatabase htmlDatabase;
-    private final ProviderHistoryService historyService;
-    
-    // Manager für verschiedene Funktionalitäten
-    private final TableFilterManager filterManager;
-    private final TableColumnManager columnManager;
-    private final FavoritesFilterManager favoritesManager;
+
+	public class MainTable extends JTable {
+	    private static final Logger LOGGER = Logger.getLogger(MainTable.class.getName());
+	    private final HighlightTableModel model;
+	    private final HighlightRenderer renderer;
+	    private final RiskScoreRenderer riskRenderer;
+	    private final DataManager dataManager;
+	    private final String rootPath;
+	    private Consumer<String> statusUpdateCallback;
+	    private final HtmlDatabase htmlDatabase;
+	    private final ProviderHistoryService historyService;
+	    
+	    // Manager für verschiedene Funktionalitäten
+	    private final TableFilterManager filterManager;
+	    private final TableColumnManager columnManager;
+	    private final FavoritesFilterManager favoritesManager;
+
 
     public MainTable(DataManager dataManager, String rootPathStr) {
         this.dataManager = dataManager;
@@ -96,7 +98,9 @@ public class MainTable extends JTable {
     public FilterCriteria getCurrentFilter() {
         return filterManager.getCurrentFilter();
     }
-
+    public FavoritesFilterManager getFavoritesManager() {
+        return favoritesManager;
+    }
     private void initialize() {
         setModel(model);
         TableRowSorter<HighlightTableModel> sorter = new TableRowSorter<>(model);
