@@ -88,14 +88,7 @@ public class ToolbarManager {
         });
         toolBar.add(showFavoritesButton);
         
-        // Neuer Button für Bad Provider Filter
-        JButton showBadProvidersButton = UIStyle.createStyledButton("Show Bad Providers");
-        showBadProvidersButton.setBackground(UIStyle.NEGATIVE_COLOR);
-        showBadProvidersButton.addActionListener(e -> {
-            // Cast FavoritesManager zu FavoritesFilterManager, um die neue Methode aufzurufen
-            ((FavoritesFilterManager)mainTable.getFavoritesManager()).filterByBadProviders();
-        });
-        toolBar.add(showBadProvidersButton);
+        // "Show Bad Providers" Button wurde entfernt
         
         JButton riskScoreButton = UIStyle.createStyledButton("Risk Score Explanation");
         riskScoreButton.addActionListener(e -> {

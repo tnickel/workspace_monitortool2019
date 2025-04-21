@@ -27,6 +27,12 @@ public class HighlightRenderer extends DefaultTableCellRenderer {
             boolean isSelected, boolean hasFocus, int row, int column) {
         Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
         
+        // Standard-Hintergrund für alle Zellen zurücksetzen, wenn nicht selektiert
+        if (!isSelected) {
+            c.setBackground(table.getBackground());
+            c.setForeground(table.getForeground());
+        }
+        
         // Formatiere Dezimalzahlen
         if (value instanceof Double) {
             setText(df.format((Double)value));
@@ -110,43 +116,13 @@ public class HighlightRenderer extends DefaultTableCellRenderer {
                     }
                 }
             }
-            
-            // Farbliche Hervorhebung für MPDD-Spalten
-            String columnName = table.getColumnName(column);
-            if ((columnName.equals("3MPDD") || columnName.equals("6MPDD") || 
-                 columnName.equals("9MPDD") || columnName.equals("12MPDD")) && !isSelected) {
-                double mpddValue = (Double)value;
-                if (mpddValue > 1.0) {
-                    c.setBackground(new Color(200, 255, 200)); // Hellgrün für gute Werte
-                } else if (mpddValue < 0.5) {
-                    c.setBackground(new Color(255, 200, 200)); // Hellrot für schlechte Werte
-                } else {
-                    c.setBackground(new Color(255, 255, 200)); // Hellgelb für mittlere Werte
-                }
-            }
-            
-            // Farbliche Hervorhebung für Steigung
-            if (columnName.equals("Steigung") && !isSelected) {
-                double steigungValue = (Double)value;
-                if (steigungValue > 5.0) {
-                    c.setBackground(new Color(150, 255, 150)); // Kräftiges Grün für starken positiven Trend
-                } else if (steigungValue > 2.0) {
-                    c.setBackground(new Color(200, 255, 200)); // Hellgrün für positiven Trend
-                } else if (steigungValue < -2.0) {
-                    c.setBackground(new Color(255, 200, 200)); // Hellrot für negativen Trend
-                } else if (steigungValue < -5.0) {
-                    c.setBackground(new Color(255, 150, 150)); // Kräftiges Rot für starken negativen Trend
-                } else {
-                    c.setBackground(new Color(255, 255, 200)); // Hellgelb für neutralen Trend
-                }
-            }
         }
         
-        // Prüfe, ob Provider ein Bad Provider ist
+        // Prüfe, ob Provider ein Bad Provider ist - Diese Prüfung muss für jede Zeile und jede Zelle erfolgen
         if (table.getModel() instanceof HighlightTableModel) {
             HighlightTableModel model = (HighlightTableModel) table.getModel();
             
-            // Extrahiere providerId aus dem Providernamen in Spalte 1
+            // Hole den Providernamen aus der zweiten Spalte (Spalte 1) der aktuellen Zeile
             String providerName = (String) table.getValueAt(row, 1);
             if (providerName != null) {
                 try {
@@ -174,7 +150,12 @@ public class HighlightRenderer extends DefaultTableCellRenderer {
                         // Initialisiere FavoritesManager mit dem Pfad
                         FavoritesManager favoritesManager = new FavoritesManager(rootPath);
                         
-                        // Wenn es ein Bad Provider ist, graue die Zeile aus
+                        // Debug-Ausgabe
+                        System.out.println("Prüfe Bad Provider Status für: " + providerName + 
+                                          ", Provider ID: " + providerId + 
+                                          ", ist Bad: " + favoritesManager.isBadProvider(providerId));
+                        
+                        // Wenn es ein Bad Provider ist und die Zelle nicht selektiert ist
                         if (favoritesManager.isBadProvider(providerId) && !isSelected) {
                             // Grauer Hintergrund und heller Text für Bad Provider
                             c.setBackground(new Color(230, 230, 230)); // Hellgrau
@@ -200,11 +181,6 @@ public class HighlightRenderer extends DefaultTableCellRenderer {
                     "<span style='background-color: #FFFF00'>$1</span>"
                 );
                 ((JLabel)c).setText("<html>" + highlightedText + "</html>");
-            } else {
-                // Nur wenn es sich nicht um einen Bad Provider handelt (damit die Ausgrauung nicht überschrieben wird)
-                if (!isSelected && c.getBackground().equals(table.getBackground())) {
-                    c.setBackground(table.getBackground());
-                }
             }
         }
         
