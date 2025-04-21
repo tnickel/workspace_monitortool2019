@@ -12,11 +12,17 @@ import javax.swing.table.DefaultTableCellRenderer;
 
 import data.FavoritesManager;
 import models.HighlightTableModel;
+import utils.ApplicationConstants;
 
 public class HighlightRenderer extends DefaultTableCellRenderer {
     private String searchText = "";
     private final Color highlightColor = new Color(255, 255, 0, 128);
     private final DecimalFormat df = new DecimalFormat("#,##0.00");
+    
+    // Farben für Provider-Status
+    private final Color BAD_PROVIDER_BG = new Color(230, 230, 230);     // Hellgrau
+    private final Color BAD_PROVIDER_FG = new Color(150, 150, 150);     // Dunkelgrau
+    private final Color FAVORITE_PROVIDER_BG = new Color(210, 230, 255); // Kräftigeres Blau, passend zum Design
     
     public void setSearchText(String text) {
         this.searchText = text.toLowerCase();
@@ -118,7 +124,7 @@ public class HighlightRenderer extends DefaultTableCellRenderer {
             }
         }
         
-        // Prüfe, ob Provider ein Bad Provider ist - Diese Prüfung muss für jede Zeile und jede Zelle erfolgen
+        // Prüfe, ob Provider ein Favorit oder Bad Provider ist - Diese Prüfung muss für jede Zeile und jede Zelle erfolgen
         if (table.getModel() instanceof HighlightTableModel) {
             HighlightTableModel model = (HighlightTableModel) table.getModel();
             
@@ -145,26 +151,30 @@ public class HighlightRenderer extends DefaultTableCellRenderer {
                     
                     if (providerId != null) {
                         // Hole Root-Pfad aus dem Model
-                        String rootPath = model.getRootPath();
+                        String rootPath = ApplicationConstants.ROOT_PATH;
                         
                         // Initialisiere FavoritesManager mit dem Pfad
                         FavoritesManager favoritesManager = new FavoritesManager(rootPath);
                         
-                        // Debug-Ausgabe
-                        System.out.println("Prüfe Bad Provider Status für: " + providerName + 
-                                          ", Provider ID: " + providerId + 
-                                          ", ist Bad: " + favoritesManager.isBadProvider(providerId));
+                        // Status prüfen und Highlighting anwenden
+                        boolean isBadProvider = favoritesManager.isBadProvider(providerId);
+                        boolean isFavorite = favoritesManager.isFavorite(providerId);
                         
                         // Wenn es ein Bad Provider ist und die Zelle nicht selektiert ist
-                        if (favoritesManager.isBadProvider(providerId) && !isSelected) {
+                        if (isBadProvider && !isSelected) {
                             // Grauer Hintergrund und heller Text für Bad Provider
-                            c.setBackground(new Color(230, 230, 230)); // Hellgrau
-                            c.setForeground(new Color(150, 150, 150)); // Dunkelgrau
+                            c.setBackground(BAD_PROVIDER_BG);
+                            c.setForeground(BAD_PROVIDER_FG);
+                        }
+                        // Wenn es ein Favorit ist und die Zelle nicht selektiert ist und kein Bad Provider
+                        else if (isFavorite && !isSelected && !isBadProvider) {
+                            // Hellblauer Hintergrund für Favoriten
+                            c.setBackground(FAVORITE_PROVIDER_BG);
                         }
                     }
                 } catch (Exception e) {
                     // Fehlerbehandlung
-                    System.err.println("Fehler bei der Prüfung auf Bad Provider: " + e.getMessage());
+                    System.err.println("Fehler bei der Prüfung auf Favorit/Bad Provider: " + e.getMessage());
                 }
             }
         }

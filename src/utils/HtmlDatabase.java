@@ -652,7 +652,5 @@ public class HtmlDatabase {
         return true;
     }
     
-    public String getRootPath() {
-        return downloadPath;
-    }
+  
 }

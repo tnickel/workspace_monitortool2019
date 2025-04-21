@@ -31,7 +31,7 @@ public class SignalProviderTable {
         SwingWorker<SignalProviderTable, Void> worker = new SwingWorker<SignalProviderTable, Void>() {
             @Override
             protected SignalProviderTable doInBackground() throws Exception {
-                return new SignalProviderTable(rootPath, splash);
+                return new SignalProviderTable(ApplicationConstants.ROOT_PATH, splash);
             }
             
             @Override

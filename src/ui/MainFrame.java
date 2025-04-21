@@ -210,6 +210,7 @@ public class MainFrame extends JFrame {
     }
     
     public void verifyFileSystemAccess() {
+    	String downloadPath = config.getDownloadPath();
         HtmlDatabase htmlDb = mainTable.getHtmlDatabase();
         if (htmlDb != null) {
             boolean accessOk = htmlDb.checkFileAccess();
@@ -217,7 +218,7 @@ public class MainFrame extends JFrame {
                 JOptionPane.showMessageDialog(
                     this,
                     "WARNUNG: Es gibt Probleme beim Zugriff auf das Datenverzeichnis:\n" +
-                    htmlDb.getRootPath() + "\n\n" +
+                    		downloadPath + "\n\n" +
                     "Dies kann zu fehlenden Daten wie 3MPDD-Werten führen.\n" +
                     "Bitte überprüfen Sie den Pfad in den Einstellungen.",
                     "Dateizugriffsproblem",
@@ -225,20 +226,20 @@ public class MainFrame extends JFrame {
                 );
             } else {
                 // Prüfe auf _root.txt Dateien
-                File dir = new File(htmlDb.getRootPath());
+                File dir = new File(downloadPath);
                 File[] rootTxtFiles = dir.listFiles((d, name) -> name.endsWith("_root.txt"));
                 if (rootTxtFiles == null || rootTxtFiles.length == 0) {
                     JOptionPane.showMessageDialog(
                         this,
                         "WARNUNG: Im Datenverzeichnis wurden keine _root.txt Dateien gefunden:\n" +
-                        htmlDb.getRootPath() + "\n\n" +
+                        		downloadPath + "\n\n" +
                         "Dies führt dazu, dass 3MPDD-Werte und andere Statistiken nicht berechnet werden können.\n" +
                         "Bitte überprüfen Sie den Pfad in den Einstellungen.",
                         "Fehlende Datendateien",
                         JOptionPane.WARNING_MESSAGE
                     );
                 } else {
-                    LOGGER.info("Gefunden " + rootTxtFiles.length + " _root.txt Dateien im Verzeichnis " + htmlDb.getRootPath());
+                    LOGGER.info("Gefunden " + rootTxtFiles.length + " _root.txt Dateien im Verzeichnis " + downloadPath);
                 }
             }
         }

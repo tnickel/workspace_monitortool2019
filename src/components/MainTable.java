@@ -209,9 +209,10 @@ public class MainTable extends JTable {
         if (filterManager.getCurrentFilter() != null) {
             status.append(" (filtered)");
         }
-
-        status.append(" | Download Path: " + htmlDatabase.getRootPath());
-        status.append(" | Root Path: " + rootPath);
+        MqlAnalyserConf config = new MqlAnalyserConf(ApplicationConstants.ROOT_PATH);
+    
+        status.append(" | Download Path: " + config.getDownloadPath());
+       
 
         return status.toString();
     }

@@ -43,10 +43,7 @@ public class HighlightTableModel extends DefaultTableModel {
       return this.htmlDatabase;
   }
 
-  // Neue Methode zum Bereitstellen des Rootpaths
-  public String getRootPath() {
-      return this.htmlDatabase.getRootPath();
-  }
+  
 
   @Override
   public Class<?> getColumnClass(int columnIndex) {

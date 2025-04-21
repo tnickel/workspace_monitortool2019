@@ -82,13 +82,7 @@ public class ToolbarManager {
         filterButton.addActionListener(e -> showFilterDialog());
         toolBar.add(filterButton);
         
-        JButton showFavoritesButton = UIStyle.createStyledButton("Show Favorites");
-        showFavoritesButton.addActionListener(e -> {
-            mainTable.filterFavorites();
-        });
-        toolBar.add(showFavoritesButton);
-        
-        // "Show Bad Providers" Button wurde entfernt
+        // "Show Favorites" Button entfernt
         
         JButton riskScoreButton = UIStyle.createStyledButton("Risk Score Explanation");
         riskScoreButton.addActionListener(e -> {
@@ -173,7 +167,8 @@ public class ToolbarManager {
                 JOptionPane.showMessageDialog(parentFrame,
                     "No matches found for: " + searchText,
                     "Search Result",
-                    JOptionPane.INFORMATION_MESSAGE);
+                    JOptionPane.INFORMATION_MESSAGE
+                );
             }
         }
     }

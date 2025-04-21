@@ -2,7 +2,6 @@ package services;
 
 import java.io.File;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
@@ -15,6 +14,7 @@ import db.HistoryDatabaseManager;
 import db.HistoryDatabaseManager.HistoryEntry;
 import utils.ApplicationConstants;
 import utils.HtmlDatabase;
+import utils.MqlAnalyserConf;
 
 /**
  * Service für die Verwaltung und Speicherung von historischen Statistik-Werten für Signal Provider
@@ -438,10 +438,11 @@ public class ProviderHistoryService {
         Map<String, Map<String, Double>> allValues = new HashMap<>();
         
         // Hole den Root-Pfad aus der HtmlDatabase
-        String rootPath = htmlDb.getRootPath();
+        MqlAnalyserConf config = new MqlAnalyserConf(ApplicationConstants.ROOT_PATH);
+        String downloadpfad = config.getDownloadPath();
         
         // Hole alle CSV-Dateien im Root-Verzeichnis
-        File downloadDirectory = new File(rootPath);
+        File downloadDirectory = new File(downloadpfad);
         if (downloadDirectory.exists() && downloadDirectory.isDirectory()) {
             File[] files = downloadDirectory.listFiles((dir, name) -> name.toLowerCase().endsWith(".csv"));
             

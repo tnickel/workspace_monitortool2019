@@ -1,11 +1,14 @@
 package utils;
 
+import java.util.logging.Logger;
 import javax.swing.JOptionPane;
 
 /**
  * Zentrale Klasse für globale Konstanten der Anwendung
  */
 public class ApplicationConstants {
+    private static final Logger LOGGER = Logger.getLogger(ApplicationConstants.class.getName());
+    
     // Pfad-Konstanten
     public static final String ROOT_PATH = "c:\\Forex\\MqlAnalyzer";
     
@@ -32,8 +35,7 @@ public class ApplicationConstants {
     public static String validateRootPath(String path, String callerInfo) {
         if (!isValidRootPath(path)) {
             // Log the error
-            Logger.getLogger(ApplicationConstants.class.getName())
-                .severe("Ungültiger Rootpath in " + callerInfo + ": " + path);
+            LOGGER.severe("Ungültiger Rootpath in " + callerInfo + ": " + path);
             
             // Show error dialog
             JOptionPane.showMessageDialog(
