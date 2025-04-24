@@ -8,6 +8,8 @@ import javax.swing.BoxLayout;
 import javax.swing.JPanel;
 
 import charts.CurrencyPairTradesChart;
+import charts.DrawdownChart;
+import charts.DrawdownPerformanceChart;
 import charts.DurationProfitChart;
 import charts.EfficiencyChart;
 import charts.MonthlyTradeCountChart;
@@ -57,10 +59,15 @@ public class ChartsPanelFactory {
     private static void addStandardCharts(JPanel panel, ProviderStats stats, 
                                          String providerName, HtmlDatabase htmlDatabase,
                                          ChartFactoryUtil chartFactory) {
+        // Hole den MaxDrawdownGraphic-Wert für das neue Drawdown-Chart
+        double maxDrawdownGraphic = htmlDatabase.getEquityDrawdownGraphic(providerName + ".csv");
+        
         // Standard-Charts mit gleicher Größe
         Component[] standardCharts = new Component[] {
             chartFactory.createEquityCurveChart(stats),
             chartFactory.createMonthlyProfitChart(stats),
+            // Neue DrawdownPerformanceChart einfügen
+            new DrawdownPerformanceChart(stats, maxDrawdownGraphic),
             new ThreeMonthProfitChart(
                 htmlDatabase.getMonthlyProfitPercentages(providerName + ".csv"), 
                 htmlDatabase.getEquityDrawdown(providerName)
@@ -79,6 +86,7 @@ public class ChartsPanelFactory {
         String[] chartTitles = new String[] {
             "Equity Curve",
             "Monthly Performance Overview", 
+            "Drawdown Performance",  // Neuer Titel für das Drawdown-Chart
             "3-Month Profit & Drawdown Analysis",
             "3MPDD History",
             "Trade Stacking Analysis",
@@ -93,7 +101,7 @@ public class ChartsPanelFactory {
         
         // Durchlaufe alle Standard-Charts und füge sie zum Panel hinzu
         for (int i = 0; i < standardCharts.length; i++) {
-            boolean isDurationChart = i == 5; // DurationProfitChart ist an Position 5
+            boolean isDurationChart = i == 6; // DurationProfitChart ist jetzt an Position 6
             Dimension chartSize = isDurationChart ? 
                     UIStyle.DURATION_CHART_SIZE : UIStyle.DEFAULT_CHART_SIZE;
             
