@@ -8,8 +8,7 @@ import javax.swing.BoxLayout;
 import javax.swing.JPanel;
 
 import charts.CurrencyPairTradesChart;
-import charts.DrawdownChart;
-import charts.DrawdownPerformanceChart;
+import charts.EquityDrawdownChart;
 import charts.DurationProfitChart;
 import charts.EfficiencyChart;
 import charts.MonthlyTradeCountChart;
@@ -67,7 +66,7 @@ public class ChartsPanelFactory {
             chartFactory.createEquityCurveChart(stats),
             chartFactory.createMonthlyProfitChart(stats),
             // Neue DrawdownPerformanceChart einfügen
-            new DrawdownPerformanceChart(stats, maxDrawdownGraphic),
+            new EquityDrawdownChart(stats, maxDrawdownGraphic),
             new ThreeMonthProfitChart(
                 htmlDatabase.getMonthlyProfitPercentages(providerName + ".csv"), 
                 htmlDatabase.getEquityDrawdown(providerName)

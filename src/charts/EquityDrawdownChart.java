@@ -22,7 +22,6 @@ import org.jfree.chart.axis.DateAxis;
 import org.jfree.chart.axis.NumberAxis;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.XYAreaRenderer;
-import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import org.jfree.data.time.Day;
 import org.jfree.data.time.TimeSeries;
 import org.jfree.data.time.TimeSeriesCollection;
@@ -33,19 +32,19 @@ import data.Trade;
 /**
  * Chart-Komponente zur Anzeige der Drawdown-Daten im Zeitverlauf
  */
-public class DrawdownPerformanceChart extends JPanel {
+public class EquityDrawdownChart extends JPanel {
     private final JFreeChart chart;
     private final TimeSeriesCollection dataset;
     private final ProviderStats stats;
     private final double maxDrawdownGraphic;
     
     /**
-     * Konstruktor für die DrawdownPerformanceChart-Komponente
+     * Konstruktor für die EquityDrawdownChart-Komponente
      * 
      * @param stats ProviderStats-Objekt mit allen Trades
      * @param maxDrawdownGraphic Wert des maximalen Drawdowns aus der HTML-Datenbank
      */
-    public DrawdownPerformanceChart(ProviderStats stats, double maxDrawdownGraphic) {
+    public EquityDrawdownChart(ProviderStats stats, double maxDrawdownGraphic) {
         this.stats = stats;
         this.maxDrawdownGraphic = maxDrawdownGraphic;
         setLayout(new BorderLayout());
@@ -73,7 +72,7 @@ public class DrawdownPerformanceChart extends JPanel {
      */
     private JFreeChart createChart() {
         JFreeChart chart = ChartFactory.createTimeSeriesChart(
-            "Drawdown Performance",
+            "Equity Drawdown",
             "Zeit",
             "Drawdown (%)",
             dataset,
@@ -114,8 +113,10 @@ public class DrawdownPerformanceChart extends JPanel {
         NumberAxis rangeAxis = (NumberAxis) plot.getRangeAxis();
         rangeAxis.setStandardTickUnits(NumberAxis.createStandardTickUnits());
         rangeAxis.setNumberFormatOverride(new DecimalFormat("0.00%"));
-        rangeAxis.setUpperBound(maxDrawdownGraphic / 100.0 * 1.1); // 10% mehr als der maximale Drawdown
-        rangeAxis.setLowerBound(0.0);
+        
+        // Die Skalierung der Y-Achse wird später in populateChart() gesetzt,
+        // nachdem wir die tatsächlichen Daten analysiert haben
+        
         rangeAxis.setLabelFont(new Font("SansSerif", Font.BOLD, 12));
         rangeAxis.setTickLabelFont(new Font("SansSerif", Font.PLAIN, 10));
         
@@ -137,6 +138,7 @@ public class DrawdownPerformanceChart extends JPanel {
         double currentBalance = stats.getInitialBalance();
         double highWaterMark = currentBalance;
         double currentDrawdownPercentage = 0.0;
+        double maxDrawdownPercentage = 0.0;
         
         for (Trade trade : sortedTrades) {
             // Balance aktualisieren
@@ -149,6 +151,8 @@ public class DrawdownPerformanceChart extends JPanel {
             } else if (highWaterMark > 0) {
                 // Drawdown als Prozentsatz berechnen
                 currentDrawdownPercentage = (highWaterMark - currentBalance) / highWaterMark;
+                // Aktualisiere das Maximum für die Skalierung
+                maxDrawdownPercentage = Math.max(maxDrawdownPercentage, currentDrawdownPercentage);
             }
             
             // Zeitpunkt aus dem Trade holen
@@ -162,9 +166,26 @@ public class DrawdownPerformanceChart extends JPanel {
         
         // Serie zum Dataset hinzufügen
         dataset.addSeries(drawdownSeries);
-    }
         
-     
+        // Y-Achsen-Skalierung anpassen basierend auf den tatsächlichen Daten
+        XYPlot plot = (XYPlot) chart.getPlot();
+        NumberAxis rangeAxis = (NumberAxis) plot.getRangeAxis();
+        
+        // Berechne das Maximum aus dem größeren der beiden Werte:
+        // 1. Der berechnete maximale Drawdown aus den Trades
+        // 2. Der übergebene maxDrawdownGraphic-Wert (in Prozent) als Dezimalwert
+        double calculatedMax = maxDrawdownPercentage;
+        double maxFromData = maxDrawdownGraphic / 100.0; // Umrechnung von Prozent zu Dezimal
+        
+        // Nehme den größeren der beiden Werte mit etwas Abstand nach oben
+        double maxUpperBound = Math.max(calculatedMax, maxFromData) * 1.1; // 10% mehr als das Maximum
+        
+        // Setze Grenzen, damit die Skala nicht zu groß oder zu klein wird
+        maxUpperBound = Math.max(maxUpperBound, 0.01); // Mindestens 1%
+        
+        rangeAxis.setUpperBound(maxUpperBound);
+        rangeAxis.setLowerBound(0.0);
+    }
     
     /**
      * Gibt das JFreeChart-Objekt zurück
