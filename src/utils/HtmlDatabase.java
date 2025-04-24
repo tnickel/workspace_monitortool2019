@@ -24,13 +24,37 @@ public class HtmlDatabase {
         LOGGER.info("HtmlDatabase initialisiert mit Pfad: " + downloadPath);
     }
     
+    // Hilfsmethode, um einen konsistenten Dateinamen als Cache-Schlüssel zu erstellen
+    private String createCacheKey(String fileName) {
+        if (fileName.endsWith(".csv")) {
+            return fileName; // CSV-Dateien als Schlüssel belassen
+        } else if (fileName.endsWith("_root.txt")) {
+            return fileName.replace("_root.txt", ".csv"); // Zu CSV-Format konvertieren
+        } else {
+            return fileName + ".csv"; // Suffix hinzufügen für Konsistenz
+        }
+    }
+    
+    // Hilfsmethode, um einen korrekten Pfad zur TXT-Datei zu erstellen
+    private String createTxtFilePath(String fileName) {
+        if (fileName.endsWith("_root.txt")) {
+            return fileName; // Bereits korrekt
+        } else if (fileName.endsWith(".csv")) {
+            return fileName.replace(".csv", "") + "_root.txt";
+        } else {
+            return fileName + "_root.txt"; // Suffix hinzufügen
+        }
+    }
+    
     private Map<String, String> getFileData(String fileName) {
-        if (dataCache.containsKey(fileName)) {
-            return dataCache.get(fileName);
+        String cacheKey = createCacheKey(fileName);
+        
+        if (dataCache.containsKey(cacheKey)) {
+            return dataCache.get(cacheKey);
         }
 
-        // Wir erwarten den vollen Dateinamen (_root.txt) als Parameter
-        File txtFile = new File(downloadPath, fileName);
+        String txtFileName = createTxtFilePath(fileName);
+        File txtFile = new File(downloadPath, txtFileName);
         
         // Protokolliere den vollständigen Pfad zur Datei
         LOGGER.info("Versuche Textdatei zu lesen: " + txtFile.getAbsolutePath());
@@ -106,10 +130,10 @@ public class HtmlDatabase {
                 data.put(currentKey, currentSection.toString().trim());
             }
             
-            dataCache.put(fileName, data);
+            dataCache.put(cacheKey, data);
             
             // Log die gelesenen Schlüssel
-            LOGGER.info("Gelesen aus " + fileName + ", gefundene Schlüssel: " + data.keySet());
+            LOGGER.info("Gelesen aus " + txtFileName + ", gefundene Schlüssel: " + data.keySet());
             
             return data;
         } catch (IOException e) {
@@ -264,7 +288,7 @@ public class HtmlDatabase {
         
         Map<String, String> data = getFileData(fileName);
         data.put("3MonthProfitCalculation", details.toString());
-        dataCache.put(fileName, data);
+        dataCache.put(createCacheKey(fileName), data);
     }
     
     public String get3MonthProfitTooltip(String fileName) {
@@ -417,7 +441,7 @@ public class HtmlDatabase {
         
         Map<String, String> data = getFileData(fileName);
         data.put(months + "MPDDCalculation", details.toString());
-        dataCache.put(fileName, data);
+        dataCache.put(createCacheKey(fileName), data);
     }
     
     private double calculateDrawdown(Map<String, Double> profits, List<String> months) {
@@ -603,7 +627,7 @@ public class HtmlDatabase {
         Map<String, String> data = getFileData(fileName);
         if (!data.isEmpty()) {
             data.put("Steigungswert", String.format("%.2f", steigung).replace(',', '.'));
-            dataCache.put(fileName, data);
+            dataCache.put(createCacheKey(fileName), data);
         }
     }
 
@@ -652,11 +676,15 @@ public class HtmlDatabase {
         return true;
     }
     
-    public String getDrawdownChartData(String txtFileName) {
-        Map<String, String> data = getFileData(txtFileName);
+    public String getDrawdownChartData(String fileName) {
+        Map<String, String> data = getFileData(fileName);
         if (data != null && data.containsKey("Drawdown Chart Data")) {
             return data.get("Drawdown Chart Data");
         }
         return null;
+    }
+    
+    public String getRootPath() {
+        return downloadPath;
     }
 }
