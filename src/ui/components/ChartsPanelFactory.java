@@ -65,8 +65,8 @@ public class ChartsPanelFactory {
         Component[] standardCharts = new Component[] {
             chartFactory.createEquityCurveChart(stats),
             chartFactory.createMonthlyProfitChart(stats),
-            // Neue DrawdownPerformanceChart einfügen
-            new EquityDrawdownChart(stats, maxDrawdownGraphic),
+            // Aktualisierte Verwendung des Konstruktors mit htmlDatabase-Parameter
+            new EquityDrawdownChart(stats, maxDrawdownGraphic, htmlDatabase),
             new ThreeMonthProfitChart(
                 htmlDatabase.getMonthlyProfitPercentages(providerName + ".csv"), 
                 htmlDatabase.getEquityDrawdown(providerName)

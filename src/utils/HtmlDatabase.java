@@ -652,5 +652,11 @@ public class HtmlDatabase {
         return true;
     }
     
-  
+    public String getDrawdownChartData(String csvFileName) {
+        Map<String, String> data = getFileData(csvFileName);
+        if (data != null && data.containsKey("DrawdownChartData")) {
+            return data.get("DrawdownChartData");
+        }
+        return null;
+    }
 }
