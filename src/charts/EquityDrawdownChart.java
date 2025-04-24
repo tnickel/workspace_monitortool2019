@@ -5,9 +5,9 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.Date;
 
 import javax.swing.JPanel;
@@ -17,8 +17,13 @@ import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.DateAxis;
 import org.jfree.chart.axis.NumberAxis;
+import org.jfree.chart.plot.IntervalMarker;
+import org.jfree.chart.plot.ValueMarker;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
+import org.jfree.chart.ui.Layer;
+import org.jfree.chart.ui.RectangleAnchor;
+import org.jfree.chart.ui.TextAnchor;
 import org.jfree.data.time.Millisecond;
 import org.jfree.data.time.TimeSeries;
 import org.jfree.data.time.TimeSeriesCollection;
@@ -120,6 +125,62 @@ public class EquityDrawdownChart extends JPanel {
     }
     
     /**
+     * Fügt horizontale Linien und farbliche Hintergrundmarkierungen zum Plot hinzu
+     * @param plot Der XYPlot, zu dem die Markierungen hinzugefügt werden sollen
+     * @param maxValue Der maximale Wert für die Skalierung
+     */
+    private void addHorizontalLines(XYPlot plot, double maxValue) {
+        // Wir definieren die Farbzonen für verschiedene Drawdown-Bereiche
+        // von 0% bis 50% in 10% Schritten
+        
+        // Abgerundeter Maximalwert auf nächste 10er Einheit
+        double roundedMax = Math.ceil(maxValue / 10.0) * 10.0;
+        
+        // Farben für verschiedene Drawdown-Bereiche
+        Color[] colors = {
+            new Color(220, 255, 220), // 0-10% - Sehr hell grün
+            new Color(200, 255, 200), // 10-20% - Hell grün
+            new Color(255, 255, 200), // 20-30% - Hell gelb
+            new Color(255, 220, 180), // 30-40% - Hell orange
+            new Color(255, 200, 180)  // 40-50% - Hell rot
+        };
+        
+        // Hintergrundmarkierungen für die Farbzonen
+        for (int i = 0; i < colors.length; i++) {
+            double lowerBound = i * 10.0;
+            double upperBound = (i + 1) * 10.0;
+            
+            // Nur Zonen bis zum gerundeten Maximum anzeigen
+            if (lowerBound <= roundedMax) {
+                IntervalMarker marker = new IntervalMarker(lowerBound, Math.min(upperBound, roundedMax));
+                marker.setPaint(colors[i]);
+                marker.setAlpha(0.3f); // Transparenz
+                plot.addRangeMarker(marker, Layer.BACKGROUND);
+            }
+        }
+        
+        // Horizontale Linien für jede 10%-Marke
+        for (double i = 0; i <= roundedMax; i += 10.0) {
+            ValueMarker marker = new ValueMarker(i);
+            marker.setPaint(Color.GRAY);
+            marker.setStroke(new java.awt.BasicStroke(1.0f, 
+                                                    java.awt.BasicStroke.CAP_BUTT, 
+                                                    java.awt.BasicStroke.JOIN_MITER, 
+                                                    1.0f, 
+                                                    new float[] {3.0f, 3.0f}, 
+                                                    0.0f)); // Gestrichelte Linie
+            
+            // Beschriftung für die Linie
+            marker.setLabel(String.format("%.0f%%", i));
+            marker.setLabelAnchor(RectangleAnchor.LEFT);
+            marker.setLabelTextAnchor(TextAnchor.CENTER_LEFT);
+            marker.setLabelFont(new Font("SansSerif", Font.PLAIN, 9));
+            
+            plot.addRangeMarker(marker);
+        }
+    }
+    
+    /**
      * Berechnet die Drawdown-Daten und füllt das Chart ausschließlich mit Daten aus der HTML-Datenbank
      */
     private void populateChart() {
@@ -128,15 +189,16 @@ public class EquityDrawdownChart extends JPanel {
         
         // Versuche, die Daten aus der HTML-Datenbank zu laden
         if (htmlDatabase != null && stats.getSignalProvider() != null) {
-            String csvFileName = stats.getSignalProvider() + ".csv";
+            // Korrigiert: Verwende den richtigen Dateinamen für _root.txt Dateien
+            String txtFileName = stats.getSignalProvider() + "_root.txt";
             
-            // Verwende die neue getDrawdownChartData-Methode aus HtmlDatabase
-            String drawdownData = htmlDatabase.getDrawdownChartData(csvFileName);
+            // Verwende die getDrawdownChartData-Methode aus HtmlDatabase
+            String drawdownData = htmlDatabase.getDrawdownChartData(txtFileName);
             
             if (drawdownData != null && !drawdownData.isEmpty()) {
                 processDrawdownData(drawdownData, drawdownSeries);
             } else {
-                System.err.println("Keine Drawdown-Daten in der HTML-Datenbank gefunden für: " + csvFileName);
+                System.err.println("Keine Drawdown-Daten in der HTML-Datenbank gefunden für: " + txtFileName);
                 // Keine Daten - leeres Chart anzeigen
             }
         } else {
@@ -173,6 +235,9 @@ public class EquityDrawdownChart extends JPanel {
         
         // Entferne das % Zeichen aus den Tick-Labels
         rangeAxis.setNumberFormatOverride(new java.text.DecimalFormat("0"));
+        
+        // Füge horizontale Linien und farbliche Markierungen hinzu
+        addHorizontalLines(plot, maxUpperBound);
     }
     
     /**
@@ -180,7 +245,6 @@ public class EquityDrawdownChart extends JPanel {
      */
     private void processDrawdownData(String drawdownData, TimeSeries drawdownSeries) {
         String[] lines = drawdownData.split("\n");
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
         
         int timeOffset = 0; // Für Einträge mit gleichem Datum
         String lastDate = null;
@@ -204,15 +268,15 @@ public class EquityDrawdownChart extends JPanel {
                     lastDate = dateStr;
                 }
                 
-                // Datum mit künstlichem Zeitoffset parsen
-                LocalDateTime dateTime = LocalDateTime.parse(dateStr, formatter)
-                        .plusSeconds(timeOffset); // Künstlichen Zeitoffset hinzufügen
+                // Statt LocalDateTime.parse() verwenden wir LocalDate.parse() und konvertieren dann zu LocalDateTime
+                LocalDate date = LocalDate.parse(dateStr);
+                LocalDateTime dateTime = date.atStartOfDay().plusSeconds(timeOffset);
                 
                 double value = Double.parseDouble(valueStr);
                 
                 // Zum Dataset hinzufügen
-                Date date = Date.from(dateTime.atZone(ZoneId.systemDefault()).toInstant());
-                drawdownSeries.addOrUpdate(new Millisecond(date), value);
+                Date javaDate = Date.from(dateTime.atZone(ZoneId.systemDefault()).toInstant());
+                drawdownSeries.addOrUpdate(new Millisecond(javaDate), value);
             } catch (Exception e) {
                 System.err.println("Fehler beim Parsen der Drawdown-Daten: " + e.getMessage() + " für Zeile: " + line);
             }

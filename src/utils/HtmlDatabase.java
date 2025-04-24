@@ -24,13 +24,13 @@ public class HtmlDatabase {
         LOGGER.info("HtmlDatabase initialisiert mit Pfad: " + downloadPath);
     }
     
-    private Map<String, String> getFileData(String csvFileName) {
-        if (dataCache.containsKey(csvFileName)) {
-            return dataCache.get(csvFileName);
+    private Map<String, String> getFileData(String fileName) {
+        if (dataCache.containsKey(fileName)) {
+            return dataCache.get(fileName);
         }
 
-        String txtFileName = csvFileName.replace(".csv", "") + "_root.txt";  // Hier war der Fehler
-        File txtFile = new File(downloadPath, txtFileName);
+        // Wir erwarten den vollen Dateinamen (_root.txt) als Parameter
+        File txtFile = new File(downloadPath, fileName);
         
         // Protokolliere den vollständigen Pfad zur Datei
         LOGGER.info("Versuche Textdatei zu lesen: " + txtFile.getAbsolutePath());
@@ -106,10 +106,10 @@ public class HtmlDatabase {
                 data.put(currentKey, currentSection.toString().trim());
             }
             
-            dataCache.put(csvFileName, data);
+            dataCache.put(fileName, data);
             
             // Log die gelesenen Schlüssel
-            LOGGER.info("Gelesen aus " + txtFileName + ", gefundene Schlüssel: " + data.keySet());
+            LOGGER.info("Gelesen aus " + fileName + ", gefundene Schlüssel: " + data.keySet());
             
             return data;
         } catch (IOException e) {
@@ -119,10 +119,10 @@ public class HtmlDatabase {
         }
     }
     
-    public double getBalance(String csvFileName) {
-        Map<String, String> data = getFileData(csvFileName);
+    public double getBalance(String fileName) {
+        Map<String, String> data = getFileData(fileName);
         if (data.isEmpty()) {
-            LOGGER.warning("Keine Daten für " + csvFileName + " gefunden");
+            LOGGER.warning("Keine Daten für " + fileName + " gefunden");
             return 0.0;
         }
         
@@ -137,10 +137,10 @@ public class HtmlDatabase {
         }
     }
     
-    public double getEquityDrawdown(String csvFileName) {
-        Map<String, String> data = getFileData(csvFileName);
+    public double getEquityDrawdown(String fileName) {
+        Map<String, String> data = getFileData(fileName);
         if (data.isEmpty()) {
-            LOGGER.warning("Keine Daten für " + csvFileName + " gefunden");
+            LOGGER.warning("Keine Daten für " + fileName + " gefunden");
             // Standardwert zurückgeben, um Division durch Null zu vermeiden
             return 1.0;
         }
@@ -153,7 +153,7 @@ public class HtmlDatabase {
             
             // Stelle sicher, dass der Wert positiv ist (wir erwarten einen positiven Prozentsatz)
             if (value <= 0.0) {
-                LOGGER.warning("EquityDrawdown ist 0 oder negativ: " + value + " für " + csvFileName);
+                LOGGER.warning("EquityDrawdown ist 0 oder negativ: " + value + " für " + fileName);
                 return 1.0; // Standardwert, um Division durch Null zu vermeiden
             }
             
@@ -164,10 +164,10 @@ public class HtmlDatabase {
         }
     }
     
-    public double getEquityDrawdownGraphic(String csvFileName) {
-        Map<String, String> data = getFileData(csvFileName);
+    public double getEquityDrawdownGraphic(String fileName) {
+        Map<String, String> data = getFileData(fileName);
         if (data.isEmpty()) {
-            LOGGER.warning("Keine Daten für " + csvFileName + " gefunden");
+            LOGGER.warning("Keine Daten für " + fileName + " gefunden");
             return 0.0;
         }
         
@@ -182,12 +182,12 @@ public class HtmlDatabase {
         }
     }
     
-    public Map<String, Double> getMonthlyProfitPercentages(String csvFileName) {
-        Map<String, String> data = getFileData(csvFileName);
+    public Map<String, Double> getMonthlyProfitPercentages(String fileName) {
+        Map<String, String> data = getFileData(fileName);
         Map<String, Double> monthlyProfits = new HashMap<>();
         
         if (data.isEmpty()) {
-            LOGGER.warning("Keine Daten für " + csvFileName + " gefunden");
+            LOGGER.warning("Keine Daten für " + fileName + " gefunden");
             return monthlyProfits;
         }
         
@@ -213,10 +213,10 @@ public class HtmlDatabase {
         return monthlyProfits;
     }
     
-    public double getAvr3MonthProfit(String csvFileName) {
-        Map<String, String> data = getFileData(csvFileName);
+    public double getAvr3MonthProfit(String fileName) {
+        Map<String, String> data = getFileData(fileName);
         if (data.isEmpty()) {
-            LOGGER.warning("Keine Daten für " + csvFileName + " gefunden");
+            LOGGER.warning("Keine Daten für " + fileName + " gefunden");
             return 0.0;
         }
         
@@ -225,7 +225,7 @@ public class HtmlDatabase {
                               .replace(" ", "");
                               
         // Berechne die Details für den Tooltip
-        updateAvr3MonthProfitCalculation(csvFileName);
+        updateAvr3MonthProfitCalculation(fileName);
                               
         try {
             return Double.parseDouble(profitStr);
@@ -235,8 +235,8 @@ public class HtmlDatabase {
         }
     }
     
-    private void updateAvr3MonthProfitCalculation(String csvFileName) {
-        Map<String, Double> monthlyProfits = getMonthlyProfitPercentages(csvFileName);
+    private void updateAvr3MonthProfitCalculation(String fileName) {
+        Map<String, Double> monthlyProfits = getMonthlyProfitPercentages(fileName);
         if (monthlyProfits.isEmpty()) {
             return;
         }
@@ -262,13 +262,13 @@ public class HtmlDatabase {
         double average = count > 0 ? sum / count : 0.0;
         details.append(String.format("\nDurchschnitt über %d Monate: %.2f%%", count, average));
         
-        Map<String, String> data = getFileData(csvFileName);
+        Map<String, String> data = getFileData(fileName);
         data.put("3MonthProfitCalculation", details.toString());
-        dataCache.put(csvFileName, data);
+        dataCache.put(fileName, data);
     }
     
-    public String get3MonthProfitTooltip(String csvFileName) {
-        Map<String, String> data = getFileData(csvFileName);
+    public String get3MonthProfitTooltip(String fileName) {
+        Map<String, String> data = getFileData(fileName);
         if (data.isEmpty()) {
             return "Keine Berechnungsdetails verfügbar (Daten nicht gefunden)";
         }
@@ -302,11 +302,11 @@ public class HtmlDatabase {
         return tooltip.toString();
     }
     
-    public double getMPDD(String csvFileName, int months) {
-        updateMPDDCalculation(csvFileName, months);
-        Map<String, String> data = getFileData(csvFileName);
+    public double getMPDD(String fileName, int months) {
+        updateMPDDCalculation(fileName, months);
+        Map<String, String> data = getFileData(fileName);
         if (data.isEmpty()) {
-            LOGGER.warning("Keine Daten für " + csvFileName + " gefunden");
+            LOGGER.warning("Keine Daten für " + fileName + " gefunden");
             return 0.0;
         }
         
@@ -321,8 +321,8 @@ public class HtmlDatabase {
         }
     }
     
-    public String getMPDDTooltip(String csvFileName, int months) {
-        Map<String, String> data = getFileData(csvFileName);
+    public String getMPDDTooltip(String fileName, int months) {
+        Map<String, String> data = getFileData(fileName);
         if (data.isEmpty()) {
             return String.format("Keine Berechnungsdetails für %d-Monats-Drawdown verfügbar (Daten nicht gefunden)", months);
         }
@@ -365,8 +365,8 @@ public class HtmlDatabase {
         return tooltip.toString();
     }
     
-    private void updateMPDDCalculation(String csvFileName, int months) {
-        Map<String, Double> monthlyProfits = getMonthlyProfitPercentages(csvFileName);
+    private void updateMPDDCalculation(String fileName, int months) {
+        Map<String, Double> monthlyProfits = getMonthlyProfitPercentages(fileName);
         if (monthlyProfits.isEmpty()) {
             return;
         }
@@ -415,9 +415,9 @@ public class HtmlDatabase {
             details.append("\nNicht genügend Monate für die Berechnung verfügbar.");
         }
         
-        Map<String, String> data = getFileData(csvFileName);
+        Map<String, String> data = getFileData(fileName);
         data.put(months + "MPDDCalculation", details.toString());
-        dataCache.put(csvFileName, data);
+        dataCache.put(fileName, data);
     }
     
     private double calculateDrawdown(Map<String, Double> profits, List<String> months) {
@@ -433,10 +433,10 @@ public class HtmlDatabase {
         return 100.0 * (1 - minEquity / 100.0);
     }
     
-    public double getStabilitaetswert(String csvFileName) {
-        Map<String, String> data = getFileData(csvFileName);
+    public double getStabilitaetswert(String fileName) {
+        Map<String, String> data = getFileData(fileName);
         if (data.isEmpty()) {
-            LOGGER.warning("Keine Daten für " + csvFileName + " gefunden");
+            LOGGER.warning("Keine Daten für " + fileName + " gefunden");
             return 1.0;
         }
         
@@ -451,8 +451,8 @@ public class HtmlDatabase {
         }
     }
     
-    public String getStabilitaetswertDetails(String csvFileName) {
-        Map<String, String> data = getFileData(csvFileName);
+    public String getStabilitaetswertDetails(String fileName) {
+        Map<String, String> data = getFileData(fileName);
         if (data.isEmpty()) {
             return "Keine Stabilitätsdetails verfügbar (Daten nicht gefunden)";
         }
@@ -506,28 +506,28 @@ public class HtmlDatabase {
         return formattedDetails.toString();
     }
     
-    public double getAverageMonthlyProfit(String csvFileName, int n) {
-        Map<String, Double> monthlyProfits = getMonthlyProfitPercentages(csvFileName);
+    public double getAverageMonthlyProfit(String fileName, int n) {
+        Map<String, Double> monthlyProfits = getMonthlyProfitPercentages(fileName);
         if (monthlyProfits.isEmpty() || n <= 0) {
-            LOGGER.warning("Keine monatlichen Profite für " + csvFileName + " gefunden oder n <= 0");
+            LOGGER.warning("Keine monatlichen Profite für " + fileName + " gefunden oder n <= 0");
             return 0.0;
         }
         
         List<String> sortedMonths = new ArrayList<>(monthlyProfits.keySet());
         if (sortedMonths.isEmpty()) {
-            LOGGER.warning("Keine sortierten Monate für " + csvFileName + " verfügbar");
+            LOGGER.warning("Keine sortierten Monate für " + fileName + " verfügbar");
             return 0.0;
         }
         
         sortedMonths.sort((a, b) -> b.compareTo(a)); // Absteigend sortieren
         
         // Debug-Ausgabe
-        LOGGER.info("Berechne " + n + "-Monats-Profit für " + csvFileName);
+        LOGGER.info("Berechne " + n + "-Monats-Profit für " + fileName);
         LOGGER.info("Sortierte Monate: " + sortedMonths);
         
         // Überprüfe, ob überhaupt genug Monate vorhanden sind
         if (sortedMonths.size() < 2) { // Mindestens aktuellen Monat + 1 weiteren benötigen wir
-            LOGGER.warning("Zu wenige Monate für " + csvFileName + ": " + sortedMonths.size());
+            LOGGER.warning("Zu wenige Monate für " + fileName + ": " + sortedMonths.size());
             return 0.0;
         }
         
@@ -576,12 +576,12 @@ public class HtmlDatabase {
         }
     }
     
-    public List<String> getLastThreeMonthsDetails(String csvFileName) {
-        Map<String, String> data = getFileData(csvFileName);
+    public List<String> getLastThreeMonthsDetails(String fileName) {
+        Map<String, String> data = getFileData(fileName);
         List<String> details = new ArrayList<>();
         
         if (data.isEmpty()) {
-            LOGGER.warning("Keine Daten für " + csvFileName + " gefunden");
+            LOGGER.warning("Keine Daten für " + fileName + " gefunden");
             return details;
         }
         
@@ -599,18 +599,18 @@ public class HtmlDatabase {
         return details;
     }
     
-    public void saveSteigungswert(String csvFileName, double steigung) {
-        Map<String, String> data = getFileData(csvFileName);
+    public void saveSteigungswert(String fileName, double steigung) {
+        Map<String, String> data = getFileData(fileName);
         if (!data.isEmpty()) {
             data.put("Steigungswert", String.format("%.2f", steigung).replace(',', '.'));
-            dataCache.put(csvFileName, data);
+            dataCache.put(fileName, data);
         }
     }
 
-    public double getSteigungswert(String csvFileName) {
-        Map<String, String> data = getFileData(csvFileName);
+    public double getSteigungswert(String fileName) {
+        Map<String, String> data = getFileData(fileName);
         if (data.isEmpty()) {
-            LOGGER.warning("Keine Daten für " + csvFileName + " gefunden");
+            LOGGER.warning("Keine Daten für " + fileName + " gefunden");
             return 0.0;
         }
         
@@ -652,10 +652,10 @@ public class HtmlDatabase {
         return true;
     }
     
-    public String getDrawdownChartData(String csvFileName) {
-        Map<String, String> data = getFileData(csvFileName);
-        if (data != null && data.containsKey("DrawdownChartData")) {
-            return data.get("DrawdownChartData");
+    public String getDrawdownChartData(String txtFileName) {
+        Map<String, String> data = getFileData(txtFileName);
+        if (data != null && data.containsKey("Drawdown Chart Data")) {
+            return data.get("Drawdown Chart Data");
         }
         return null;
     }
