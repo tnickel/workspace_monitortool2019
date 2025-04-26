@@ -2,6 +2,7 @@ package ui.components;
 
 import java.awt.Color;
 import java.awt.FlowLayout;
+import java.util.Map;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -11,11 +12,12 @@ import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.JToolBar;
 
-import components.FavoritesFilterManager;
 import components.MainTable;
+import data.ProviderStats;
 import models.FilterCriteria;
 import services.ProviderHistoryService;
 import ui.DatabaseViewerDialog;
+import ui.EquityDrawdownDialog;
 import ui.FilterDialog;
 import ui.ForceDbSaveDialog;
 import ui.MainFrame;
@@ -82,7 +84,10 @@ public class ToolbarManager {
         filterButton.addActionListener(e -> showFilterDialog());
         toolBar.add(filterButton);
         
-        // "Show Favorites" Button entfernt
+        // Neuer Button für Equity Drawdown Anzeige
+        JButton equityDrawdownButton = UIStyle.createStyledButton("Show Equity Drawdown");
+        equityDrawdownButton.addActionListener(e -> showEquityDrawdownDialog());
+        toolBar.add(equityDrawdownButton);
         
         JButton riskScoreButton = UIStyle.createStyledButton("Risk Score Explanation");
         riskScoreButton.addActionListener(e -> {
@@ -141,6 +146,39 @@ public class ToolbarManager {
             }
         });
         toolBar.add(dbForceSaveButton);
+    }
+    
+ // Neue Methode zur Anzeige des Equity Drawdown Dialogs
+    private void showEquityDrawdownDialog() {
+        // Hole die aktuellen Provider-Daten direkt von der Tabelle
+        Map<String, ProviderStats> currentStats = mainTable.getCurrentProviderStats();
+        
+        // Debug-Ausgaben
+        System.out.println("ToolbarManager: showEquityDrawdownDialog wird aufgerufen");
+        System.out.println("ToolbarManager: Anzahl der Provider in currentStats: " + 
+                           (currentStats != null ? currentStats.size() : "null"));
+        
+        // Prüfe ob die Provider-Map Daten enthält
+        if (currentStats == null || currentStats.isEmpty()) {
+            System.out.println("ToolbarManager: Keine Provider-Daten vorhanden!");
+            
+            JOptionPane.showMessageDialog(
+                parentFrame,
+                "Es sind keine Provider-Daten zum Anzeigen verfügbar.\n" +
+                "Bitte stellen Sie sicher, dass Provider geladen wurden und keine zu strengen Filter gesetzt sind.",
+                "Keine Daten verfügbar",
+                JOptionPane.WARNING_MESSAGE
+            );
+            return; // Dialog nicht öffnen, wenn keine Daten verfügbar sind
+        }
+        
+        EquityDrawdownDialog dialog = new EquityDrawdownDialog(
+            parentFrame,
+            currentStats,
+            mainTable.getHtmlDatabase(),
+            rootPath
+        );
+        dialog.setVisible(true);
     }
     
     private void showFilterDialog() {

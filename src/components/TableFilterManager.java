@@ -2,8 +2,10 @@ package components;
 
 import java.awt.Frame;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import javax.swing.SwingUtilities;
@@ -177,18 +179,53 @@ public class TableFilterManager {
         mainTable.updateStatus();
     }
 
+    /**
+     * Gibt die aktuell gefilterten Provider-Statistiken zurück.
+     * 
+     * @return Map mit Providername als Schlüssel und ProviderStats als Wert
+     */
     public Map<String, ProviderStats> getFilteredProviderStats() {
-        if (currentFilter == null) {
-            return dataManager.getStats();
+        // Logger für Debugging
+        Logger logger = Logger.getLogger(TableFilterManager.class.getName());
+        logger.info("getFilteredProviderStats wird aufgerufen");
+        
+        // Ergebnismap erstellen
+        Map<String, ProviderStats> filteredStats = new HashMap<>();
+        
+        try {
+            // Alle Statistiken vom DataManager holen
+            Map<String, ProviderStats> allStats = dataManager.getStats();
+            
+            if (allStats == null || allStats.isEmpty()) {
+                logger.warning("Keine Provider-Statistiken im DataManager gefunden");
+                return filteredStats; // Leere Map zurückgeben
+            }
+            
+            // Prüfe ob ein Filter angewendet wurde - ohne isActive() Methode
+            if (currentFilter != null && tableModel.getRowCount() < allStats.size()) {
+                logger.info("Filter scheint aktiv zu sein (weniger Zeilen als Provider)");
+                
+                // Durchlaufe das aktuelle TableModel, um gefilterte Providernamen zu erhalten
+                for (int row = 0; row < tableModel.getRowCount(); row++) {
+                    String providerName = (String) tableModel.getValueAt(row, 1); // Spalte 1 enthält Provider-Namen
+                    
+                    if (allStats.containsKey(providerName)) {
+                        filteredStats.put(providerName, allStats.get(providerName));
+                    }
+                }
+            } else {
+                // Wenn kein Filter aktiv ist, alle Provider zurückgeben
+                logger.info("Kein Filter aktiv oder keine Filterung angewendet, verwende alle Provider");
+                filteredStats.putAll(allStats);
+            }
+            
+            logger.info("Filterergebnis: " + filteredStats.size() + " Provider");
+            
+        } catch (Exception e) {
+            logger.severe("Fehler in getFilteredProviderStats: " + e.getMessage());
+            e.printStackTrace();
         }
-        return dataManager.getStats().entrySet().stream()
-            .filter(entry -> currentFilter.matches(
-                entry.getValue(),
-                tableModel.createRowDataForProvider(entry.getKey(), entry.getValue())
-            ))
-            .collect(Collectors.toMap(
-                Map.Entry::getKey,
-                Map.Entry::getValue
-            ));
+        
+        return filteredStats;
     }
 }

@@ -275,9 +275,28 @@ public class MainTable extends JTable {
     }
     
     public Map<String, ProviderStats> getCurrentProviderStats() {
-        return filterManager.getFilteredProviderStats();
+        // Debug-Ausgabe hinzufügen, um das Problem zu identifizieren
+        LOGGER.info("getCurrentProviderStats wird aufgerufen");
+        
+        // Versuche die gefilterten Daten vom FilterManager zu bekommen
+        Map<String, ProviderStats> filteredStats = filterManager.getFilteredProviderStats();
+        
+        // Überprüfe, ob die gefilterten Daten gültig sind
+        if (filteredStats == null || filteredStats.isEmpty()) {
+            LOGGER.warning("Gefilterte Provider-Statistiken sind leer oder null");
+            
+            // Als Fallback verwenden wir alle verfügbaren Statistiken vom DataManager
+            Map<String, ProviderStats> allStats = dataManager.getStats();
+            
+            LOGGER.info("Verwende alle verfügbaren Provider als Fallback: " + 
+                       (allStats != null ? allStats.size() : "null") + " Provider gefunden");
+            
+            return allStats != null ? allStats : new HashMap<>();
+        }
+        
+        LOGGER.info("Gefilterte Provider-Statistiken enthalten " + filteredStats.size() + " Provider");
+        return filteredStats;
     }
-
     public List<String> getSelectedProviders() {
         int[] selectedRows = getSelectedRows();
         List<String> providers = new ArrayList<>();

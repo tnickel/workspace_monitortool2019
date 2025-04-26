@@ -1,78 +1,63 @@
 package ui;
 
 import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Cursor;
-import java.awt.Desktop;
-import java.awt.Dimension;
-import java.awt.FlowLayout;
-import java.awt.Font;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Insets;
 import java.awt.event.KeyEvent;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.net.URI;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.util.Date;
-import java.util.List;
 import java.util.Map;
+import java.util.logging.Logger;
 
 import javax.swing.AbstractAction;
 import javax.swing.Action;
-import javax.swing.BorderFactory;
-import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
+import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
-import javax.swing.JToggleButton;
+import javax.swing.JTable;
 import javax.swing.KeyStroke;
+import javax.swing.table.DefaultTableModel;
 
-import org.jfree.chart.ChartFactory;
-import org.jfree.chart.ChartPanel;
-import org.jfree.chart.JFreeChart;
-import org.jfree.chart.plot.XYPlot;
-import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
-import org.jfree.data.time.Day;
-import org.jfree.data.time.TimeSeries;
-import org.jfree.data.time.TimeSeriesCollection;
-
-import data.FavoritesManager;
 import data.ProviderStats;
-import data.Trade;
 
 public class CompareEquityCurvesDialog extends JFrame {
+    private static final Logger LOGGER = Logger.getLogger(CompareEquityCurvesDialog.class.getName());
     private final Map<String, ProviderStats> providerStats;
-    private final JPanel detailPanel;
-    private final String rootPath;
-    private final FavoritesManager favoritesManager;
+    private final JTable providerTable;
 
     public CompareEquityCurvesDialog(JFrame parent, Map<String, ProviderStats> stats, String rootPath) {
         super("Compare Equity Curves");
         this.providerStats = stats;
-        this.rootPath = rootPath;
-        this.favoritesManager = new FavoritesManager(rootPath);
-        this.detailPanel = new JPanel();
         
-        JPanel mainPanel = new JPanel();
-        mainPanel.setLayout(new GridBagLayout());
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        gbc.weightx = 1.0;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.insets = new Insets(5, 5, 5, 5);
-
-        for (Map.Entry<String, ProviderStats> entry : providerStats.entrySet()) {
-            setupProviderPanel(entry.getKey(), entry.getValue(), mainPanel, gbc);
-            gbc.gridy++;
+        // Erstelle die Tabelle zuerst, da providerTable als final deklariert ist
+        this.providerTable = createProviderTable();
+        
+        // Logging zur Fehlerdiagnose
+        LOGGER.info("CompareEquityCurvesDialog wird geöffnet");
+        LOGGER.info("Anzahl der Provider: " + (stats != null ? stats.size() : "null"));
+        
+        // Überprüfe, ob Daten verfügbar sind
+        if (stats == null || stats.isEmpty()) {
+            LOGGER.warning("Keine Provider-Daten zum Anzeigen verfügbar!");
+            JOptionPane.showMessageDialog(
+                parent,
+                "Es sind keine Provider-Daten zum Anzeigen verfügbar.\n" +
+                "Bitte stellen Sie sicher, dass Provider geladen wurden und keine zu strengen Filter gesetzt sind.",
+                "Keine Daten verfügbar",
+                JOptionPane.WARNING_MESSAGE
+            );
+            dispose(); // Dialog sofort schließen
+            return;
         }
-
-        JScrollPane scrollPane = new JScrollPane(mainPanel);
+        
+        // Zeige die vorhandenen Provider an (für Debug)
+        if (stats.size() < 20) {
+            for (String key : stats.keySet()) {
+                LOGGER.info("Verfügbarer Provider: " + key);
+            }
+        } else {
+            LOGGER.info("Es sind " + stats.size() + " Provider verfügbar");
+        }
+        
+        // Tabelle wurde bereits im Konstruktor erstellt
+        JScrollPane scrollPane = new JScrollPane(providerTable);
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
 
         setLayout(new BorderLayout());
@@ -91,110 +76,53 @@ public class CompareEquityCurvesDialog extends JFrame {
         getRootPane().getActionMap().put("ESCAPE", escapeAction);
     }
 
-    private void setupProviderPanel(String providerName, ProviderStats stats, JPanel mainPanel, GridBagConstraints gbc) {
-        JPanel providerPanel = new JPanel(new BorderLayout());
-        providerPanel.setBorder(BorderFactory.createEtchedBorder());
+    private JTable createProviderTable() {
+        // Erstelle Tabellen-Modell mit zwei Spalten
+        DefaultTableModel model = new DefaultTableModel(
+            new String[]{"Signal Provider", "Leer"}, 0);
         
-        JPanel headerPanel = new JPanel(new BorderLayout());
-        JToggleButton favoriteToggle = createFavoriteToggle(providerName);
-        
-        // Title Panel mit Link und Button
-        JPanel titlePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        JLabel titleLabel = new JLabel(providerName);
-        titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD, 16));
-        titlePanel.add(titleLabel);
-        
-        // MQL5 Link
-        String providerId = providerName.substring(providerName.lastIndexOf("_") + 1).replace(".csv", "");
-        JLabel linkLabel = new JLabel("<html><u>https://www.mql5.com/de/signals/" + providerId + "?source=Site+Signals+Subscriptions#!tab=account</u></html>");
-        linkLabel.setForeground(Color.BLUE);
-        linkLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        linkLabel.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                try {
-                    Desktop.getDesktop().browse(new URI("https://www.mql5.com/de/signals/" + providerId + 
-                        "?source=Site+Signals+Subscriptions#!tab=account"));
-                } catch (Exception ex) {
-                    ex.printStackTrace();
-                }
-            }
-        });
-        titlePanel.add(linkLabel);
-        
-        // Show Trade List Button
-        JButton showTradeListButton = new JButton("Show Trade List");
-        showTradeListButton.addActionListener(e -> {
-            TradeListFrame tradeListFrame = new TradeListFrame(providerName, stats);
-            tradeListFrame.setVisible(true);
-        });
-        titlePanel.add(showTradeListButton);
-        
-        headerPanel.add(titlePanel, BorderLayout.CENTER);
-        headerPanel.add(favoriteToggle, BorderLayout.EAST);
-        
-        // Chart
-        JFreeChart chart = createChart(providerName, stats);
-        ChartPanel chartPanel = new ChartPanel(chart);
-        chartPanel.setPreferredSize(new Dimension(900, 300));
-        
-        providerPanel.add(headerPanel, BorderLayout.NORTH);
-        providerPanel.add(chartPanel, BorderLayout.CENTER);
-        
-        mainPanel.add(providerPanel, gbc);
-    }
-
-    private JToggleButton createFavoriteToggle(String providerName) {
-        String providerId = providerName.substring(providerName.lastIndexOf("_") + 1).replace(".csv", "");
-        JToggleButton toggle = new JToggleButton("★");
-        toggle.setSelected(favoritesManager.isFavorite(providerId));
-        toggle.setToolTipText("Add to Favorites");
-        toggle.setFocusPainted(false);
-        toggle.addActionListener(e -> {
-            favoritesManager.toggleFavorite(providerId);
-            toggle.setSelected(favoritesManager.isFavorite(providerId));
-        });
-        return toggle;
-    }
-
-    private JFreeChart createChart(String providerName, ProviderStats stats) {
-        TimeSeries series = new TimeSeries(providerName);
-        TimeSeriesCollection dataset = new TimeSeriesCollection(series);
-        
-        List<Trade> trades = stats.getTrades();
-        trades.sort((t1, t2) -> t1.getCloseTime().compareTo(t2.getCloseTime()));
-        
-        double equity = stats.getInitialBalance();
-        
-        for (Trade trade : trades) {
-            if (trade.getCloseTime() != null && !trade.getCloseTime().isAfter(LocalDateTime.now())) {
-                equity += trade.getTotalProfit();
-                series.addOrUpdate(
-                    new Day(Date.from(trade.getCloseTime().atZone(ZoneId.systemDefault()).toInstant())),
-                    equity
-                );
-            }
+        // Prüfe explizit, ob providerStats nicht null und nicht leer ist
+        if (providerStats == null || providerStats.isEmpty()) {
+            LOGGER.warning("Keine Provider zum Verarbeiten in createProviderTable vorhanden!");
+            // Dummy-Zeile hinzufügen
+            model.addRow(new Object[]{"KEINE PROVIDER GEFUNDEN", "KEINE DATEN VERFÜGBAR"});
+            LOGGER.info("Dummy-Zeile hinzugefügt");
+            return new JTable(model);
         }
-
-        JFreeChart chart = ChartFactory.createTimeSeriesChart(
-            "Equity Curve",
-            "Time",
-            "Equity",
-            dataset,
-            true,
-            true,
-            false
-        );
-
-        XYPlot plot = (XYPlot) chart.getPlot();
-        plot.setBackgroundPaint(Color.WHITE);
-        plot.setDomainGridlinePaint(Color.LIGHT_GRAY);
-        plot.setRangeGridlinePaint(Color.LIGHT_GRAY);
-
-        XYLineAndShapeRenderer renderer = new XYLineAndShapeRenderer();
-        renderer.setDefaultShapesVisible(false);
-        plot.setRenderer(renderer);
-
-        return chart;
+        
+        // Füge Zeilen für jeden Provider hinzu
+        for (Map.Entry<String, ProviderStats> entry : providerStats.entrySet()) {
+            String providerName = entry.getKey();
+            ProviderStats stats = entry.getValue();
+            
+            // Überspringe Provider mit null-Stats
+            if (stats == null) {
+                LOGGER.warning("Provider " + providerName + " hat null ProviderStats, wird übersprungen");
+                continue;
+            }
+            
+            LOGGER.info("Füge Provider hinzu: " + providerName);
+            model.addRow(new Object[]{providerName, ""});
+        }
+        
+        // Prüfen ob nach dem Filtern noch Provider übrig sind
+        if (model.getRowCount() == 0) {
+            LOGGER.warning("Nach Filtern sind keine Provider mehr übrig");
+            model.addRow(new Object[]{"KEINE PROVIDER GEFUNDEN", "KEINE DATEN VERFÜGBAR"});
+        }
+        
+        // Erstelle die Tabelle
+        JTable table = new JTable(model) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false; // Keine Zellen editierbar
+            }
+        };
+        
+        // Spaltenbreiten anpassen
+        table.getColumnModel().getColumn(0).setPreferredWidth(300);
+        table.getColumnModel().getColumn(1).setPreferredWidth(700);
+        
+        return table;
     }
 }

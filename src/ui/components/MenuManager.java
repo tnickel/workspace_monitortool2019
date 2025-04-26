@@ -1,6 +1,7 @@
 package ui.components;
 
 import java.awt.Color;
+import java.util.Map;
 
 import javax.swing.BorderFactory;
 import javax.swing.JFileChooser;
@@ -11,10 +12,12 @@ import javax.swing.JOptionPane;
 
 import components.MainTable;
 import data.DataManager;
+import data.ProviderStats;
 import services.ProviderHistoryService;
 import ui.CompareEquityCurvesDialog;
 import ui.CompareOpenTradesDialog;
 import ui.DatabaseViewerDialog;
+import ui.EquityDrawdownDialog;
 import ui.ForceDbSaveDialog;
 import ui.MainFrame;
 import ui.RiskScoreExplanationDialog;
@@ -178,6 +181,10 @@ public class MenuManager {
         JMenuItem showEquityCurvesItem = new JMenuItem("Equity Curves anzeigen");
         showEquityCurvesItem.addActionListener(e -> showCompareDialog());
         
+        // Menüpunkt für Equity Drawdown anzeigen (NEUER MENÜPUNKT)
+        JMenuItem showEquityDrawdownItem = new JMenuItem("Equity Drawdown anzeigen");
+        showEquityDrawdownItem.addActionListener(e -> showEquityDrawdownDialog());
+        
         // Menüpunkt für Signal Provider Liste
         JMenuItem showSignalProvidersItem = new JMenuItem("Signal Provider Liste");
         showSignalProvidersItem.addActionListener(e -> {
@@ -202,6 +209,7 @@ public class MenuManager {
         });
         
         viewMenu.add(showEquityCurvesItem);
+        viewMenu.add(showEquityDrawdownItem); // Neuer Menüpunkt hinzugefügt
         viewMenu.add(showSignalProvidersItem);
         viewMenu.add(compareOpenTradesItem);
         
@@ -236,6 +244,47 @@ public class MenuManager {
         menuBar.add(dbMenu);
         menuBar.add(viewMenu);
         menuBar.add(helpMenu);
+    }
+    
+ // Neue Methode zur Anzeige des Equity Drawdown Dialogs
+    private void showEquityDrawdownDialog() {
+        // Hole die aktuellen Provider-Daten direkt von der Tabelle
+        Map<String, ProviderStats> currentStats = mainTable.getCurrentProviderStats();
+        
+        // Debug-Ausgaben
+        System.out.println("MenuManager: showEquityDrawdownDialog wird aufgerufen");
+        System.out.println("MenuManager: Anzahl der Provider in currentStats: " + 
+                           (currentStats != null ? currentStats.size() : "null"));
+        
+        // Prüfe ob die Provider-Map Daten enthält
+        if (currentStats == null || currentStats.isEmpty()) {
+            System.out.println("MenuManager: Keine Provider-Daten vorhanden! Hole alle verfügbaren Provider...");
+            
+            // Als Fallback alle verfügbaren Provider verwenden
+            currentStats = dataManager.getStats();
+            
+            System.out.println("MenuManager: Anzahl aller verfügbaren Provider: " + 
+                               (currentStats != null ? currentStats.size() : "null"));
+            
+            if (currentStats == null || currentStats.isEmpty()) {
+                JOptionPane.showMessageDialog(
+                    parentFrame,
+                    "Es sind keine Provider-Daten zum Anzeigen verfügbar.\n" +
+                    "Bitte stellen Sie sicher, dass Provider geladen wurden und keine zu strengen Filter gesetzt sind.",
+                    "Keine Daten verfügbar",
+                    JOptionPane.WARNING_MESSAGE
+                );
+                return; // Dialog nicht öffnen, wenn keine Daten verfügbar sind
+            }
+        }
+        
+        EquityDrawdownDialog dialog = new EquityDrawdownDialog(
+            parentFrame,
+            currentStats,
+            mainTable.getHtmlDatabase(),
+            rootPath
+        );
+        dialog.setVisible(true);
     }
     
     private void setDownloadPath() {
