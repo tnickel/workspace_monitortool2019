@@ -2,8 +2,10 @@ package data;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -16,13 +18,9 @@ import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import javax.swing.JOptionPane;
-import javax.swing.SwingUtilities;
-
 public class DataManager {
    private static final Logger LOGGER = Logger.getLogger(DataManager.class.getName());
    private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy.MM.dd HH:mm:ss");
-   private static final int EXPECTED_MIN_FIELDS = 11;
    private static final String BASE_URL = "https://www.mql5.com/en/signals/";
    
    private final Map<String, ProviderStats> signalProviderStats;
@@ -34,13 +32,19 @@ public class DataManager {
    // Singleton-Instanz
    private static DataManager instance;
    
-   // Debug-Einstellungen
-   private boolean showDebugDialog = true;
+   // Debug-Modus für zusätzliche Ausgaben
+   private boolean debugMode = true;
    
    public DataManager() {
        this.signalProviderStats = new HashMap<>();
+       
+       // Debug-Ausgabe zur Instanziierung
+       if (debugMode) {
+           LOGGER.info("DataManager wurde instanziiert");
+       }
    }
    
+   // Setter für Callbacks
    public void setProgressCallback(Consumer<Integer> progressCallback) {
        this.progressCallback = progressCallback;
    }
@@ -49,6 +53,7 @@ public class DataManager {
        this.statusCallback = statusCallback;
    }
    
+   // Singleton-Methode
    public static synchronized DataManager getInstance() {
        if (instance == null) {
            instance = new DataManager();
@@ -56,6 +61,7 @@ public class DataManager {
        return instance;
    }
    
+   // Setter für die Instanz (für Testbarkeit)
    public static void setInstance(DataManager manager) {
        instance = manager;
    }
@@ -113,290 +119,429 @@ public class DataManager {
        if (instance == null) {
            instance = this;
        }
-       
-     
    }
 
    private void processFile(File file) {
        LOGGER.info("Starting to process file: " + file.getName());
-       List<String> allLines = new ArrayList<>();
        List<String> skippedLines = new ArrayList<>();
        
-       try (BufferedReader reader = new BufferedReader(
-               new FileReader(file, StandardCharsets.UTF_8), 32768)) {
-           String line;
-           while ((line = reader.readLine()) != null) {
-               allLines.add(line);
-           }
-       } catch (IOException e) {
-           LOGGER.severe("Error reading file " + file.getName() + ": " + e.getMessage());
-           return;
-       }
-       
-       if (allLines.isEmpty()) {
-           LOGGER.warning("File " + file.getName() + " is empty");
-           return;
-       }
-       
-       // Provider-Informationen
-       String providerName = extractProviderName(file.getName());
-       String providerURL = constructProviderURL(providerName);
-       
-       // Debug-Variablen für Datumsbereich
-       LocalDateTime earliestDate = null;
-       LocalDateTime latestDate = null;
-       
-       // Provider-Stats erstellen
-       ProviderStats stats = new ProviderStats();
-       stats.setSignalProviderInfo(providerName, providerURL);
-       
-       // Header-Zeile überspringen
-       boolean isHeader = true;
-       double initialBalance = 0.0;
-       boolean foundFirstBalance = false;
-       int tradeCounts = 0;
-       
-       for (String line : allLines) {
-           if (isHeader) {
-               isHeader = false;
-               continue;
-           }
+       try {
+           // Dateiformat durch Lesen der ersten Zeile bestimmen
+           boolean isMql5Format = false;
+           String headerLine = null;
            
-           line = line.trim();
-           if (line.isEmpty()) continue;
-           
-           String[] data = line.split(";", -1);
-           
-           // Logge die ersten paar Zeilen zur Überprüfung
-           if (tradeCounts < 3 || allLines.size() - allLines.indexOf(line) < 3) {
-               LOGGER.info("Sample line: " + line);
+           try (BufferedReader headerReader = new BufferedReader(
+                    new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8))) {
+               headerLine = headerReader.readLine();
+               
+               if (headerLine != null) {
+                   // Bereinigen möglicher BOM-Zeichen oder anderer Präfixe
+                   if (headerLine.startsWith("\uFEFF")) {
+                       headerLine = headerLine.substring(1);
+                   }
+                   
+                   String[] headerFields = headerLine.split(";");
+                   
+                   // Debug-Ausgabe für Header-Felder
+                   if (debugMode) {
+                       LOGGER.info("Header hat " + headerFields.length + " Felder");
+                       for (int i = 0; i < headerFields.length; i++) {
+                           LOGGER.info("Header-Feld " + i + ": '" + headerFields[i] + "'");
+                       }
+                   }
+                   
+                   // MQL5-Format-Erkennung: Hat mindestens 11 Felder, erstes und siebtes sind "Time"
+                   // und sechstes Feld ist das duplizierte "Volume"
+                   if (headerFields.length >= 11 && 
+                       "Time".equals(headerFields[0]) && 
+                       "Volume".equals(headerFields[5]) && 
+                       "Time".equals(headerFields[6])) {
+                       isMql5Format = true;
+                       LOGGER.info("Detected MQL5 format with duplicate Volume field");
+                   } else {
+                       LOGGER.info("Using standard MT4 format");
+                   }
+               }
+           } catch (IOException e) {
+               LOGGER.warning("Error reading file header: " + e.getMessage());
            }
            
-           // Ignoriere leere Balance/Credit Zeilen
-           if ((line.startsWith("Balance") || line.startsWith("Credit")) && data.length > 1 && data[1].trim().isEmpty()) {
-               continue;
-           }
-           
-           // Verarbeite Balance-Einträge
-           if (data.length >= 2 && "Balance".equalsIgnoreCase(data[1])) {
-               if (!foundFirstBalance) {
+           // Datei komplett verarbeiten
+           try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8), 32768)) {
+               
+               String line;
+               boolean isHeader = true;
+               ProviderStats stats = new ProviderStats();
+               
+               // Setze Provider-Informationen
+               String providerName = extractProviderName(file.getName());
+               String providerURL = constructProviderURL(providerName);
+               stats.setSignalProviderInfo(providerName, providerURL);
+               
+               int lineCount = 0;
+               int tradeCounts = 0;
+               double initialBalance = 1000.0; // Default-Wert für MQL5-Format
+               boolean foundFirstBalance = false;
+               
+               while ((line = reader.readLine()) != null) {
+                   lineCount++;
+                   if (isHeader) {
+                       isHeader = false;
+                       continue;
+                   }
+                   
+                   // Leere Zeilen überspringen
+                   line = line.trim();
+                   if (line.isEmpty()) continue;
+                   
+                   // Debug: Bei Problemen erste paar Zeilen ausgeben
+                   if (lineCount <= 5 && debugMode) {
+                       LOGGER.info("Line " + lineCount + ": " + line);
+                   }
+                   
+                   String[] data = line.split(";", -1);
+                   
+                   // Wenn zu wenige Felder, überspringe die Zeile
+                   if (data.length < 8) {
+                       LOGGER.fine("Line with too few fields: " + line);
+                       skippedLines.add(line);
+                       continue;
+                   }
+                   
+                   // Balance und Credit Einträge im Standard-Format
+                   if (!isMql5Format && (line.startsWith("Balance") || line.startsWith("Credit"))) {
+                       if (data.length > 1 && "Balance".equalsIgnoreCase(data[1])) {
+                           if (!foundFirstBalance) {
+                               try {
+                                   // Suche nach dem Wert in allen verfügbaren Feldern
+                                   String balanceStr = null;
+                                   for (int i = data.length - 1; i >= 2; i--) {
+                                       if (data[i] != null && !data[i].trim().isEmpty()) {
+                                           balanceStr = data[i].trim();
+                                           break;
+                                       }
+                                   }
+                                   
+                                   if (balanceStr != null && !balanceStr.isEmpty()) {
+                                       initialBalance = Double.parseDouble(balanceStr);
+                                       if (initialBalance >= 0) {
+                                           stats.setInitialBalance(initialBalance);
+                                           foundFirstBalance = true;
+                                           LOGGER.info("Found initial balance: " + initialBalance);
+                                       }
+                                   }
+                               } catch (NumberFormatException e) {
+                                   LOGGER.warning("Failed to parse balance: " + e.getMessage());
+                               }
+                           }
+                           continue;
+                       }
+                       // Überspringe andere Balance/Credit Zeilen
+                       continue;
+                   }
+                   
+                   // Ignoriere "cancelled" Einträge
+                   if (data.length > 1 && data[1].toLowerCase().contains("cancelled")) {
+                       continue;
+                   }
+                   
                    try {
-                       String balanceStr = data[data.length - 1].trim();
-                       if (!balanceStr.isEmpty()) {
-                           initialBalance = Double.parseDouble(balanceStr);
-                           if (initialBalance >= 0) {
-                               stats.setInitialBalance(initialBalance);
-                               foundFirstBalance = true;
+                       // Gemeinsames Feld-Parsing für beide Formate
+                       LocalDateTime openTime;
+                       try {
+                           openTime = LocalDateTime.parse(data[0].trim(), DATE_TIME_FORMATTER);
+                       } catch (DateTimeParseException e) {
+                           LOGGER.fine("Failed to parse open time: " + data[0]);
+                           skippedLines.add(line);
+                           continue;
+                       }
+                       
+                       String type = data[1].trim();
+                       
+                       double lots;
+                       try {
+                           lots = Double.parseDouble(data[2].trim().replace(",", "."));
+                       } catch (NumberFormatException e) {
+                           LOGGER.fine("Failed to parse lots: " + e.getMessage());
+                           skippedLines.add(line);
+                           continue;
+                       }
+                       
+                       String symbol = data[3].trim();
+                       
+                       double openPrice;
+                       try {
+                           openPrice = Double.parseDouble(data[4].trim().replace(",", "."));
+                       } catch (NumberFormatException e) {
+                           LOGGER.fine("Failed to parse open price: " + e.getMessage());
+                           skippedLines.add(line);
+                           continue;
+                       }
+                       
+                       // Initialisiere mit Default-Werten
+                       double stopLoss = 0.0;
+                       double takeProfit = 0.0;
+                       LocalDateTime closeTime;
+                       double closePrice;
+                       double commission = 0.0;
+                       double swap = 0.0;
+                       double profit = 0.0;
+                       
+                       if (isMql5Format) {
+                           // MQL5-Format mit festen Positionen
+                           // 0: Open Time, 1: Type, 2: Volume, 3: Symbol, 4: Open Price
+                           // 5: Volume (wiederholt), 6: Close Time, 7: Close Price
+                           // 8: Commission, 9: Swap, 10: Profit
+                           
+                           try {
+                               closeTime = LocalDateTime.parse(data[6].trim(), DATE_TIME_FORMATTER);
+                           } catch (DateTimeParseException e) {
+                               LOGGER.fine("Failed to parse close time: " + data[6]);
+                               skippedLines.add(line);
+                               continue;
+                           }
+                           
+                           try {
+                               closePrice = Double.parseDouble(data[7].trim().replace(",", "."));
+                           } catch (NumberFormatException e) {
+                               LOGGER.fine("Failed to parse close price: " + e.getMessage());
+                               skippedLines.add(line);
+                               continue;
+                           }
+                           
+                           // Commission und Swap können leer sein
+                           if (data.length > 8 && !data[8].trim().isEmpty()) {
+                               try {
+                                   commission = Double.parseDouble(data[8].trim().replace(",", "."));
+                               } catch (NumberFormatException e) {
+                                   LOGGER.fine("Empty or invalid commission: " + data[8]);
+                                   // Nicht kritisch, setze auf 0
+                               }
+                           }
+                           
+                           if (data.length > 9 && !data[9].trim().isEmpty()) {
+                               try {
+                                   swap = Double.parseDouble(data[9].trim().replace(",", "."));
+                               } catch (NumberFormatException e) {
+                                   LOGGER.fine("Empty or invalid swap: " + data[9]);
+                                   // Nicht kritisch, setze auf 0
+                               }
+                           }
+                           
+                           // Profit ist wichtig
+                           if (data.length > 10) {
+                               try {
+                                   // MQL5 speichert Profit als ganze Zahl, muss skaliert werden
+                                   String profitStr = data[10].trim().replace(",", ".");
+                                   
+                                   if (!profitStr.isEmpty()) {
+                                       double rawProfit = Double.parseDouble(profitStr);
+                                       
+                                       // Skalierungsfaktor basierend auf Symbol und Wert
+                                       double scaleFactor = 100.0; // Standard-Skalierungsfaktor
+                                      
+                                       // Anwenden des Skalierungsfaktors
+                                       profit = rawProfit / scaleFactor;
+                                       
+                                       if (debugMode && lineCount <= 5) {
+                                           LOGGER.info(String.format(
+                                               "Parsed profit for %s: raw=%f, scale=%f, adjusted=%f", 
+                                               symbol, rawProfit, scaleFactor, profit));
+                                       }
+                                   } else {
+                                       LOGGER.fine("Empty profit field");
+                                       skippedLines.add(line);
+                                       continue;
+                                   }
+                               } catch (NumberFormatException e) {
+                                   LOGGER.fine("Failed to parse profit: " + e.getMessage());
+                                   skippedLines.add(line);
+                                   continue;
+                               }
+                           } else {
+                               LOGGER.fine("No profit field found");
+                               skippedLines.add(line);
+                               continue;
+                           }
+                           
+                       } else {
+                           // Standard-Format mit S/L und T/P
+                           boolean hasStopLossTakeProfit = false;
+                           
+                           // Format-Erkennung anhand des Datums an Position 7
+                           if (data.length > 7) {
+                               try {
+                                   LocalDateTime.parse(data[7].trim(), DATE_TIME_FORMATTER);
+                                   hasStopLossTakeProfit = true;
+                               } catch (DateTimeParseException e) {
+                                   // Kein Datum an Position 7
+                                   hasStopLossTakeProfit = false;
+                               }
+                           }
+                           
+                           // Überprüfe, ob Felder 5 und 6 numerische Werte enthalten (S/L, T/P)
+                           if (!hasStopLossTakeProfit && data.length > 6) {
+                               try {
+                                   if (data[5] != null && !data[5].trim().isEmpty()) {
+                                       Double.parseDouble(data[5].trim().replace(",", "."));
+                                       hasStopLossTakeProfit = true;
+                                   }
+                               } catch (NumberFormatException e) {
+                                   // Ignorieren
+                               }
+                               
+                               try {
+                                   if (data[6] != null && !data[6].trim().isEmpty()) {
+                                       Double.parseDouble(data[6].trim().replace(",", "."));
+                                       hasStopLossTakeProfit = true;
+                                   }
+                               } catch (NumberFormatException e) {
+                                   // Ignorieren
+                               }
+                           }
+                           
+                           // Indizes basierend auf Format bestimmen
+                           int closeTimeIndex = hasStopLossTakeProfit ? 7 : 5;
+                           int closePriceIndex = hasStopLossTakeProfit ? 8 : 6;
+                           int commissionIndex = hasStopLossTakeProfit ? 9 : 7;
+                           int swapIndex = hasStopLossTakeProfit ? 10 : 8;
+                           int profitIndex = hasStopLossTakeProfit ? 11 : 9;
+                           
+                           if (debugMode && lineCount <= 5) {
+                               LOGGER.info("Format erkannt: hasStopLossTakeProfit=" + hasStopLossTakeProfit);
+                               LOGGER.info("Indizes: closeTime=" + closeTimeIndex + ", closePrice=" + closePriceIndex + ", profit=" + profitIndex);
+                           }
+                           
+                           // S/L und T/P auslesen, falls vorhanden
+                           if (hasStopLossTakeProfit) {
+                               try {
+                                   if (data.length > 5 && !data[5].trim().isEmpty()) {
+                                       stopLoss = Double.parseDouble(data[5].trim().replace(",", "."));
+                                   }
+                                   if (data.length > 6 && !data[6].trim().isEmpty()) {
+                                       takeProfit = Double.parseDouble(data[6].trim().replace(",", "."));
+                                   }
+                               } catch (NumberFormatException e) {
+                                   LOGGER.fine("Failed to parse SL/TP: " + e.getMessage());
+                                   // Keine kritische Information, weitermachen
+                               }
+                           }
+                           
+                           // Schließzeit auslesen
+                           if (data.length <= closeTimeIndex) {
+                               LOGGER.fine("Not enough fields for closeTime at index " + closeTimeIndex);
+                               skippedLines.add(line);
+                               continue;
+                           }
+                           
+                           try {
+                               closeTime = LocalDateTime.parse(data[closeTimeIndex].trim(), DATE_TIME_FORMATTER);
+                           } catch (DateTimeParseException e) {
+                               LOGGER.fine("Failed to parse close time: " + data[closeTimeIndex]);
+                               skippedLines.add(line);
+                               continue;
+                           }
+                           
+                           // Schließkurs auslesen
+                           if (data.length <= closePriceIndex) {
+                               LOGGER.fine("Not enough fields for closePrice at index " + closePriceIndex);
+                               skippedLines.add(line);
+                               continue;
+                           }
+                           
+                           try {
+                               closePrice = Double.parseDouble(data[closePriceIndex].trim().replace(",", "."));
+                           } catch (NumberFormatException e) {
+                               LOGGER.fine("Failed to parse close price: " + e.getMessage());
+                               skippedLines.add(line);
+                               continue;
+                           }
+                           
+                           // Kommission auslesen
+                           if (data.length > commissionIndex && !data[commissionIndex].trim().isEmpty()) {
+                               try {
+                                   commission = Double.parseDouble(data[commissionIndex].trim().replace(",", "."));
+                               } catch (NumberFormatException e) {
+                                   LOGGER.fine("Failed to parse commission: " + e.getMessage());
+                                   // Nicht kritisch, weitermachen
+                               }
+                           }
+                           
+                           // Swap auslesen
+                           if (data.length > swapIndex && !data[swapIndex].trim().isEmpty()) {
+                               try {
+                                   swap = Double.parseDouble(data[swapIndex].trim().replace(",", "."));
+                               } catch (NumberFormatException e) {
+                                   LOGGER.fine("Failed to parse swap: " + e.getMessage());
+                                   // Nicht kritisch, weitermachen
+                               }
+                           }
+                           
+                           // Profit auslesen
+                           if (data.length <= profitIndex) {
+                               LOGGER.fine("Not enough fields for profit at index " + profitIndex);
+                               skippedLines.add(line);
+                               continue;
+                           }
+                           
+                           try {
+                               String profitStr = data[profitIndex].trim().replace(",", ".");
+                               // Bereinigen von Kommentaren wie [sl], [tp]
+                               if (profitStr.contains("[")) {
+                                   profitStr = profitStr.split("\\[")[0].trim();
+                               }
+                               profit = Double.parseDouble(profitStr);
+                           } catch (NumberFormatException e) {
+                               LOGGER.fine("Failed to parse profit: " + e.getMessage());
+                               skippedLines.add(line);
+                               continue;
                            }
                        }
-                   } catch (NumberFormatException e) {
+                       
+                       // Trade zu den Stats hinzufügen
+                       stats.addTrade(
+                           openTime, closeTime,
+                           type, symbol, lots,
+                           openPrice, closePrice,
+                           stopLoss, takeProfit,
+                           commission, swap, profit
+                       );
+                       
+                       tradeCounts++;
+                       
+                   } catch (Exception e) {
+                       LOGGER.log(Level.WARNING, "General error parsing line: " + line, e);
                        skippedLines.add(line);
                    }
                }
-               continue;
+               
+               // Setze Balance für MQL5-Format, falls nicht gefunden
+               if (isMql5Format && !foundFirstBalance) {
+                   stats.setInitialBalance(initialBalance);
+                   LOGGER.info("Using default initial balance for MQL5 format: " + initialBalance);
+               }
+               
+               if (!stats.getProfits().isEmpty()) {
+                   signalProviderStats.put(file.getName(), stats);
+                   LOGGER.info(String.format("Successfully processed %s: %d trades loaded, Initial Balance: %.2f, Format: %s",
+                           file.getName(), tradeCounts, stats.getInitialBalance(), isMql5Format ? "MQL5" : "Standard"));
+               } else {
+                   LOGGER.warning("No trades processed for file: " + file.getName() + " (processed lines: " + lineCount + ")");
+               }
+               
+               // Statistik über übersprungene Zeilen
+               if (!skippedLines.isEmpty()) {
+                   LOGGER.info(String.format("Skipped %d out of %d lines in %s", 
+                           skippedLines.size(), lineCount, file.getName()));
+               }
            }
            
-           // Ignoriere cancelled Trades
-           if (line.toLowerCase().contains("cancelled")) {
-               continue;
-           }
-           
-           try {
-               // Prüfe, ob wir genügend Felder haben
-               if (data.length < 10) {
-                   LOGGER.warning("Line with too few fields: " + line + " (has " + data.length + " fields)");
-                   skippedLines.add(line);
-                   continue;
-               }
-               
-               // Zeit-Felder
-               LocalDateTime openTime;
-               LocalDateTime closeTime;
-               
-               try {
-                   openTime = LocalDateTime.parse(data[0].trim(), DATE_TIME_FORMATTER);
-               } catch (DateTimeParseException e) {
-                   LOGGER.warning("Failed to parse open time: " + data[0] + " in line: " + line);
-                   skippedLines.add(line);
-                   continue;
-               }
-               
-               // Aktualisiere den ersten Trade-Zeitpunkt
-               if (earliestDate == null || openTime.isBefore(earliestDate)) {
-                   earliestDate = openTime;
-               }
-               
-               // Trade-Typ und Symbol
-               String type = data[1].trim();
-               String symbol = data[3].trim();
-               
-               // Volume, Open Price und Close Price
-               double lots, openPrice, closePrice;
-               try {
-                   lots = Double.parseDouble(data[2].trim().replace(",", "."));
-                   openPrice = Double.parseDouble(data[4].trim().replace(",", ".").replace(" ", ""));
-               } catch (NumberFormatException e) {
-                   LOGGER.warning("Failed to parse numeric value in line: " + line);
-                   skippedLines.add(line);
-                   continue;
-               }
-               
-               // S/L und T/P können leer sein
-               double stopLoss = 0.0;
-               double takeProfit = 0.0;
-               
-               // Bestimme das Format: mit oder ohne S/L und T/P
-               boolean hasStopLossTakeProfit = false;
-               
-               // Versuche zu erkennen, ob S/L oder T/P vorhanden sind
-               if (data.length > 6) {
-                   try {
-                       // Versuche S/L als Zahl zu parsen - wenn es klappt, ist es ein S/L
-                       if (!data[5].trim().isEmpty()) {
-                           stopLoss = Double.parseDouble(data[5].trim().replace(",", ".").replace(" ", ""));
-                           hasStopLossTakeProfit = true;
-                       }
-                       
-                       // Versuche T/P als Zahl zu parsen - wenn es klappt, ist es ein T/P
-                       if (!data[6].trim().isEmpty()) {
-                           takeProfit = Double.parseDouble(data[6].trim().replace(",", ".").replace(" ", ""));
-                           hasStopLossTakeProfit = true;
-                       }
-                   } catch (NumberFormatException e) {
-                       // Wenn das Parsen fehlschlägt, ist es wahrscheinlich kein S/L oder T/P
-                       hasStopLossTakeProfit = false;
-                   }
-                   
-                   // Wenn Feld 7 ein Datum ist, haben wir definitiv S/L und T/P
-                   if (data.length > 7) {
-                       try {
-                           LocalDateTime.parse(data[7].trim(), DATE_TIME_FORMATTER);
-                           hasStopLossTakeProfit = true;
-                       } catch (DateTimeParseException e) {
-                           // Wenn das nicht klappt, ist es kein Datum
-                       }
-                   }
-               }
-               
-               // Bestimme die Indizes für Close Time und Close Price
-               int closeTimeIndex = hasStopLossTakeProfit ? 7 : 5;
-               int closePriceIndex = hasStopLossTakeProfit ? 8 : 6;
-               
-               // Prüfe, ob genügend Felder vorhanden sind
-               if (data.length <= closeTimeIndex) {
-                   LOGGER.warning("Not enough fields for close time at index " + closeTimeIndex + " in line: " + line);
-                   skippedLines.add(line);
-                   continue;
-               }
-               
-               // Parse Close Time
-               try {
-                   closeTime = LocalDateTime.parse(data[closeTimeIndex].trim(), DATE_TIME_FORMATTER);
-               } catch (DateTimeParseException e) {
-                   LOGGER.warning("Failed to parse close time: " + data[closeTimeIndex] + " in line: " + line);
-                   skippedLines.add(line);
-                   continue;
-               }
-               
-               // Aktualisiere den letzten Trade-Zeitpunkt
-               if (latestDate == null || closeTime.isAfter(latestDate)) {
-                   latestDate = closeTime;
-               }
-               
-               // Parse Close Price
-               try {
-                   if (data.length <= closePriceIndex) {
-                       LOGGER.warning("Not enough fields for close price at index " + closePriceIndex + " in line: " + line);
-                       skippedLines.add(line);
-                       continue;
-                   }
-                   closePrice = Double.parseDouble(data[closePriceIndex].trim().replace(",", ".").replace(" ", ""));
-               } catch (NumberFormatException e) {
-                   LOGGER.warning("Failed to parse close price: " + data[closePriceIndex] + " in line: " + line);
-                   skippedLines.add(line);
-                   continue;
-               }
-               
-               // Bestimme die Indizes für Commission, Swap und Profit
-               int commissionIndex = hasStopLossTakeProfit ? 9 : 7;
-               int swapIndex = hasStopLossTakeProfit ? 10 : 8;
-               int profitIndex = hasStopLossTakeProfit ? 11 : 9;
-               
-               // Parse Commission, Swap und Profit
-               double commission = 0.0;
-               double swap = 0.0;
-               double profit = 0.0;
-               
-               try {
-                   if (data.length > commissionIndex && !data[commissionIndex].trim().isEmpty()) {
-                       commission = Double.parseDouble(data[commissionIndex].trim().replace(",", "."));
-                   }
-                   
-                   if (data.length > swapIndex && !data[swapIndex].trim().isEmpty()) {
-                       swap = Double.parseDouble(data[swapIndex].trim().replace(",", "."));
-                   }
-                   
-                   if (data.length > profitIndex) {
-                       String profitStr = data[profitIndex].trim();
-                       
-                       // Bereinige den Profit von Kommentaren wie [sl]
-                       if (profitStr.contains("[")) {
-                           profitStr = profitStr.split("\\[")[0].trim();
-                       }
-                       
-                       profit = Double.parseDouble(profitStr.replace(",", "."));
-                   } else {
-                       LOGGER.warning("Not enough fields for profit at index " + profitIndex + " in line: " + line);
-                       skippedLines.add(line);
-                       continue;
-                   }
-               } catch (NumberFormatException e) {
-                   LOGGER.warning("Failed to parse commission/swap/profit in line: " + line);
-                   skippedLines.add(line);
-                   continue;
-               }
-               
-               // Erstelle den Trade und füge ihn zu den Stats hinzu
-               stats.addTrade(
-                   openTime, closeTime,
-                   type, symbol, lots,
-                   openPrice, closePrice,
-                   stopLoss, takeProfit,
-                   commission, swap, profit
-               );
-               
-               tradeCounts++;
-               
-           } catch (Exception e) {
-               LOGGER.log(Level.WARNING, "General error parsing line: " + line, e);
-               skippedLines.add(line);
-           }
-       }
-       
-       // Nur hinzufügen, wenn Trades vorhanden sind
-       if (!stats.getProfits().isEmpty()) {
-           signalProviderStats.put(file.getName(), stats);
-           LOGGER.info(String.format("Successfully processed %s: %d trades loaded, Initial Balance: %.2f",
-                   file.getName(), tradeCounts, initialBalance));
-           
-           // Log der Zeit-Spanne
-           if (earliestDate != null && latestDate != null) {
-               LOGGER.info(String.format("Date range for %s: %s to %s",
-                                        file.getName(),
-                                        earliestDate.format(DATE_TIME_FORMATTER),
-                                        latestDate.format(DATE_TIME_FORMATTER)));
-           }
-       } else {
-           LOGGER.warning("No trades processed for file: " + file.getName());
-       }
-       
-       // Log der übersprungenen Zeilen
-       if (!skippedLines.isEmpty()) {
-           LOGGER.info(String.format("Skipped %d lines in %s", skippedLines.size(), file.getName()));
+       } catch (IOException e) {
+           LOGGER.severe("Error reading file " + file.getName() + ": " + e.getMessage());
+           e.printStackTrace();
        }
    }
-   
-  
    
    public Map<String, ProviderStats> getStats() {
        return signalProviderStats;
