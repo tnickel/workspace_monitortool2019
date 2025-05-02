@@ -24,6 +24,10 @@ public class HighlightRenderer extends DefaultTableCellRenderer {
     private final Color BAD_PROVIDER_FG = new Color(150, 150, 150);     // Dunkelgrau
     private final Color FAVORITE_PROVIDER_BG = new Color(210, 230, 255); // Kräftigeres Blau, passend zum Design
     
+    // Farben für EquityDrawdown3M% Hervorhebung
+    private final Color HIGH_DRAWDOWN_BG = new Color(255, 220, 220);    // Helles Rot für hohe Drawdowns
+    private final Color MEDIUM_DRAWDOWN_BG = new Color(255, 240, 200);  // Helles Gelb für mittlere Drawdowns
+    
     public void setSearchText(String text) {
         this.searchText = text.toLowerCase();
     }
@@ -49,6 +53,45 @@ public class HighlightRenderer extends DefaultTableCellRenderer {
                 String columnName = table.getColumnName(column);
                 
                 if (providerName != null && model.getHtmlDatabase() != null) {
+                    // Spezielle Formatierung für EquityDrawdown3M%
+                    if (columnName.equals("EquityDrawdown3M%")) {
+                        double drawdownValue = (Double) value;
+                        
+                        // Farbliche Hervorhebung basierend auf Drawdown-Werten
+                        if (!isSelected) {
+                            if (drawdownValue >= 15.0) {
+                                c.setBackground(HIGH_DRAWDOWN_BG);
+                            } else if (drawdownValue >= 10.0) {
+                                c.setBackground(MEDIUM_DRAWDOWN_BG);
+                            }
+                        }
+                        
+                        // Ausführlicher Tooltip mit Erklärung
+                        String drawdownData = model.getHtmlDatabase().getDrawdownChartData(providerName);
+                        if (drawdownData != null && !drawdownData.isEmpty()) {
+                            StringBuilder tooltip = new StringBuilder("<html><div style='width:400px;'>");
+                            tooltip.append("<b>Equity Drawdown (3 Monate):</b><br><br>");
+                            tooltip.append("Maximaler Drawdown der letzten 3 Monate: ").append(df.format(drawdownValue)).append("%<br><br>");
+                            
+                            // Bewertung des Drawdown-Wertes
+                            if (drawdownValue >= 15.0) {
+                                tooltip.append("<span style='color:red;'><b>Hoher Drawdown:</b> Dieser Wert deutet auf ein erhöhtes Risiko hin.</span><br>");
+                            } else if (drawdownValue >= 10.0) {
+                                tooltip.append("<span style='color:#AA6600;'><b>Mittlerer Drawdown:</b> Dieser Wert sollte beobachtet werden.</span><br>");
+                            } else if (drawdownValue >= 5.0) {
+                                tooltip.append("<span style='color:#007700;'><b>Moderater Drawdown:</b> Im akzeptablen Bereich.</span><br>");
+                            } else {
+                                tooltip.append("<span style='color:green;'><b>Niedriger Drawdown:</b> Dieser Wert deutet auf ein gutes Risikomanagement hin.</span><br>");
+                            }
+                            
+                            tooltip.append("<br>Basierend auf Drawdown-Daten aus der root.txt Datei.<br>");
+                            tooltip.append("Nur Daten der letzten 3 Monate werden berücksichtigt.</div></html>");
+                            setToolTipText(tooltip.toString());
+                        } else {
+                            setToolTipText("<html>Keine Drawdown-Daten verfügbar</html>");
+                        }
+                    }
+                    
                     // Tooltips für verschiedene Spalten basierend auf Spaltennamen
                     switch (columnName) {
                         case "3MPDD":
@@ -116,20 +159,8 @@ public class HighlightRenderer extends DefaultTableCellRenderer {
                             
                             setToolTipText(tooltipBuilder.toString());
                             break;
-                        case "EquityDrawdown3M%":
-                            String drawdownData = model.getHtmlDatabase().getDrawdownChartData(providerName);
-                            if (drawdownData != null && !drawdownData.isEmpty()) {
-                                StringBuilder tooltip = new StringBuilder("<html><b>Equity Drawdown (3 Monate):</b><br><br>");
-                                tooltip.append("Maximaler Drawdown der letzten 3 Monate: ").append(df.format((Double)value)).append("%<br><br>");
-                                tooltip.append("Basierend auf Drawdown-Daten aus der root.txt Datei.<br>");
-                                tooltip.append("Nur Daten der letzten 3 Monate werden berücksichtigt.</html>");
-                                setToolTipText(tooltip.toString());
-                            } else {
-                                setToolTipText("Keine Drawdown-Daten verfügbar");
-                            }
-                            break;
                         default:
-                            setToolTipText(null);
+                            // Keine zusätzliche Aktion für andere Spalten
                             break;
                     }
                 }

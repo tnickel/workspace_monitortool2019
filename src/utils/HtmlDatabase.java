@@ -217,14 +217,32 @@ public class HtmlDatabase {
         LocalDate threeMonthsAgo = currentDate.minusMonths(3);
         
         double maxDrawdown = 0.0;
+        LocalDate maxDrawdownDate = null;
         String[] lines = drawdownData.split("\n");
+        
+        if (lines.length <= 1) {
+            LOGGER.warning("Nicht genügend Drawdown-Daten für " + fileName);
+            return 0.0;
+        }
+        
+        // Debug-Ausgabe
+        System.out.println("===== Analysiere Drawdown-Daten für " + fileName + " =====");
+        System.out.println("Zeitraum: von " + threeMonthsAgo + " bis " + currentDate);
+        System.out.println("Gefundene Zeilen: " + lines.length);
+        
+        // Für Debugging: Alle Drawdown-Werte ausgeben, die größer als 10% sind
+        System.out.println("Signifikante Drawdown-Werte (>10%):");
+        
+        int relevantDataCount = 0;
         
         for (String line : lines) {
             line = line.trim();
             if (line.isEmpty()) continue;
             
             String[] parts = line.split(":");
-            if (parts.length != 2) continue;
+            if (parts.length != 2) {
+                continue;
+            }
             
             try {
                 // Parsen des Datums aus dem Format YYYY-MM-DD
@@ -233,21 +251,42 @@ public class HtmlDatabase {
                 
                 // Nur Daten der letzten 3 Monate berücksichtigen
                 if (lineDate.isAfter(threeMonthsAgo) || lineDate.isEqual(threeMonthsAgo)) {
+                    relevantDataCount++;
+                    
                     // Drawdown-Wert parsen (Prozentangabe mit Komma)
                     String valueStr = parts[1].trim().replace("%", "").replace(",", ".");
                     double drawdown = Double.parseDouble(valueStr);
                     
+                    // Für Debug: Signifikante Werte ausgeben
+                    if (drawdown > 10.0) {
+                        System.out.println(dateStr + ": " + drawdown + "%");
+                    }
+                    
                     // Maximum aktualisieren
-                    maxDrawdown = Math.max(maxDrawdown, drawdown);
+                    if (drawdown > maxDrawdown) {
+                        maxDrawdown = drawdown;
+                        maxDrawdownDate = lineDate;
+                    }
                 }
             } catch (Exception e) {
-                LOGGER.warning("Fehler beim Parsen der Drawdown-Zeile: " + line + " - " + e.getMessage());
+                System.err.println("Fehler beim Parsen der Zeile: " + line + " - " + e.getMessage());
             }
+        }
+        
+        System.out.println("Relevante Datenpunkte in den letzten 3 Monaten: " + relevantDataCount);
+        System.out.println("Maximaler 3-Monats-Drawdown: " + maxDrawdown + "%" + 
+                          (maxDrawdownDate != null ? " (am " + maxDrawdownDate + ")" : ""));
+        System.out.println("============================================");
+        
+        // Speichere den maximalen 3-Monats-Drawdown in der Datenbank
+        Map<String, String> data = getFileData(fileName);
+        if (!data.isEmpty()) {
+            data.put("MaxDrawdown3M", String.format("%.2f", maxDrawdown).replace(',', '.'));
+            dataCache.put(createCacheKey(fileName), data);
         }
         
         return maxDrawdown;
     }
-    
     public double getBalance(String fileName) {
         Map<String, String> data = getFileData(fileName);
         if (data.isEmpty()) {
