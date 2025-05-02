@@ -1,7 +1,5 @@
 package models;
 
-
-
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
@@ -23,7 +21,7 @@ public class HighlightTableModel extends DefaultTableModel {
 		    "3MProfProz", "Trades", "Trade Days", "Days", "Win Rate %", "Total Profit", 
 		    "Avg Profit/Trade", "Max Drawdown %", "Equity Drawdown %", "Profit Factor", 
 		    "MaxTrades", "MaxLots", "Max Duration (h)", "Risk Score", "S/L", "T/P", 
-		    "Start Date", "End Date", "Stabilitaet", "Steigung", "MaxDDGraphic"
+		    "Start Date", "End Date", "Stabilitaet", "Steigung", "MaxDDGraphic", "EquityDrawdown3M%"
 		};
 
   
@@ -72,7 +70,8 @@ public class HighlightTableModel extends DefaultTableModel {
           case 17: // MaxLots
           case 25: // Stabilität
           case 26: // Steigung
-          case 27: // MaxDDGraphic - jetzt als Double
+          case 27: // MaxDDGraphic
+          case 28: // EquityDrawdown3M%
               return Double.class;
           default:
               return String.class;
@@ -177,7 +176,9 @@ public class HighlightTableModel extends DefaultTableModel {
 	        
 	        double equityDrawdown = htmlDatabase.getEquityDrawdown(providerName);
 	        double balance = htmlDatabase.getBalance(providerName);
-	        double maxDDGraphic = htmlDatabase.getEquityDrawdownGraphic(providerName);	        
+	        double maxDDGraphic = htmlDatabase.getEquityDrawdownGraphic(providerName);
+            double equityDrawdown3M = htmlDatabase.getMaxDrawdown3M(providerName); // Neue Spalte
+	        
 	        // Berechne MPDD für verschiedene Zeiträume und aktualisiere die Tooltips
 	        htmlDatabase.getMPDD(providerName, 3);  
 	        htmlDatabase.getMPDD(providerName, 6);
@@ -248,7 +249,8 @@ public class HighlightTableModel extends DefaultTableModel {
 	            stats.getEndDate(),
 	            stabilitaet,
 	            steigung,
-	            maxDDGraphic // Neue Spalte
+	            maxDDGraphic,
+                equityDrawdown3M // Neue Spalte
 	        });
 	    }
 	    fireTableDataChanged();
@@ -257,7 +259,9 @@ public class HighlightTableModel extends DefaultTableModel {
   public Object[] createRowDataForProvider(String providerName, ProviderStats stats) {
 	    double equityDrawdown = htmlDatabase.getEquityDrawdown(providerName);
 	    double balance = htmlDatabase.getBalance(providerName);
-	    double maxDDGraphic = htmlDatabase.getEquityDrawdownGraphic(providerName);	    
+	    double maxDDGraphic = htmlDatabase.getEquityDrawdownGraphic(providerName);
+        double equityDrawdown3M = htmlDatabase.getMaxDrawdown3M(providerName); // Neue Spalte
+	    
 	    // Berechne MPDD für verschiedene Zeiträume
 	    double threeMonthProfit = htmlDatabase.getAverageMonthlyProfit(providerName, 3);
 	    double sixMonthProfit = htmlDatabase.getAverageMonthlyProfit(providerName, 6);
@@ -325,7 +329,8 @@ public class HighlightTableModel extends DefaultTableModel {
 	        stats.getEndDate(),
 	        stabilitaet,
 	        steigung,
-	        maxDDGraphic // Neue Spalte
+	        maxDDGraphic,
+            equityDrawdown3M // Neue Spalte
 	    };
 	}
 	

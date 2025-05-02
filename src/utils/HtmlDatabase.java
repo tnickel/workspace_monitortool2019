@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -141,6 +142,110 @@ public class HtmlDatabase {
             System.err.println("FEHLER beim Lesen der Datei " + txtFile.getAbsolutePath() + ": " + e.getMessage());
             return new HashMap<>();
         }
+    }
+    
+    /**
+     * Liest die Drawdown-Chart-Daten direkt aus der .txt-Datei
+     * 
+     * @param fileName Name der Datei (z.B. provider_123456.csv)
+     * @return String mit Drawdown-Chart-Daten oder null wenn nicht gefunden
+     */
+    public String readDrawdownChartDataFromFile(String fileName) {
+        String txtFileName = createTxtFilePath(fileName);
+        File txtFile = new File(downloadPath, txtFileName);
+        
+        if (!txtFile.exists()) {
+            LOGGER.warning("Textdatei nicht gefunden: " + txtFile.getAbsolutePath());
+            return null;
+        }
+        
+        try (BufferedReader reader = new BufferedReader(new FileReader(txtFile))) {
+            StringBuilder drawdownData = new StringBuilder();
+            boolean inDrawdownSection = false;
+            String line;
+            
+            while ((line = reader.readLine()) != null) {
+                // Prüfe, ob die Drawdown-Sektion beginnt
+                if (line.startsWith("Drawdown Chart Data=")) {
+                    inDrawdownSection = true;
+                    
+                    // Wenn die Zeile bereits Daten enthält, füge sie hinzu
+                    if (line.contains(":")) {
+                        String dataLine = line.substring(line.indexOf("=") + 1).trim();
+                        if (!dataLine.isEmpty()) {
+                            drawdownData.append(dataLine).append("\n");
+                        }
+                    }
+                    continue;
+                }
+                
+                // Wenn wir in der Drawdown-Sektion sind und auf eine leere Zeile oder neue Sektion stoßen, beende die Sektion
+                if (inDrawdownSection && (line.trim().isEmpty() || line.contains("="))) {
+                    inDrawdownSection = false;
+                }
+                
+                // Füge Zeilen innerhalb der Drawdown-Sektion hinzu
+                if (inDrawdownSection && line.contains(":")) {
+                    drawdownData.append(line).append("\n");
+                }
+            }
+            
+            String result = drawdownData.toString().trim();
+            return result.isEmpty() ? null : result;
+            
+        } catch (IOException e) {
+            LOGGER.warning("Fehler beim Lesen der Drawdown-Daten aus der Datei: " + e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Ermittelt den maximalen Drawdown der letzten 3 Monate für einen Provider
+     * 
+     * @param fileName Dateiname des Providers
+     * @return Maximaler Drawdown in Prozent oder 0.0 wenn keine Daten gefunden wurden
+     */
+    public double getMaxDrawdown3M(String fileName) {
+        String drawdownData = readDrawdownChartDataFromFile(fileName);
+        if (drawdownData == null || drawdownData.isEmpty()) {
+            LOGGER.warning("Keine Drawdown-Daten für " + fileName + " gefunden");
+            return 0.0;
+        }
+        
+        // Aktuelles Datum für die 3-Monats-Berechnung
+        LocalDate currentDate = LocalDate.now();
+        LocalDate threeMonthsAgo = currentDate.minusMonths(3);
+        
+        double maxDrawdown = 0.0;
+        String[] lines = drawdownData.split("\n");
+        
+        for (String line : lines) {
+            line = line.trim();
+            if (line.isEmpty()) continue;
+            
+            String[] parts = line.split(":");
+            if (parts.length != 2) continue;
+            
+            try {
+                // Parsen des Datums aus dem Format YYYY-MM-DD
+                String dateStr = parts[0].trim();
+                LocalDate lineDate = LocalDate.parse(dateStr);
+                
+                // Nur Daten der letzten 3 Monate berücksichtigen
+                if (lineDate.isAfter(threeMonthsAgo) || lineDate.isEqual(threeMonthsAgo)) {
+                    // Drawdown-Wert parsen (Prozentangabe mit Komma)
+                    String valueStr = parts[1].trim().replace("%", "").replace(",", ".");
+                    double drawdown = Double.parseDouble(valueStr);
+                    
+                    // Maximum aktualisieren
+                    maxDrawdown = Math.max(maxDrawdown, drawdown);
+                }
+            } catch (Exception e) {
+                LOGGER.warning("Fehler beim Parsen der Drawdown-Zeile: " + line + " - " + e.getMessage());
+            }
+        }
+        
+        return maxDrawdown;
     }
     
     public double getBalance(String fileName) {
@@ -677,11 +782,7 @@ public class HtmlDatabase {
     }
     
     public String getDrawdownChartData(String fileName) {
-        Map<String, String> data = getFileData(fileName);
-        if (data != null && data.containsKey("Drawdown Chart Data")) {
-            return data.get("Drawdown Chart Data");
-        }
-        return null;
+        return readDrawdownChartDataFromFile(fileName);
     }
     
     public String getRootPath() {

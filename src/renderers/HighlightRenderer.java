@@ -116,6 +116,18 @@ public class HighlightRenderer extends DefaultTableCellRenderer {
                             
                             setToolTipText(tooltipBuilder.toString());
                             break;
+                        case "EquityDrawdown3M%":
+                            String drawdownData = model.getHtmlDatabase().getDrawdownChartData(providerName);
+                            if (drawdownData != null && !drawdownData.isEmpty()) {
+                                StringBuilder tooltip = new StringBuilder("<html><b>Equity Drawdown (3 Monate):</b><br><br>");
+                                tooltip.append("Maximaler Drawdown der letzten 3 Monate: ").append(df.format((Double)value)).append("%<br><br>");
+                                tooltip.append("Basierend auf Drawdown-Daten aus der root.txt Datei.<br>");
+                                tooltip.append("Nur Daten der letzten 3 Monate werden berücksichtigt.</html>");
+                                setToolTipText(tooltip.toString());
+                            } else {
+                                setToolTipText("Keine Drawdown-Daten verfügbar");
+                            }
+                            break;
                         default:
                             setToolTipText(null);
                             break;
