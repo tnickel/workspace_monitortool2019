@@ -112,13 +112,23 @@ public class MainFrame extends JFrame {
         // Toolbar hinzufügen
         add(toolbarManager.getToolBar(), BorderLayout.NORTH);
         
+        // Mittlerer Bereich mit Tabelle und Report-Button-Panel
+        JPanel centerPanel = new JPanel(new BorderLayout(0, 5));
+        centerPanel.setOpaque(false);
+        
         // Tabelle mit schönem Rahmen
         JScrollPane scrollPane = new JScrollPane(mainTable);
         scrollPane.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(UIStyle.SECONDARY_COLOR, 1),
             BorderFactory.createEmptyBorder(0, 0, 0, 0)
         ));
-        contentPane.add(scrollPane, BorderLayout.CENTER);
+        centerPanel.add(scrollPane, BorderLayout.CENTER);
+        
+        // Gelb markiertes Panel mit Report-Button unter der Tabelle
+        centerPanel.add(toolbarManager.getReportPanel(), BorderLayout.SOUTH);
+        
+        // Mittleren Bereich zum Hauptpanel hinzufügen
+        contentPane.add(centerPanel, BorderLayout.CENTER);
         
         setSize(1200, 800);
         setLocationRelativeTo(null);

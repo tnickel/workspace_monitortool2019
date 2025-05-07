@@ -30,7 +30,13 @@ import ui.ShowSignalProviderList;
 import utils.ApplicationConstants;
 import utils.HtmlDatabase;
 import utils.MqlAnalyserConf;
-
+import reports.ReportGenerator;
+import javax.swing.JOptionPane;
+import java.io.File;
+import java.awt.Desktop;
+import java.util.Map;
+import java.util.HashMap;
+import data.FavoritesManager;
 public class MainTable extends JTable {
     private static final Logger LOGGER = Logger.getLogger(MainTable.class.getName());
     private final HighlightTableModel model;
@@ -167,7 +173,113 @@ public class MainTable extends JTable {
         });
         return showProvidersButton;
     }
-    
+    public JButton createReportButton() {
+        JButton reportButton = new JButton("Favoriten-Report erstellen");
+        reportButton.addActionListener(e -> {
+            // Dialoge und Fortschrittsanzeigen hier in einem separaten Thread, um die UI nicht zu blockieren
+            new Thread(() -> {
+                try {
+                    // Alle Favoriten ermitteln
+                    FavoritesManager favManager = new FavoritesManager(rootPath);
+                    Map<String, ProviderStats> favorites = new HashMap<>();
+                    
+                    // Über alle verfügbaren Provider iterieren
+                    for (Map.Entry<String, ProviderStats> entry : dataManager.getStats().entrySet()) {
+                        String providerName = entry.getKey();
+                        ProviderStats stats = entry.getValue();
+                        
+                        // Provider-ID extrahieren
+                        String providerId = "";
+                        if (providerName.contains("_")) {
+                            providerId = providerName.substring(providerName.lastIndexOf("_") + 1).replace(".csv", "");
+                        } else {
+                            // Fallback für unerwartetes Format
+                            StringBuilder digits = new StringBuilder();
+                            for (char ch : providerName.toCharArray()) {
+                                if (Character.isDigit(ch)) {
+                                    digits.append(ch);
+                                }
+                            }
+                            if (digits.length() > 0) {
+                                providerId = digits.toString();
+                            }
+                        }
+                        
+                        // Prüfen, ob dieser Provider ein Favorit ist
+                        if (!providerId.isEmpty() && favManager.isFavorite(providerId)) {
+                            favorites.put(providerName, stats);
+                        }
+                    }
+                    
+                    // Prüfen, ob Favoriten gefunden wurden
+                    if (favorites.isEmpty()) {
+                        SwingUtilities.invokeLater(() -> {
+                            JOptionPane.showMessageDialog(MainTable.this,
+                                    "Es wurden keine Favoriten gefunden.\nBitte markieren Sie zuerst einige Signal Provider als Favoriten.",
+                                    "Keine Favoriten",
+                                    JOptionPane.INFORMATION_MESSAGE);
+                        });
+                        return;
+                    }
+                    
+                    // Fortschrittsanzeige während der Report-Generierung
+                    final int totalProviders = favorites.size();
+                    SwingUtilities.invokeLater(() -> {
+                        statusUpdateCallback.accept("Generiere Report für " + totalProviders + " Favoriten...");
+                    });
+                    
+                    // Report-Generator initialisieren und Report erstellen
+                    ReportGenerator reportGenerator = new ReportGenerator(rootPath, htmlDatabase);
+                    String reportPath = reportGenerator.generateReport(favorites);
+                    
+                    if (reportPath != null) {
+                        final String finalReportPath = reportPath;
+                        SwingUtilities.invokeLater(() -> {
+                            // Statusmeldung aktualisieren
+                            statusUpdateCallback.accept("Report erfolgreich erstellt: " + finalReportPath);
+                            
+                            // Erfolgsmeldung anzeigen
+                            int choice = JOptionPane.showConfirmDialog(MainTable.this,
+                                    "Report wurde erfolgreich erstellt in:\n" + finalReportPath + "\n\nMöchten Sie den Report jetzt öffnen?",
+                                    "Report erstellt",
+                                    JOptionPane.YES_NO_OPTION,
+                                    JOptionPane.INFORMATION_MESSAGE);
+                            
+                            // Bei Bedarf den Report im Standardbrowser öffnen
+                            if (choice == JOptionPane.YES_OPTION) {
+                                try {
+                                    File htmlFile = new File(finalReportPath);
+                                    Desktop.getDesktop().browse(htmlFile.toURI());
+                                } catch (Exception ex) {
+                                    JOptionPane.showMessageDialog(MainTable.this,
+                                            "Fehler beim Öffnen des Reports: " + ex.getMessage(),
+                                            "Fehler",
+                                            JOptionPane.ERROR_MESSAGE);
+                                }
+                            }
+                        });
+                    } else {
+                        SwingUtilities.invokeLater(() -> {
+                            JOptionPane.showMessageDialog(MainTable.this,
+                                    "Fehler beim Erstellen des Reports. Bitte prüfen Sie die Logs.",
+                                    "Fehler",
+                                    JOptionPane.ERROR_MESSAGE);
+                        });
+                    }
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                    SwingUtilities.invokeLater(() -> {
+                        JOptionPane.showMessageDialog(MainTable.this,
+                                "Unerwarteter Fehler: " + ex.getMessage(),
+                                "Fehler",
+                                JOptionPane.ERROR_MESSAGE);
+                    });
+                }
+            }).start();
+        });
+        
+        return reportButton;
+    }
     private void setupMouseListener() {
         addMouseListener(new MouseAdapter() {
             @Override

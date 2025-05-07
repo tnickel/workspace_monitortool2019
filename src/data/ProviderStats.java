@@ -226,6 +226,7 @@ public class ProviderStats {
                 maxDrawdownPercent = Math.max(maxDrawdownPercent, drawdownPercent);
             }
         }
-        return 0;
+        
+        return maxDrawdownPercent; // Korrigiert von "return 0;" zu "return maxDrawdownPercent;"
     }
 }
