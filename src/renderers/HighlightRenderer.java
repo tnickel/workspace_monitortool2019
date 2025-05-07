@@ -11,6 +11,7 @@ import javax.swing.JTable;
 import javax.swing.table.DefaultTableCellRenderer;
 
 import data.FavoritesManager;
+import db.HistoryDatabaseManager;
 import models.HighlightTableModel;
 import utils.ApplicationConstants;
 
@@ -41,6 +42,47 @@ public class HighlightRenderer extends DefaultTableCellRenderer {
         if (!isSelected) {
             c.setBackground(table.getBackground());
             c.setForeground(table.getForeground());
+        }
+        
+        // Setze den Tooltip standardmäßig auf null, um vorherige Tooltips zu löschen
+        setToolTipText(null);
+        
+        // Spezialbehandlung für die No.-Spalte (erste Spalte, Index 0)
+        if (column == 0 && table.getColumnName(column).equals("No.") && table.getModel() instanceof HighlightTableModel) {
+            // Hole den Providernamen aus der zweiten Spalte (Spalte 1) der aktuellen Zeile
+            String providerName = (String) table.getValueAt(row, 1);
+            if (providerName != null) {
+                try {
+                    // Hole die Notizen aus der Datenbank
+                    String notes = HistoryDatabaseManager.getInstance().getProviderNotes(providerName);
+                    
+                    // Nur Tooltip setzen, wenn Notizen vorhanden sind
+                    if (notes != null && !notes.trim().isEmpty()) {
+                        // Begrenze die Länge der Notizen für den Tooltip auf maximal 200 Zeichen
+                        String displayNotes = notes;
+                        if (notes.length() > 200) {
+                            displayNotes = notes.substring(0, 197) + "...";
+                        }
+                        
+                        // HTML-formatierter Tooltip mit den Notizen
+                        StringBuilder tooltip = new StringBuilder("<html><div style='width:300px;'>");
+                        tooltip.append("<b>Notizen zu ").append(providerName).append(":</b><br><br>");
+                        
+                        // Ersetze Zeilenumbrüche durch HTML-Zeilenumbrüche
+                        displayNotes = displayNotes.replace("\n", "<br>");
+                        
+                        tooltip.append(displayNotes);
+                        tooltip.append("</div></html>");
+                        
+                        setToolTipText(tooltip.toString());
+                        
+                        // Früher beenden, da wir den Tooltip bereits gesetzt haben
+                        return c;
+                    }
+                } catch (Exception e) {
+                    System.err.println("Fehler beim Laden der Notizen für den Tooltip: " + e.getMessage());
+                }
+            }
         }
         
         // Formatiere Dezimalzahlen
