@@ -1,7 +1,6 @@
 package ui;
 
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Toolkit;
 import java.awt.event.KeyEvent;
@@ -19,6 +18,7 @@ import javax.swing.border.EmptyBorder;
 import data.ProviderStats;
 import ui.components.ChartsPanelFactory;
 import ui.components.PerformanceStatisticsPanel;
+import ui.components.ProviderNotesPanel;
 import utils.HtmlDatabase;
 
 /**
@@ -33,6 +33,7 @@ public class PerformanceAnalysisDialog extends JFrame {
     
     // UI-Komponenten
     private PerformanceStatisticsPanel statisticsPanel;
+    private ProviderNotesPanel notesPanel;
     private JPanel chartsPanel;
     
     /**
@@ -80,6 +81,12 @@ public class PerformanceAnalysisDialog extends JFrame {
                 stats, providerName, providerId, htmlDatabase, rootPath);
         statisticsPanel.setAlignmentX(LEFT_ALIGNMENT);
         mainPanel.add(statisticsPanel);
+        mainPanel.add(javax.swing.Box.createRigidArea(new Dimension(0, 15)));
+        
+        // Notizen-Panel erstellen und an der gelb markierten Stelle hinzufügen
+        notesPanel = new ProviderNotesPanel(providerName);
+        notesPanel.setAlignmentX(LEFT_ALIGNMENT);
+        mainPanel.add(notesPanel);
         mainPanel.add(javax.swing.Box.createRigidArea(new Dimension(0, 15)));
         
         // Charts Panel erstellen und hinzufügen

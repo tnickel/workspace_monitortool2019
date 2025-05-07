@@ -188,20 +188,26 @@ public class FilterDialog extends JDialog {
         JButton okButton = new JButton("Apply");
         JButton cancelButton = new JButton("Cancel");
         JButton resetButton = new JButton("Reset");
-        
+        JButton cleanButton = new JButton("Clean"); // Neuer Clean-Button
+
         okButton.addActionListener(e -> {
             stopEditing();
             if (validateAndSaveFilters()) {
                 dispose();
             }
         });
-        
+
         cancelButton.addActionListener(e -> dispose());
-        
+
         resetButton.addActionListener(e -> {
             setupDefaultValues();
         });
-        
+
+        cleanButton.addActionListener(e -> {
+            cleanAllValues();
+        });
+
+        buttonPanel.add(cleanButton);     // Neuer Clean-Button zuerst
         buttonPanel.add(resetButton);
         buttonPanel.add(okButton);
         buttonPanel.add(cancelButton);
@@ -228,25 +234,70 @@ public class FilterDialog extends JDialog {
     }
     
     // Methode zum Setzen der Standardwerte - überarbeitet mit neuen Standardwerten
+ // Diese Methode befindet sich in der Klasse src/ui/FilterDialog.java
     private void setupDefaultValues() {
         // Standardwerte definieren gemäß den Anforderungen
-        Map<String, Double> defaultMinValues = new HashMap<>();
-        defaultMinValues.put("No.", 1.0);         // Neue Standardwerte
-        defaultMinValues.put("3MPDD", 2.0);       // Geändert von 0.0 auf 2.0
-        defaultMinValues.put("Trades", 50.0);     // Geändert von 0.0 auf 50.0
+        Map<String, Object[]> defaultValues = new HashMap<>();
+        
+        // Format: Spaltenname -> [Min-Wert, Max-Wert]
+        // Wenn nur Min oder nur Max gesetzt werden soll, den anderen Wert als null lassen
+        
+        // No > 1.0
+        defaultValues.put("No.", new Object[]{1.0, null});
+        
+        // 3Mpdd > 2
+        defaultValues.put("3MPDD", new Object[]{2.0, null});
+        
+        // Days > 63
+        defaultValues.put("Days", new Object[]{63.0, null});
+        
+        // Trades > 60
+        defaultValues.put("Trades", new Object[]{60.0, null});
+        
+        // WinRate% < 80%
+        defaultValues.put("Win Rate %", new Object[]{null, 80.0});
+        
+        // Steigung > 0
+        defaultValues.put("Steigung", new Object[]{0.0, null});
+        
+        // MaxTrades < 15
+        defaultValues.put("MaxTrades", new Object[]{null, 15.0});
+        
+        // MaxDuration < 120 Stunden
+        defaultValues.put("Max Duration (h)", new Object[]{null, 120.0});
+        
+        // MaxEquityDrawdown % < 15%
+        defaultValues.put("Equity Drawdown %", new Object[]{null, 15.0});
         
         // Über alle Zeilen gehen und Standardwerte setzen wo vorhanden
         for (int row = 0; row < filterTable.getRowCount(); row++) {
             String columnName = (String) filterTable.getValueAt(row, 0);
             
-            if (defaultMinValues.containsKey(columnName)) {
-                filterTable.setValueAt(defaultMinValues.get(columnName).toString(), row, 1); // Min-Wert
+            if (defaultValues.containsKey(columnName)) {
+                Object[] values = defaultValues.get(columnName);
+                
+                // Min-Wert setzen (wenn nicht null)
+                if (values[0] != null) {
+                    filterTable.setValueAt(values[0].toString(), row, 1);
+                } else {
+                    filterTable.setValueAt("", row, 1);
+                }
+                
+                // Max-Wert setzen (wenn nicht null)
+                if (values[1] != null) {
+                    filterTable.setValueAt(values[1].toString(), row, 2);
+                } else {
+                    filterTable.setValueAt("", row, 2);
+                }
             } else {
-                filterTable.setValueAt("", row, 1); // Andere auf leer setzen
+                // Für alle anderen Spalten beide Werte leeren
+                filterTable.setValueAt("", row, 1);
+                filterTable.setValueAt("", row, 2);
             }
-            filterTable.setValueAt("", row, 2); // Max-Werte immer auf leer setzen
         }
-        currencyPairsField.setText(""); // Währungspaar-Feld zurücksetzen
+        
+        // Währungspaar-Feld zurücksetzen
+        currencyPairsField.setText("");
     }
     
     private boolean validateAndSaveFilters() {
@@ -335,5 +386,24 @@ public class FilterDialog extends JDialog {
     public FilterCriteria showDialog() {
         setVisible(true);
         return currentFilters;
+    }
+    private void cleanAllValues() {
+        // Über alle Zeilen gehen und alle Werte leeren, außer für "No."
+        for (int row = 0; row < filterTable.getRowCount(); row++) {
+            String columnName = (String) filterTable.getValueAt(row, 0);
+            
+            if (columnName.equals("No.")) {
+                // No. > 1.0 beibehalten
+                filterTable.setValueAt("1.0", row, 1); // Min-Wert setzen
+                filterTable.setValueAt("", row, 2);    // Max-Wert leeren
+            } else {
+                // Alle anderen Werte leeren
+                filterTable.setValueAt("", row, 1); // Min-Wert leeren
+                filterTable.setValueAt("", row, 2); // Max-Wert leeren
+            }
+        }
+        
+        // Währungspaar-Feld zurücksetzen
+        currencyPairsField.setText("");
     }
 }

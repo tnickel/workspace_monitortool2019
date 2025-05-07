@@ -41,7 +41,15 @@ public class HistoryDatabaseManager {
     	    "FOREIGN KEY (provider_id) REFERENCES signal_providers(provider_id), " +
     	    "UNIQUE (provider_id, stat_type, recorded_date))";
     
-    // Neue Tabelle für gelöschte Einträge
+    // Neue Tabelle für Provider-Notizen
+    private static final String CREATE_PROVIDER_NOTES_TABLE = 
+            "CREATE TABLE IF NOT EXISTS provider_notes (" +
+            "provider_id INT PRIMARY KEY, " +
+            "notes TEXT, " +
+            "last_updated TIMESTAMP, " +
+            "FOREIGN KEY (provider_id) REFERENCES signal_providers(provider_id))";
+    
+    // Tabelle für gelöschte Einträge
     private static final String CREATE_DELETED_RECORDS_LOG = 
             "CREATE TABLE IF NOT EXISTS deleted_records_log (" +
             "id INT AUTO_INCREMENT PRIMARY KEY, " +
@@ -50,7 +58,7 @@ public class HistoryDatabaseManager {
             "deletion_date TIMESTAMP NOT NULL, " +
             "reason VARCHAR(255))";
     
-    // Neue Tabelle für Datenbankänderungen
+    // Tabelle für Datenbankänderungen
     private static final String CREATE_DB_CHANGE_LOG = 
             "CREATE TABLE IF NOT EXISTS db_change_log (" +
             "id INT AUTO_INCREMENT PRIMARY KEY, " +
@@ -146,10 +154,13 @@ public class HistoryDatabaseManager {
             // Tabelle für statistische Werte erstellen
             stmt.execute(CREATE_STAT_VALUES_TABLE);
             
-            // Neue Tabelle für gelöschte Einträge erstellen
+            // Tabelle für Provider-Notizen erstellen
+            stmt.execute(CREATE_PROVIDER_NOTES_TABLE);
+            
+            // Tabelle für gelöschte Einträge erstellen
             stmt.execute(CREATE_DELETED_RECORDS_LOG);
             
-            // Neue Tabelle für Datenbankänderungen erstellen
+            // Tabelle für Datenbankänderungen erstellen
             stmt.execute(CREATE_DB_CHANGE_LOG);
             
             // Eintrag zur Initialisierung in die Änderungslog-Tabelle
@@ -164,7 +175,7 @@ public class HistoryDatabaseManager {
      * Prüft, ob alle erforderlichen Tabellen existieren
      */
     private void checkTables() throws SQLException {
-        String[] tableNames = {"signal_providers", "stat_values", "deleted_records_log", "db_change_log"};
+        String[] tableNames = {"signal_providers", "stat_values", "provider_notes", "deleted_records_log", "db_change_log"};
         boolean allTablesExist = true;
         
         for (String tableName : tableNames) {
@@ -589,6 +600,106 @@ public class HistoryDatabaseManager {
                 LOGGER.severe("Fehler beim Schließen der Datenbankverbindung: " + e.getMessage());
                 e.printStackTrace();
             }
+        }
+    }
+    
+    /**
+     * Speichert Notizen für einen Signal Provider
+     * 
+     * @param providerName Name des Signal Providers
+     * @param notes Die zu speichernden Notizen
+     * @return true wenn die Notizen erfolgreich gespeichert wurden
+     */
+    public boolean saveProviderNotes(String providerName, String notes) {
+        if (connection == null) {
+            LOGGER.warning("Keine Datenbankverbindung verfügbar");
+            return false;
+        }
+        
+        try {
+            // Provider-ID holen oder erstellen
+            int providerId = getOrCreateProvider(providerName);
+            
+            // Prüfen, ob bereits Notizen existieren
+            boolean exists = false;
+            try (PreparedStatement checkStmt = connection.prepareStatement(
+                    "SELECT COUNT(*) FROM provider_notes WHERE provider_id = ?")) {
+                checkStmt.setInt(1, providerId);
+                ResultSet rs = checkStmt.executeQuery();
+                if (rs.next()) {
+                    exists = rs.getInt(1) > 0;
+                }
+            }
+            
+            // SQL für Insert oder Update
+            String sql = exists ? 
+                    "UPDATE provider_notes SET notes = ?, last_updated = ? WHERE provider_id = ?" :
+                    "INSERT INTO provider_notes (provider_id, notes, last_updated) VALUES (?, ?, ?)";
+            
+            try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+                if (exists) {
+                    stmt.setString(1, notes);
+                    stmt.setObject(2, LocalDateTime.now());
+                    stmt.setInt(3, providerId);
+                } else {
+                    stmt.setInt(1, providerId);
+                    stmt.setString(2, notes);
+                    stmt.setObject(3, LocalDateTime.now());
+                }
+                stmt.executeUpdate();
+                
+                // Log die Änderung
+                logDbChange(exists ? "UPDATE" : "INSERT", "provider_notes", 
+                        "Notizen für Provider " + providerName + " " + (exists ? "aktualisiert" : "hinzugefügt"));
+                
+                LOGGER.info("Notizen für Provider " + providerName + " erfolgreich gespeichert");
+                return true;
+            }
+        } catch (SQLException e) {
+            LOGGER.severe("Fehler beim Speichern der Notizen: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    /**
+     * Lädt Notizen für einen Signal Provider
+     * 
+     * @param providerName Name des Signal Providers
+     * @return Die gespeicherten Notizen oder leerer String, wenn keine vorhanden
+     */
+    public String getProviderNotes(String providerName) {
+        if (connection == null) {
+            LOGGER.warning("Keine Datenbankverbindung verfügbar");
+            return "";
+        }
+        
+        try {
+            // Provider-ID holen
+            try (PreparedStatement stmt = connection.prepareStatement(GET_PROVIDER_ID)) {
+                stmt.setString(1, providerName);
+                ResultSet rs = stmt.executeQuery();
+                if (rs.next()) {
+                    int providerId = rs.getInt(1);
+                    
+                    // Notizen abfragen
+                    try (PreparedStatement notesStmt = connection.prepareStatement(
+                            "SELECT notes FROM provider_notes WHERE provider_id = ?")) {
+                        notesStmt.setInt(1, providerId);
+                        ResultSet notesRs = notesStmt.executeQuery();
+                        if (notesRs.next()) {
+                            return notesRs.getString(1);
+                        }
+                    }
+                }
+            }
+            
+            // Keine Notizen gefunden
+            return "";
+        } catch (SQLException e) {
+            LOGGER.severe("Fehler beim Laden der Notizen: " + e.getMessage());
+            e.printStackTrace();
+            return "";
         }
     }
     
