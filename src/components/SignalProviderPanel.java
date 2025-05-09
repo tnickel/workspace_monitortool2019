@@ -2,12 +2,12 @@ package components;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Desktop;
 import java.awt.FlowLayout;
-import java.awt.Font;
 import java.awt.GridLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.net.URI;
@@ -17,7 +17,9 @@ import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.border.Border;
 
@@ -44,6 +46,8 @@ public class SignalProviderPanel extends JPanel {
     
     private JButton favoriteButton;
     private JButton badProviderButton;
+    private JComboBox<String> categoryComboBox;
+    private JLabel favoriteCategoryLabel;
     
     /**
      * Konstruktor für ein Signal Provider Panel
@@ -180,9 +184,16 @@ public class SignalProviderPanel extends JPanel {
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         buttonPanel.setOpaque(false);
         
-        boolean isFavorite = favoritesManager.isFavorite(providerId);
+        // Aktuelle Favoriten-Kategorie abrufen
+        int favoriteCategory = favoritesManager.getFavoriteCategory(providerId);
+        boolean isFavorite = favoriteCategory > 0;
         boolean isBadProvider = favoritesManager.isBadProvider(providerId);
         
+        // Panel für Favoriten-Bereich erstellen
+        JPanel favoritePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        favoritePanel.setOpaque(false);
+        
+        // Favoriten-Button
         favoriteButton = UIStyle.createStyledButton(
                 isFavorite ? "Remove Favorite" : "Set Favorite");
         if (isFavorite) {
@@ -190,6 +201,46 @@ public class SignalProviderPanel extends JPanel {
             favoriteButton.setForeground(UIStyle.TEXT_COLOR);
         }
         
+        // Kategorie-Auswahl (nur anzeigen, wenn es ein Favorit ist)
+        if (isFavorite) {
+            favoriteCategoryLabel = new JLabel("Kategorie: ");
+            favoritePanel.add(favoriteCategoryLabel);
+            
+            categoryComboBox = new JComboBox<>(createCategoryOptions());
+            categoryComboBox.setSelectedIndex(favoriteCategory);
+            UIStyle.applyStylesToComboBox(categoryComboBox);
+            
+            categoryComboBox.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    int selectedCategory = categoryComboBox.getSelectedIndex();
+                    if (selectedCategory == 0) {
+                        // Wenn "Kein Favorit" ausgewählt wurde, den Favoriten entfernen
+                        favoritesManager.setFavoriteCategory(providerId, 0);
+                        updateFavoriteUI(false);
+                    } else {
+                        // Sonst die Kategorie setzen
+                        favoritesManager.setFavoriteCategory(providerId, selectedCategory);
+                    }
+                }
+            });
+            
+            favoritePanel.add(categoryComboBox);
+        }
+        
+        // Favoriten-Button Action
+        favoriteButton.addActionListener(e -> {
+            if (isFavorite) {
+                // Wenn es ein Favorit ist, entfernen
+                favoritesManager.setFavoriteCategory(providerId, 0);
+                updateFavoriteUI(false);
+            } else {
+                // Wenn es kein Favorit ist, Kategorie auswählen
+                selectFavoriteCategory();
+            }
+        });
+        
+        // Bad Provider Button
         badProviderButton = UIStyle.createStyledButton(
                 isBadProvider ? "Remove from Bad List" : "Set as Bad Provider");
         if (isBadProvider) {
@@ -202,22 +253,7 @@ public class SignalProviderPanel extends JPanel {
             ));
         }
         
-        JButton showTradesButton = UIStyle.createStyledButton("Show Trade List");
-        
-        favoriteButton.addActionListener(e -> {
-            favoritesManager.toggleFavorite(providerId);
-            boolean isNowFavorite = favoritesManager.isFavorite(providerId);
-            favoriteButton.setText(isNowFavorite ? "Remove Favorite" : "Set Favorite");
-            
-            if (isNowFavorite) {
-                favoriteButton.setBackground(UIStyle.ACCENT_COLOR);
-                favoriteButton.setForeground(UIStyle.TEXT_COLOR);
-            } else {
-                favoriteButton.setBackground(UIStyle.SECONDARY_COLOR);
-                favoriteButton.setForeground(Color.WHITE);
-            }
-        });
-        
+        // Bad Provider Button Action
         badProviderButton.addActionListener(e -> {
             favoritesManager.toggleBadProvider(providerId);
             boolean isNowBadProvider = favoritesManager.isBadProvider(providerId);
@@ -237,16 +273,134 @@ public class SignalProviderPanel extends JPanel {
             }
         });
         
+        // Show Trades Button
+        JButton showTradesButton = UIStyle.createStyledButton("Show Trade List");
         showTradesButton.addActionListener(e -> {
             TradeListFrame tradeListFrame = new TradeListFrame(providerName, stats);
             tradeListFrame.setVisible(true);
         });
         
-        buttonPanel.add(favoriteButton);
-        buttonPanel.add(badProviderButton);
-        buttonPanel.add(showTradesButton);
+        // Panel für weitere Buttons
+        JPanel actionButtonsPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        actionButtonsPanel.setOpaque(false);
         
-        return buttonPanel;
+        favoritePanel.add(favoriteButton);
+        actionButtonsPanel.add(badProviderButton);
+        actionButtonsPanel.add(showTradesButton);
+        
+        // Gesamtes Button-Panel
+        JPanel fullButtonPanel = new JPanel(new BorderLayout());
+        fullButtonPanel.setOpaque(false);
+        fullButtonPanel.add(favoritePanel, BorderLayout.WEST);
+        fullButtonPanel.add(actionButtonsPanel, BorderLayout.EAST);
+        
+        return fullButtonPanel;
+    }
+    
+    /**
+     * Zeigt einen Dialog zur Auswahl der Favoriten-Kategorie
+     */
+    private void selectFavoriteCategory() {
+        Object[] options = createCategoryOptions();
+        
+        int selectedOption = JOptionPane.showOptionDialog(
+            this,
+            "Bitte wählen Sie die Favoriten-Kategorie für Provider " + providerId,
+            "Favoriten-Kategorie wählen",
+            JOptionPane.DEFAULT_OPTION,
+            JOptionPane.QUESTION_MESSAGE,
+            null,
+            options,
+            options[1] // Standardmäßig Kategorie 1 auswählen
+        );
+        
+        if (selectedOption > 0) { // Nur wenn eine gültige Kategorie ausgewählt wurde
+            favoritesManager.setFavoriteCategory(providerId, selectedOption);
+            updateFavoriteUI(true);
+        }
+    }
+    
+    /**
+     * Aktualisiert die UI-Elemente für den Favoriten-Status
+     * @param isFavorite true, wenn der Provider ein Favorit ist, sonst false
+     */
+    private void updateFavoriteUI(boolean isFavorite) {
+        favoriteButton.setText(isFavorite ? "Remove Favorite" : "Set Favorite");
+        
+        if (isFavorite) {
+            favoriteButton.setBackground(UIStyle.ACCENT_COLOR);
+            favoriteButton.setForeground(UIStyle.TEXT_COLOR);
+            
+            // Kategorie-UI neu erstellen
+            JPanel parentPanel = (JPanel) favoriteButton.getParent();
+            
+            // Existierende Kategorie-Komponenten entfernen, falls vorhanden
+            if (favoriteCategoryLabel != null) {
+                parentPanel.remove(favoriteCategoryLabel);
+            }
+            if (categoryComboBox != null) {
+                parentPanel.remove(categoryComboBox);
+            }
+            
+            // Neue Kategorie-Komponenten erstellen
+            favoriteCategoryLabel = new JLabel("Kategorie: ");
+            categoryComboBox = new JComboBox<>(createCategoryOptions());
+            int currentCategory = favoritesManager.getFavoriteCategory(providerId);
+            categoryComboBox.setSelectedIndex(currentCategory);
+            UIStyle.applyStylesToComboBox(categoryComboBox);
+            
+            categoryComboBox.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    int selectedCategory = categoryComboBox.getSelectedIndex();
+                    if (selectedCategory == 0) {
+                        // Wenn "Kein Favorit" ausgewählt wurde, den Favoriten entfernen
+                        favoritesManager.setFavoriteCategory(providerId, 0);
+                        updateFavoriteUI(false);
+                    } else {
+                        // Sonst die Kategorie setzen
+                        favoritesManager.setFavoriteCategory(providerId, selectedCategory);
+                    }
+                }
+            });
+            
+            // Komponenten hinzufügen
+            parentPanel.add(favoriteCategoryLabel, 0);
+            parentPanel.add(categoryComboBox, 1);
+            
+        } else {
+            favoriteButton.setBackground(UIStyle.SECONDARY_COLOR);
+            favoriteButton.setForeground(Color.WHITE);
+            
+            // Kategorie-UI entfernen
+            JPanel parentPanel = (JPanel) favoriteButton.getParent();
+            
+            if (favoriteCategoryLabel != null) {
+                parentPanel.remove(favoriteCategoryLabel);
+                favoriteCategoryLabel = null;
+            }
+            if (categoryComboBox != null) {
+                parentPanel.remove(categoryComboBox);
+                categoryComboBox = null;
+            }
+        }
+        
+        // Panel neu zeichnen
+        revalidate();
+        repaint();
+    }
+    
+    /**
+     * Erstellt die Optionen für die Kategorie-Auswahl
+     * @return Array mit Kategorienamen
+     */
+    private String[] createCategoryOptions() {
+        String[] options = new String[11]; // 0-10
+        options[0] = "Kein Favorit";
+        for (int i = 1; i <= 10; i++) {
+            options[i] = "Kategorie " + i;
+        }
+        return options;
     }
     
     /**

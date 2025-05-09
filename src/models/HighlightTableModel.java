@@ -370,4 +370,9 @@ public class HighlightTableModel extends DefaultTableModel {
                 .map(Trade::getSymbol)
                 .collect(Collectors.toSet());
     }
+    public void clearData() {
+        setRowCount(0);
+        fireTableDataChanged();
+    }
+
 }

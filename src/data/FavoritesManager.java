@@ -8,7 +8,9 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.logging.Logger;
 
@@ -16,17 +18,17 @@ import utils.ApplicationConstants;
 
 public class FavoritesManager {
     private static final Logger LOGGER = Logger.getLogger(FavoritesManager.class.getName());
-    private final Set<String> favorites;
-    private final Set<String> badProviders; // Neue Liste für Bad Provider
+    private final Map<String, Integer> favorites; // Geändert zu Map mit Provider-ID als Schlüssel und Kategorie als Wert
+    private final Set<String> badProviders;
     private final Path favoritesFile;
-    private final Path badProvidersFile; // Neue Datei für Bad Provider
+    private final Path badProvidersFile;
     
     public FavoritesManager(String rootPath) {
         // Validiere den Pfad und korrigiere ihn, falls nötig
         rootPath = ApplicationConstants.validateRootPath(rootPath, "FavoritesManager.constructor");
         
-        this.favorites = new HashSet<>();
-        this.badProviders = new HashSet<>(); // Initialisiere Bad Provider Set
+        this.favorites = new HashMap<>(); // Geändert zu HashMap für die Kategorien
+        this.badProviders = new HashSet<>();
         
         System.out.println("FavoritesManager initialisiert mit rootPath: " + rootPath);
         
@@ -45,36 +47,70 @@ public class FavoritesManager {
         }
         
         this.favoritesFile = Paths.get(rootPath, "config", "favorites.txt");
-        this.badProvidersFile = Paths.get(rootPath, "config", "badproviders.txt"); // Neue Datei für Bad Provider
+        this.badProvidersFile = Paths.get(rootPath, "config", "badproviders.txt");
         
         System.out.println("Favoriten werden gespeichert in: " + favoritesFile.toAbsolutePath());
         System.out.println("Bad Provider werden gespeichert in: " + badProvidersFile.toAbsolutePath());
         
         loadFavorites();
-        loadBadProviders(); // Lade Bad Provider
+        loadBadProviders();
     }
     
     public boolean isFavorite(String providerId) {
         // Debug für jede Prüfung
-        boolean result = favorites.contains(providerId);
+        boolean result = favorites.containsKey(providerId);
         System.out.println("FavoritesManager prüft ID: " + providerId + " -> " + (result ? "ist Favorit" : "kein Favorit"));
         return result;
     }
     
+    public boolean isFavoriteInCategory(String providerId, int category) {
+        // Prüft, ob der Provider ein Favorit in der angegebenen Kategorie ist
+        Integer providerCategory = favorites.get(providerId);
+        boolean result = (providerCategory != null && providerCategory == category);
+        System.out.println("FavoritesManager prüft ID: " + providerId + " für Kategorie " + category + 
+                          " -> " + (result ? "ist in dieser Kategorie" : "nicht in dieser Kategorie"));
+        return result;
+    }
+    
+    public int getFavoriteCategory(String providerId) {
+        // Gibt die Kategorie des Favoriten zurück oder 0, wenn nicht vorhanden
+        return favorites.getOrDefault(providerId, 0);
+    }
+    
     public boolean isBadProvider(String providerId) {
-        // Ähnlich wie bei Favoriten
         boolean result = badProviders.contains(providerId);
         System.out.println("FavoritesManager prüft Bad Provider ID: " + providerId + " -> " + (result ? "ist Bad Provider" : "kein Bad Provider"));
         return result;
     }
     
-    public void toggleFavorite(String providerId) {
-        if (favorites.contains(providerId)) {
+    public void toggleFavorite(String providerId, int category) {
+        if (favorites.containsKey(providerId) && favorites.get(providerId) == category) {
+            // Wenn der Provider bereits in dieser Kategorie ist, entferne ihn
             favorites.remove(providerId);
             System.out.println("Favorit entfernt: " + providerId);
         } else {
-            favorites.add(providerId);
-            System.out.println("Favorit hinzugefügt: " + providerId);
+            // Füge den Provider zur angegebenen Kategorie hinzu
+            favorites.put(providerId, category);
+            System.out.println("Favorit hinzugefügt: " + providerId + " in Kategorie " + category);
+        }
+        saveFavorites();
+    }
+    
+    public void setFavoriteCategory(String providerId, int category) {
+        // Setzt die Kategorie für einen Provider, unabhängig davon, ob er bereits Favorit ist
+        if (category < 0 || category > 10) {
+            LOGGER.warning("Ungültige Kategorie: " + category + ". Muss zwischen 0 und 10 liegen.");
+            return;
+        }
+        
+        if (category == 0 && favorites.containsKey(providerId)) {
+            // Kategorie 0 bedeutet "kein Favorit", daher entfernen
+            favorites.remove(providerId);
+            System.out.println("Favorit entfernt: " + providerId);
+        } else if (category > 0) {
+            // Kategorie setzen
+            favorites.put(providerId, category);
+            System.out.println("Kategorie für Provider " + providerId + " auf " + category + " gesetzt");
         }
         saveFavorites();
     }
@@ -101,8 +137,26 @@ public class FavoritesManager {
             while ((line = reader.readLine()) != null) {
                 line = line.trim();
                 if (!line.isEmpty()) {
-                    favorites.add(line);
-                    System.out.println("Favorit geladen: " + line);
+                    // Format überprüfen: ID:Kategorie
+                    if (line.contains(":")) {
+                        String[] parts = line.split(":");
+                        if (parts.length >= 2) {
+                            String providerId = parts[0].trim();
+                            try {
+                                int category = Integer.parseInt(parts[1].trim());
+                                if (category > 0 && category <= 10) {
+                                    favorites.put(providerId, category);
+                                    System.out.println("Favorit geladen: " + providerId + " mit Kategorie " + category);
+                                }
+                            } catch (NumberFormatException e) {
+                                LOGGER.warning("Ungültiges Kategorieformat für Provider " + parts[0] + ": " + parts[1]);
+                            }
+                        }
+                    } else {
+                        // Altes Format ohne Kategorie - setze auf Kategorie 1
+                        favorites.put(line, 1);
+                        System.out.println("Favorit im alten Format geladen: " + line + " mit Standard-Kategorie 1");
+                    }
                 }
             }
             System.out.println("Anzahl geladener Favoriten: " + favorites.size());
@@ -152,8 +206,9 @@ public class FavoritesManager {
             }
             
             try (PrintWriter writer = new PrintWriter(new FileWriter(favoritesFile.toFile()))) {
-                for (String providerId : favorites) {
-                    writer.println(providerId);
+                for (Map.Entry<String, Integer> entry : favorites.entrySet()) {
+                    // Speichern im neuen Format: ID:Kategorie
+                    writer.println(entry.getKey() + ":" + entry.getValue());
                 }
                 System.out.println("Favoriten erfolgreich gespeichert. Anzahl: " + favorites.size());
                 System.out.println("Speicherort: " + favoritesFile.toAbsolutePath());
@@ -192,5 +247,43 @@ public class FavoritesManager {
             System.out.println("Fehler beim Speichern der Bad Provider: " + e.getMessage());
             e.printStackTrace();
         }
+    }
+    
+    /**
+     * Gibt alle Favoriten einer bestimmten Kategorie zurück
+     * @param category Kategorie der Favoriten (1-10)
+     * @return Set mit Provider-IDs in dieser Kategorie
+     */
+    public Set<String> getFavoritesInCategory(int category) {
+        Set<String> result = new HashSet<>();
+        
+        if (category <= 0) {
+            // Kategorie 0 bedeutet alle Provider (keine Filterung nach Favoriten)
+            return result; // Leeres Set, da keine Filterung stattfindet
+        }
+        
+        for (Map.Entry<String, Integer> entry : favorites.entrySet()) {
+            if (entry.getValue() == category) {
+                result.add(entry.getKey());
+            }
+        }
+        
+        return result;
+    }
+    
+    /**
+     * Gibt alle Favoriten zurück (unabhängig von der Kategorie)
+     * @return Set mit allen Provider-IDs, die Favoriten sind
+     */
+    public Set<String> getAllFavorites() {
+        return favorites.keySet();
+    }
+    
+    /**
+     * Gibt die Map mit allen Favoriten und ihren Kategorien zurück
+     * @return Map mit Provider-ID als Schlüssel und Kategorie als Wert
+     */
+    public Map<String, Integer> getFavoriteCategories() {
+        return new HashMap<>(favorites);
     }
 }

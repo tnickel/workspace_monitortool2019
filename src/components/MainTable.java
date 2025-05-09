@@ -107,9 +107,7 @@ public class MainTable extends JTable {
         return filterManager.getCurrentFilter();
     }
     
-    public FavoritesFilterManager getFavoritesManager() {
-        return favoritesManager;
-    }
+  
     
     private void initialize() {
         setModel(model);
@@ -455,5 +453,85 @@ public class MainTable extends JTable {
    
     public void setColumnVisible(int columnIndex, boolean visible) {
         columnManager.setColumnVisible(columnIndex, visible);
+    }
+    /**
+     * Filtert die Tabelle, um nur Favoriten einer bestimmten Kategorie anzuzeigen
+     * @param category Die Kategorie (0-10), wobei 0 bedeutet, keine Filterung anwenden
+     */
+    public void filterByFavoriteCategory(int category) {
+        favoritesManager.filterByCategory(category);
+        updateStatus();
+    }
+    public void manageFavoriteCategory(String providerId, int currentCategory) {
+        Object[] options = new Object[11];
+        options[0] = "Kein Favorit";
+        for (int i = 1; i <= 10; i++) {
+            options[i] = "Kategorie " + i;
+        }
+        
+        int selectedOption = JOptionPane.showOptionDialog(
+            SwingUtilities.getWindowAncestor(this),
+            "Bitte wählen Sie die Favoriten-Kategorie für Provider " + providerId,
+            "Favoriten-Kategorie wählen",
+            JOptionPane.DEFAULT_OPTION,
+            JOptionPane.QUESTION_MESSAGE,
+            null,
+            options,
+            options[currentCategory]
+        );
+        
+        if (selectedOption >= 0) {
+            favoritesManager.getFavoritesManager().setFavoriteCategory(providerId, selectedOption);
+            
+            // Wenn die aktuelle Kategorie angezeigt wird, aktualisiere die Anzeige
+            if (favoritesManager.getCurrentCategory() > 0) {
+                favoritesManager.filterByCategory(favoritesManager.getCurrentCategory());
+            }
+            
+            repaint();
+        }
+    }
+
+    /**
+     * Gibt den FavoritesFilterManager zurück
+     * @return Der FavoritesFilterManager
+     */
+    public FavoritesFilterManager getFavoritesManager() {
+        return favoritesManager;
+    }
+
+    /**
+     * Gibt die Favoriten-Kategorie eines Signal Providers zurück
+     * @param providerName Der Name des Signal Providers
+     * @return Die Kategorie des Providers (0 = kein Favorit)
+     */
+    public int getFavoriteCategory(String providerName) {
+        String providerId = extractProviderId(providerName);
+        return favoritesManager.getFavoritesManager().getFavoriteCategory(providerId);
+    }
+
+    /**
+     * Extrahiert die Provider-ID aus dem Providernamen
+     * @param providerName Name des Providers (normalerweise ein Dateipfad)
+     * @return Die extrahierte Provider-ID
+     */
+    private String extractProviderId(String providerName) {
+        // Provider-ID aus dem Namen extrahieren
+        String providerId = "";
+        if (providerName.contains("_")) {
+            providerId = providerName.substring(providerName.lastIndexOf("_") + 1).replace(".csv", "");
+        } else {
+            // Fallback für unerwartetes Format
+            StringBuilder digits = new StringBuilder();
+            for (char ch : providerName.toCharArray()) {
+                if (Character.isDigit(ch)) {
+                    digits.append(ch);
+                }
+            }
+            if (digits.length() > 0) {
+                providerId = digits.toString();
+            }
+        }
+        return providerId;
     }
 }

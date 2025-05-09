@@ -3,151 +3,159 @@ package utils;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
-import javax.swing.*;
-import javax.swing.border.Border;
-import javax.swing.border.CompoundBorder;
-import javax.swing.border.EmptyBorder;
-import javax.swing.border.LineBorder;
+import java.awt.GradientPaint;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 
-/**
- * Zentrale Klasse für einheitliches Styling aller UI-Komponenten.
- * Diese Klasse vereint die Funktionalitäten von UIStyleManager, AppUIStyle, 
- * UIComponentFactory und UIConstants
- */
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JComponent;
+import javax.swing.JLabel;
+import javax.swing.JTextField;
+import javax.swing.UIManager;
+import javax.swing.border.Border;
+import javax.swing.plaf.basic.BasicComboBoxUI;
+
 public class UIStyle {
-    // Farben
-    public static final Color PRIMARY_COLOR = new Color(26, 45, 90);    // #1A2D5A - Dunkelblau
-    public static final Color SECONDARY_COLOR = new Color(62, 125, 204); // #3E7DCC - Helleres Blau
-    public static final Color ACCENT_COLOR = new Color(255, 209, 102);  // #FFD166 - Gold/Gelb
-    public static final Color BG_COLOR = new Color(245, 247, 250);      // #F5F7FA - Sehr helles Grau
-    public static final Color TEXT_COLOR = new Color(51, 51, 51);       // #333333 - Dunkelgrau
-    public static final Color TEXT_SECONDARY_COLOR = new Color(85, 85, 85); // #555555 - Helleres Grau
-    public static final Color POSITIVE_COLOR = new Color(46, 139, 87);  // #2E8B57 - Grün
-    public static final Color NEGATIVE_COLOR = new Color(204, 59, 59);  // #CC3B3B - Rot
+    // Farben für die Anwendung
+    public static final Color PRIMARY_COLOR = new Color(51, 102, 204);
+    public static final Color SECONDARY_COLOR = new Color(41, 82, 164);
+    public static final Color ACCENT_COLOR = new Color(255, 220, 0);
+    public static final Color BACKGROUND_COLOR = new Color(240, 245, 250);
+    public static final Color TEXT_COLOR = new Color(50, 50, 50);
+    public static final Color TEXT_SECONDARY_COLOR = new Color(100, 100, 100);
+    public static final Color POSITIVE_COLOR = new Color(0, 150, 50);
+    public static final Color NEGATIVE_COLOR = new Color(220, 50, 50);
     
     // Schriftarten
-    public static final Font TITLE_FONT = new Font("SansSerif", Font.BOLD, 18);
-    public static final Font SUBTITLE_FONT = new Font("SansSerif", Font.BOLD, 14);
-    public static final Font REGULAR_FONT = new Font("SansSerif", Font.PLAIN, 12);
+    public static final Font HEADER_FONT = new Font("SansSerif", Font.BOLD, 14);
+    public static final Font NORMAL_FONT = new Font("SansSerif", Font.PLAIN, 12);
     public static final Font BOLD_FONT = new Font("SansSerif", Font.BOLD, 12);
-    public static final Font BOLD_LARGE_FONT = new Font("SansSerif", Font.BOLD, 13);
-    public static final Font ITALIC_FONT = new Font("SansSerif", Font.ITALIC, 14);
-    public static final Font SMALL_FONT = new Font("SansSerif", Font.PLAIN, 10);
+    public static final Font TITLE_FONT = new Font("SansSerif", Font.BOLD, 16);
+    public static final Font REGULAR_FONT = new Font("SansSerif", Font.PLAIN, 12);
+    public static final Font BOLD_LARGE_FONT = new Font("SansSerif", Font.BOLD, 14);
     
-    // Standardgrößen
-    public static final Dimension DEFAULT_CHART_SIZE = new Dimension(665, 240);
-    public static final Dimension DURATION_CHART_SIZE = new Dimension(665, 500);
-    public static final Dimension CURRENCY_PAIR_CHART_SIZE = new Dimension(665, 920);
-    public static final Dimension DB_DIALOG_SIZE = new Dimension(500, 300);
+    // URL Format
+    public static final String SIGNAL_PROVIDER_URL_FORMAT = "https://www.mql5.com/de/signals/%s?source=Site+Signals+Subscriptions#!tab=account";
     
-    // Abstände
-    public static final int PANEL_SPACING = 15;
-    public static final int CHART_PADDING = 8;
+    // Chart-Größen und Abstand
+    public static final Dimension DEFAULT_CHART_SIZE = new Dimension(800, 400);
+    public static final Dimension DURATION_CHART_SIZE = new Dimension(800, 500);
+    public static final Dimension CURRENCY_PAIR_CHART_SIZE = new Dimension(800, 600);
+    public static final int CHART_PADDING = 10;
+    public static final int PANEL_SPACING = 20;
     
-    // URLs
-    public static final String SIGNAL_PROVIDER_URL_FORMAT = 
-            "https://www.mql5.com/de/signals/%s?source=Site+Signals+Subscriptions#!tab=account";
-    
-    // Rahmen
-    public static Border createPrimaryBorder() {
-        return new LineBorder(PRIMARY_COLOR, 1);
+    /**
+     * Setzt die UIManager-Einstellungen für ein einheitliches Look-and-Feel
+     */
+    public static void setUpUIDefaults() {
+        try {
+            // Look-and-Feel auf System-Standard setzen
+            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+            
+            // Standard-Farben und Schriftarten setzen
+            UIManager.put("Panel.background", BACKGROUND_COLOR);
+            UIManager.put("OptionPane.background", BACKGROUND_COLOR);
+            UIManager.put("Button.background", PRIMARY_COLOR);
+            UIManager.put("Button.foreground", Color.WHITE);
+            UIManager.put("Button.font", BOLD_FONT);
+            UIManager.put("Label.font", NORMAL_FONT);
+            UIManager.put("TextField.font", NORMAL_FONT);
+            UIManager.put("ComboBox.font", NORMAL_FONT);
+            
+        } catch (Exception e) {
+            System.err.println("Fehler beim Setzen des Look-and-Feel: " + e);
+        }
     }
     
-    public static Border createSecondaryBorder() {
-        return new LineBorder(SECONDARY_COLOR, 1);
-    }
-    
-    public static Border createButtonBorder() {
-        return new CompoundBorder(
-            new LineBorder(new Color(50, 90, 150), 1),
-            new EmptyBorder(5, 10, 5, 10)
-        );
-    }
-    
-    // UI-Komponenten
-    public static JButton createStyledButton(String text) {
-        JButton button = new JButton(text);
-        button.setBackground(SECONDARY_COLOR);
-        button.setForeground(Color.WHITE);
-        button.setFont(BOLD_FONT);
-        button.setFocusPainted(false);
-        button.setBorder(new CompoundBorder(
-            new LineBorder(new Color(50, 90, 150), 1),
-            new EmptyBorder(5, 10, 5, 10)
-        ));
-        return button;
-    }
-    
-    public static JTextField createStyledTextField(int columns) {
-        JTextField textField = new JTextField(columns);
-        textField.setBackground(Color.WHITE);
-        textField.setForeground(TEXT_COLOR);
-        textField.setBorder(new CompoundBorder(
-            new LineBorder(SECONDARY_COLOR, 1),
-            new EmptyBorder(4, 6, 4, 6)
-        ));
-        return textField;
-    }
-    
+    /**
+     * Erstellt ein gestyltes JLabel
+     * @param text Der Text des Labels
+     * @return Das gestylte JLabel
+     */
     public static JLabel createStyledLabel(String text) {
         JLabel label = new JLabel(text);
-        label.setForeground(TEXT_COLOR);
-        label.setFont(REGULAR_FONT);
-        return label;
-    }
-    
-    public static JLabel createTitleLabel(String text) {
-        JLabel label = new JLabel(text);
-        label.setFont(TITLE_FONT);
-        label.setForeground(PRIMARY_COLOR);
-        return label;
-    }
-    
-    public static JLabel createSubtitleLabel(String text) {
-        JLabel label = new JLabel(text);
-        label.setFont(SUBTITLE_FONT);
-        label.setForeground(SECONDARY_COLOR);
-        return label;
-    }
-    
-    public static JLabel createRegularLabel(String text) {
-        JLabel label = new JLabel(text);
-        label.setFont(REGULAR_FONT);
+        label.setFont(NORMAL_FONT);
         label.setForeground(TEXT_COLOR);
         return label;
     }
     
     /**
-     * Initialisiert globale UI-Einstellungen für die gesamte Anwendung
+     * Erstellt ein gestyltes JTextField
+     * @param columns Anzahl der Spalten
+     * @return Das gestylte JTextField
      */
-    public static void setUpUIDefaults() {
-        // Globale UI-Einstellungen
-        UIManager.put("Panel.background", BG_COLOR);
-        UIManager.put("OptionPane.background", BG_COLOR);
-        UIManager.put("TextField.background", Color.WHITE);
-        UIManager.put("TextField.foreground", TEXT_COLOR);
-        UIManager.put("TextField.caretForeground", PRIMARY_COLOR);
-        UIManager.put("Button.background", SECONDARY_COLOR);
-        UIManager.put("Button.foreground", Color.WHITE);
-        UIManager.put("Button.font", BOLD_FONT);
-        UIManager.put("Label.foreground", TEXT_COLOR);
-        UIManager.put("MenuBar.background", PRIMARY_COLOR);
-        UIManager.put("MenuBar.foreground", Color.WHITE);
-        UIManager.put("Menu.background", PRIMARY_COLOR);
-        UIManager.put("Menu.foreground", Color.WHITE);
-        UIManager.put("Menu.selectionBackground", SECONDARY_COLOR);
-        UIManager.put("Menu.selectionForeground", Color.WHITE);
-        UIManager.put("MenuItem.background", BG_COLOR);
-        UIManager.put("MenuItem.foreground", TEXT_COLOR);
-        UIManager.put("MenuItem.selectionBackground", SECONDARY_COLOR);
-        UIManager.put("MenuItem.selectionForeground", Color.WHITE);
-        UIManager.put("Table.background", Color.WHITE);
-        UIManager.put("Table.foreground", TEXT_COLOR);
-        UIManager.put("Table.selectionBackground", SECONDARY_COLOR);
-        UIManager.put("Table.selectionForeground", Color.WHITE);
-        UIManager.put("Table.gridColor", new Color(230, 230, 230));
-        UIManager.put("ScrollPane.background", BG_COLOR);
-        UIManager.put("ToolBar.background", PRIMARY_COLOR);
-        UIManager.put("ToolBar.foreground", Color.WHITE);
+    public static JTextField createStyledTextField(int columns) {
+        JTextField textField = new JTextField(columns);
+        textField.setFont(NORMAL_FONT);
+        textField.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(SECONDARY_COLOR),
+            BorderFactory.createEmptyBorder(2, 5, 2, 5)
+        ));
+        return textField;
+    }
+    
+    /**
+     * Erstellt einen gestylten JButton
+     * @param text Der Text des Buttons
+     * @return Der gestylte JButton
+     */
+    public static JButton createStyledButton(String text) {
+        JButton button = new JButton(text);
+        button.setBackground(SECONDARY_COLOR);
+        button.setForeground(Color.WHITE);
+        button.setFocusPainted(false);
+        button.setBorderPainted(true);
+        button.setBorder(createButtonBorder());
+        button.setFont(BOLD_FONT);
+        return button;
+    }
+    
+    /**
+     * Erstellt einen Standard-Rahmen für Buttons
+     * @return Der Button-Rahmen
+     */
+    public static Border createButtonBorder() {
+        return BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(SECONDARY_COLOR),
+            BorderFactory.createEmptyBorder(4, 8, 4, 8)
+        );
+    }
+    
+    /**
+     * Wendet Stile auf eine JComboBox an
+     * @param comboBox Die zu stylende ComboBox
+     */
+    public static void applyStylesToComboBox(JComboBox<?> comboBox) {
+        comboBox.setFont(NORMAL_FONT);
+        comboBox.setBackground(Color.WHITE);
+        comboBox.setForeground(TEXT_COLOR);
+        comboBox.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(SECONDARY_COLOR),
+            BorderFactory.createEmptyBorder(2, 5, 2, 5)
+        ));
+        
+        // Eigene UI für die ComboBox
+        comboBox.setUI(new BasicComboBoxUI() {
+            @Override
+            public void paintCurrentValueBackground(Graphics g, java.awt.Rectangle bounds, boolean hasFocus) {
+                Graphics2D g2d = (Graphics2D) g;
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                
+                if (comboBox.isEnabled()) {
+                    GradientPaint gp = new GradientPaint(
+                        bounds.x, bounds.y, Color.WHITE,
+                        bounds.x, bounds.y + bounds.height, new Color(240, 240, 240)
+                    );
+                    g2d.setPaint(gp);
+                } else {
+                    g2d.setColor(UIManager.getColor("ComboBox.background"));
+                }
+                
+                g2d.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
+            }
+        });
     }
 }

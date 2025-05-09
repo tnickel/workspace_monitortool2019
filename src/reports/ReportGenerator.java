@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Logger;
 
@@ -25,6 +26,7 @@ import charts.EquityDrawdownChart;
 import charts.SymbolDistributionChart;
 import charts.TradeStackingChart;
 import charts.WeeklyLotsizeChart;
+import data.FavoritesManager;
 import data.ProviderStats;
 import data.Trade;
 import db.HistoryDatabaseManager;
@@ -39,6 +41,7 @@ public class ReportGenerator {
     private final String rootPath;
     private final HtmlDatabase htmlDatabase;
     private final HistoryDatabaseManager historyDbManager;
+    private final FavoritesManager favoritesManager;
     
     /**
      * Konstruktor für den ReportGenerator
@@ -51,9 +54,17 @@ public class ReportGenerator {
         this.rootPath = ApplicationConstants.validateRootPath(rootPath, "ReportGenerator.constructor");
         this.htmlDatabase = htmlDatabase;
         this.historyDbManager = HistoryDatabaseManager.getInstance(rootPath);
+        this.favoritesManager = new FavoritesManager(rootPath);
         
         // Stelle sicher, dass das Report-Verzeichnis existiert
         createReportDirectory();
+    }
+    
+    /**
+     * Konstruktor nur mit rootPath
+     */
+    public ReportGenerator(String rootPath) {
+        this(rootPath, new HtmlDatabase(rootPath));
     }
     
     /**
@@ -78,15 +89,45 @@ public class ReportGenerator {
      * @return Der Pfad zur generierten HTML-Datei
      */
     public String generateReport(Map<String, ProviderStats> favoriteProviders) {
+        return generateReport(favoriteProviders, 0); // 0 bedeutet alle Favoriten-Kategorien
+    }
+    
+    /**
+     * Generiert einen HTML-Report für die angegebenen Signal Provider einer bestimmten Kategorie
+     * 
+     * @param favoriteProviders Map mit den Favoriten-Providern und ihren Statistiken
+     * @param category Die Favoriten-Kategorie (1-10) oder 0 für alle Kategorien
+     * @return Der Pfad zur generierten HTML-Datei
+     */
+    public String generateReport(Map<String, ProviderStats> favoriteProviders, int category) {
         if (favoriteProviders.isEmpty()) {
             LOGGER.warning("Keine Favoriten-Provider zum Erstellen des Reports gefunden");
             return null;
         }
         
+        // Filtere nach Kategorie, falls erforderlich
+        Map<String, ProviderStats> filteredProviders = favoriteProviders;
+        if (category > 0) {
+            filteredProviders = new HashMap<>();
+            for (Map.Entry<String, ProviderStats> entry : favoriteProviders.entrySet()) {
+                String providerName = entry.getKey();
+                String providerId = extractProviderId(providerName);
+                if (favoritesManager.isFavoriteInCategory(providerId, category)) {
+                    filteredProviders.put(providerName, entry.getValue());
+                }
+            }
+            
+            if (filteredProviders.isEmpty()) {
+                LOGGER.warning("Keine Provider in Kategorie " + category + " gefunden");
+                return null;
+            }
+        }
+        
         // Dateiname und Pfad für den Report
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd_HHmmss");
         String timestamp = dateFormat.format(new Date());
-        String reportFileName = "favorites_report_" + timestamp + ".html";
+        String categoryStr = category > 0 ? "_cat" + category : "";
+        String reportFileName = "favorites" + categoryStr + "_report_" + timestamp + ".html";
         String reportPath = rootPath + File.separator + "report" + File.separator + reportFileName;
         
         // Report-Verzeichnis für Bilder
@@ -96,17 +137,30 @@ public class ReportGenerator {
             reportImagesDir.mkdirs();
         }
         
+        String reportTitle = "Favoriten Signal Provider Report";
+        if (category > 0) {
+            reportTitle += " - Kategorie " + category;
+        }
+        
         try (FileWriter writer = new FileWriter(reportPath)) {
             // HTML-Header schreiben
-            writer.write(generateHtmlHeader("Favoriten Signal Provider Report", timestamp));
+            writer.write(generateHtmlHeader(reportTitle, timestamp));
             
             // Inhaltsverzeichnis erstellen
             writer.write("<div class=\"toc\">\n");
             writer.write("<h2>Inhaltsverzeichnis</h2>\n");
             writer.write("<ul>\n");
-            for (String providerName : favoriteProviders.keySet()) {
+            for (String providerName : filteredProviders.keySet()) {
                 String providerId = extractProviderId(providerName);
-                writer.write("<li><a href=\"#" + providerId + "\">" + providerName + "</a></li>\n");
+                // Kategorie anzeigen, wenn alle Kategorien angezeigt werden
+                String categoryInfo = "";
+                if (category == 0) {
+                    int providerCategory = favoritesManager.getFavoriteCategory(providerId);
+                    if (providerCategory > 0) {
+                        categoryInfo = " (Kategorie " + providerCategory + ")";
+                    }
+                }
+                writer.write("<li><a href=\"#" + providerId + "\">" + providerName + categoryInfo + "</a></li>\n");
             }
             writer.write("</ul>\n");
             writer.write("</div>\n");
@@ -115,13 +169,17 @@ public class ReportGenerator {
             writer.write("<div class=\"main-content\">\n");
             
             // Für jeden Provider im Report
-            for (Map.Entry<String, ProviderStats> entry : favoriteProviders.entrySet()) {
+            for (Map.Entry<String, ProviderStats> entry : filteredProviders.entrySet()) {
                 String providerName = entry.getKey();
                 ProviderStats stats = entry.getValue();
                 String providerId = extractProviderId(providerName);
                 
                 writer.write("<div class=\"provider-section\" id=\"" + providerId + "\">\n");
-                writer.write("<h2>" + providerName + "</h2>\n");
+                
+                // Kategorie-Info im Titel anzeigen
+                int providerCategory = favoritesManager.getFavoriteCategory(providerId);
+                String categoryInfo = providerCategory > 0 ? " (Kategorie " + providerCategory + ")" : "";
+                writer.write("<h2>" + providerName + categoryInfo + "</h2>\n");
                 
                 // Lade Notizen aus der Datenbank
                 String notes = historyDbManager.getProviderNotes(providerName);
@@ -248,6 +306,144 @@ public class ReportGenerator {
             
             LOGGER.info("Report erfolgreich erstellt: " + reportPath);
             return reportPath;
+            
+        } catch (IOException e) {
+            LOGGER.severe("Fehler beim Erstellen des Reports: " + e.getMessage());
+            e.printStackTrace();
+            return null;
+        }
+    }
+    
+    /**
+     * Generiert einen benutzerdefinierten Report für ausgewählte Provider
+     * 
+     * @param providerStats Map mit den ausgewählten Providern
+     * @param reportTitle Titel des Reports
+     * @param outputPath Pfad zur Ausgabedatei
+     * @return Pfad zur erzeugten HTML-Datei oder null bei Fehler
+     */
+    public String generateReport(Map<String, ProviderStats> providerStats, 
+                                String reportTitle, 
+                                String outputPath) {
+        if (providerStats.isEmpty()) {
+            LOGGER.warning("Keine Provider zum Erstellen des Reports gefunden");
+            return null;
+        }
+        
+        try {
+            // Report-Verzeichnis für Bilder
+            String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+            String imagesDir = "images_" + timestamp;
+            File reportImagesDir = new File(new File(outputPath).getParentFile(), imagesDir);
+            if (!reportImagesDir.exists()) {
+                reportImagesDir.mkdirs();
+            }
+            
+            try (FileWriter writer = new FileWriter(outputPath)) {
+                // HTML-Header schreiben
+                writer.write(generateHtmlHeader(reportTitle, timestamp));
+                
+                // Inhaltsverzeichnis erstellen
+                writer.write("<div class=\"toc\">\n");
+                writer.write("<h2>Inhaltsverzeichnis</h2>\n");
+                writer.write("<ul>\n");
+                for (String providerName : providerStats.keySet()) {
+                    String providerId = extractProviderId(providerName);
+                    
+                    // Kategorie anzeigen, wenn es ein Favorit ist
+                    String categoryInfo = "";
+                    int providerCategory = favoritesManager.getFavoriteCategory(providerId);
+                    if (providerCategory > 0) {
+                        categoryInfo = " (Favorit, Kategorie " + providerCategory + ")";
+                    }
+                    
+                    writer.write("<li><a href=\"#" + providerId + "\">" + providerName + categoryInfo + "</a></li>\n");
+                }
+                writer.write("</ul>\n");
+                writer.write("</div>\n");
+                
+                // Hauptinhalt mit Provider-Informationen
+                writer.write("<div class=\"main-content\">\n");
+                
+                // Für jeden Provider im Report
+                for (Map.Entry<String, ProviderStats> entry : providerStats.entrySet()) {
+                    String providerName = entry.getKey();
+                    ProviderStats stats = entry.getValue();
+                    String providerId = extractProviderId(providerName);
+                    
+                    writer.write("<div class=\"provider-section\" id=\"" + providerId + "\">\n");
+                    
+                    // Kategorie-Info im Titel anzeigen
+                    int providerCategory = favoritesManager.getFavoriteCategory(providerId);
+                    String categoryInfo = "";
+                    if (providerCategory > 0) {
+                        categoryInfo = " (Favorit, Kategorie " + providerCategory + ")";
+                    }
+                    writer.write("<h2>" + providerName + categoryInfo + "</h2>\n");
+                    
+                    // Lade Notizen aus der Datenbank
+                    String notes = historyDbManager.getProviderNotes(providerName);
+                    
+                    // Statistische Informationen
+                    writer.write("<div class=\"stats-info\">\n");
+                    writer.write("<h3>Handelsinformationen</h3>\n");
+                    writer.write("<table class=\"stats-table\">\n");
+                    writer.write("<tr><th>Kennzahl</th><th>Wert</th></tr>\n");
+                    writer.write("<tr><td>Total Trades</td><td>" + stats.getTrades().size() + "</td></tr>\n");
+                    writer.write("<tr><td>Win Rate</td><td>" + String.format("%.2f%%", stats.getWinRate() * 100) + "</td></tr>\n");
+                    writer.write("<tr><td>Profit</td><td>" + String.format("%.2f", stats.getTotalProfit()) + "</td></tr>\n");
+                    
+                    // MPDD-Werte
+                    double threeMonthProfit = htmlDatabase.getAverageMonthlyProfit(providerName, 3);
+                    double equityDrawdown = htmlDatabase.getEquityDrawdown(providerName);
+                    double maxDrawdownGraphic = htmlDatabase.getEquityDrawdownGraphic(providerName);
+                    
+                    writer.write("<tr><td>3MPDD</td><td>" + String.format("%.2f", threeMonthProfit / Math.max(0.01, equityDrawdown)) + "</td></tr>\n");
+                    writer.write("<tr><td>Equity Drawdown</td><td>" + String.format("%.2f%%", equityDrawdown) + "</td></tr>\n");
+                    writer.write("<tr><td>Max Drawdown</td><td>" + String.format("%.2f%%", maxDrawdownGraphic) + "</td></tr>\n");
+                    writer.write("</table>\n");
+                    
+                    // Notizen anzeigen, falls vorhanden
+                    if (notes != null && !notes.trim().isEmpty()) {
+                        writer.write("<div class=\"notes-section\">\n");
+                        writer.write("<h3>Notizen</h3>\n");
+                        writer.write("<div class=\"notes-content\">\n");
+                        writer.write("<p>" + notes.replace("\n", "<br>") + "</p>\n");
+                        writer.write("</div>\n");
+                        writer.write("</div>\n");
+                    }
+                    
+                    writer.write("</div>\n"); // Ende stats-info
+                    
+                    // Charts erstellen und hinzufügen - hier nur die wichtigsten Charts
+                    writer.write("<div class=\"charts-section\">\n");
+                    writer.write("<h3>Charts</h3>\n");
+                    
+                    // Equity Drawdown Chart
+                    EquityDrawdownChart equityDrawdownChart = new EquityDrawdownChart(stats, maxDrawdownGraphic, htmlDatabase);
+                    String equityDrawdownChartPath = saveChartAsImage(equityDrawdownChart.getChart(), 
+                            reportImagesDir.getPath(), providerId + "_equity_drawdown");
+                    if (equityDrawdownChartPath != null) {
+                        writer.write("<div class=\"chart-container\">\n");
+                        writer.write("<h4>Equity Drawdown</h4>\n");
+                        writer.write("<img src=\"" + imagesDir + "/" + new File(equityDrawdownChartPath).getName() + 
+                                "\" alt=\"Equity Drawdown Chart\" class=\"chart-image\">\n");
+                        writer.write("</div>\n");
+                    }
+                    
+                    writer.write("</div>\n"); // Ende charts-section
+                    writer.write("</div>\n"); // Ende provider-section
+                    
+                    // Horizontale Linie zwischen den Providern
+                    writer.write("<hr>\n");
+                }
+                
+                writer.write("</div>\n"); // Ende main-content
+                writer.write(generateHtmlFooter());
+            }
+            
+            LOGGER.info("Report erfolgreich erstellt: " + outputPath);
+            return outputPath;
             
         } catch (IOException e) {
             LOGGER.severe("Fehler beim Erstellen des Reports: " + e.getMessage());
