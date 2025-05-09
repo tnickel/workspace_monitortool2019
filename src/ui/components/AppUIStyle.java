@@ -1,96 +1,161 @@
 package ui.components;
 
 import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.GradientPaint;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JLabel;
+import javax.swing.JPanel;
 import javax.swing.JTextField;
-import javax.swing.UIManager;
-import javax.swing.border.CompoundBorder;
-import javax.swing.border.EmptyBorder;
-import javax.swing.border.LineBorder;
+import javax.swing.border.Border;
 
+/**
+ * Zentrale Klasse für UI-Styling der Anwendung
+ */
 public class AppUIStyle {
-    // Definierte Farben für das Design
-    public static final Color PRIMARY_COLOR = new Color(26, 45, 90); // #1A2D5A - Dunkelblau
-    public static final Color SECONDARY_COLOR = new Color(62, 125, 204); // #3E7DCC - Helleres Blau
-    public static final Color ACCENT_COLOR = new Color(255, 209, 102); // #FFD166 - Gold/Gelb
-    public static final Color BG_COLOR = new Color(245, 247, 250); // #F5F7FA - Sehr helles Grau
-    public static final Color TEXT_COLOR = new Color(51, 51, 51); // #333333 - Dunkelgrau
-    public static final Color TEXT_SECONDARY_COLOR = new Color(85, 85, 85); // #555555 - Helleres Grau
-
+    // Farben
+    public static final Color PRIMARY_COLOR = new Color(30, 70, 130); // Dunkelblau
+    public static final Color SECONDARY_COLOR = new Color(60, 100, 170); // Mittelblau
+    public static final Color ACCENT_COLOR = new Color(0, 150, 220); // Akzentfarbe für Hervorhebungen
+    
+    // Hellere Farbe für die Filter-Buttons
+    public static final Color BUTTON_COLOR = new Color(90, 130, 210); // Helleres Blau für die Buttons
+    
+    // Weitere Farben
+    public static final Color TEXT_COLOR = new Color(50, 50, 50);
+    public static final Color TEXT_FIELD_BG_COLOR = new Color(250, 250, 252);
+    public static final Color HIGHLIGHT_COLOR = new Color(255, 240, 200);
+    
+    // Schriftarten
+    public static final Font REGULAR_FONT = new Font("SansSerif", Font.PLAIN, 12);
+    public static final Font BOLD_FONT = new Font("SansSerif", Font.BOLD, 12);
+    public static final Font TITLE_FONT = new Font("SansSerif", Font.BOLD, 16);
+    public static final Font SUBTITLE_FONT = new Font("SansSerif", Font.BOLD, 14);
+    
     /**
-     * Initialisiert die UI-Standard-Einstellungen
+     * Setzt die UI-Defaults für die Anwendung
      */
     public static void setUpUIDefaults() {
-        // Globale UI-Einstellungen
-        UIManager.put("Panel.background", BG_COLOR);
-        UIManager.put("OptionPane.background", BG_COLOR);
-        UIManager.put("TextField.background", Color.WHITE);
-        UIManager.put("TextField.foreground", TEXT_COLOR);
-        UIManager.put("TextField.caretForeground", PRIMARY_COLOR);
-        UIManager.put("Button.background", SECONDARY_COLOR);
-        UIManager.put("Button.foreground", Color.WHITE);
-        UIManager.put("Button.font", new Font("SansSerif", Font.BOLD, 12));
-        UIManager.put("Label.foreground", TEXT_COLOR);
-        UIManager.put("MenuBar.background", PRIMARY_COLOR);
-        UIManager.put("MenuBar.foreground", Color.WHITE);
-        UIManager.put("Menu.background", PRIMARY_COLOR);
-        UIManager.put("Menu.foreground", Color.WHITE);
-        UIManager.put("Menu.selectionBackground", SECONDARY_COLOR);
-        UIManager.put("Menu.selectionForeground", Color.WHITE);
-        UIManager.put("MenuItem.background", BG_COLOR);
-        UIManager.put("MenuItem.foreground", TEXT_COLOR);
-        UIManager.put("MenuItem.selectionBackground", SECONDARY_COLOR);
-        UIManager.put("MenuItem.selectionForeground", Color.WHITE);
-        UIManager.put("Table.background", Color.WHITE);
-        UIManager.put("Table.foreground", TEXT_COLOR);
-        UIManager.put("Table.selectionBackground", SECONDARY_COLOR);
-        UIManager.put("Table.selectionForeground", Color.WHITE);
-        UIManager.put("Table.gridColor", new Color(230, 230, 230));
-        UIManager.put("ScrollPane.background", BG_COLOR);
-        UIManager.put("ToolBar.background", PRIMARY_COLOR);
-        UIManager.put("ToolBar.foreground", Color.WHITE);
+        try {
+            // UI-Defaults setzen
+            javax.swing.UIManager.put("Button.background", BUTTON_COLOR);
+            javax.swing.UIManager.put("Button.foreground", Color.WHITE);
+            javax.swing.UIManager.put("Panel.background", new Color(240, 245, 250));
+            javax.swing.UIManager.put("Label.foreground", TEXT_COLOR);
+            javax.swing.UIManager.put("TextField.background", TEXT_FIELD_BG_COLOR);
+            javax.swing.UIManager.put("TextField.foreground", TEXT_COLOR);
+            javax.swing.UIManager.put("TextField.caretForeground", TEXT_COLOR);
+            javax.swing.UIManager.put("ComboBox.background", TEXT_FIELD_BG_COLOR);
+            javax.swing.UIManager.put("ComboBox.foreground", TEXT_COLOR);
+            
+            // Weitere UI-Einstellungen nach Bedarf
+        } catch (Exception e) {
+            System.err.println("Fehler beim Setzen der UI-Defaults: " + e.getMessage());
+        }
     }
     
     /**
-     * Erstellt ein Styled Label
+     * Erstellt einen Button mit einheitlichem Styling
+     * Button-Farbe ist jetzt heller für bessere Sichtbarkeit
+     * 
+     * @param text Der Text für den Button
+     * @return Ein gestylter JButton
      */
-    public static JLabel createStyledLabel(String text) {
-        JLabel label = new JLabel(text);
-        label.setForeground(TEXT_COLOR);
-        label.setFont(new Font("SansSerif", Font.PLAIN, 12));
-        return label;
+    public static JButton createStyledButton(String text) {
+        JButton button = new JButton(text);
+        button.setBackground(BUTTON_COLOR); // Hellere Farbe für bessere Sichtbarkeit
+        button.setForeground(Color.WHITE);
+        button.setFont(BOLD_FONT);
+        button.setFocusPainted(false);
+        button.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(60, 100, 180), 1),
+            BorderFactory.createEmptyBorder(5, 10, 5, 10)
+        ));
+        
+        // Sicherstellen, dass die Hintergrundfarbe angezeigt wird
+        button.setOpaque(true);
+        
+        return button;
     }
     
     /**
-     * Erstellt ein Styled TextField
+     * Erstellt ein Textfeld mit einheitlichem Styling
+     * 
+     * @param columns Die Anzahl der Spalten
+     * @return Ein gestyltes JTextField
      */
     public static JTextField createStyledTextField(int columns) {
         JTextField textField = new JTextField(columns);
-        textField.setBackground(Color.WHITE);
+        textField.setBackground(TEXT_FIELD_BG_COLOR);
         textField.setForeground(TEXT_COLOR);
-        textField.setBorder(new CompoundBorder(
-            new LineBorder(SECONDARY_COLOR, 1),
-            new EmptyBorder(4, 6, 4, 6)
+        textField.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(SECONDARY_COLOR, 1),
+            BorderFactory.createEmptyBorder(4, 6, 4, 6)
         ));
         return textField;
     }
     
     /**
-     * Erstellt einen Styled Button
+     * Erstellt ein Label mit einheitlichem Styling
+     * 
+     * @param text Der Text für das Label
+     * @return Ein gestyltes JLabel
      */
-    public static JButton createStyledButton(String text) {
-        JButton button = new JButton(text);
-        button.setBackground(SECONDARY_COLOR);
-        button.setForeground(Color.WHITE);
-        button.setFocusPainted(false);
-        button.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(new Color(50, 90, 150), 1),
-            BorderFactory.createEmptyBorder(4, 12, 4, 12)
+    public static JLabel createStyledLabel(String text) {
+        JLabel label = new JLabel(text);
+        label.setFont(REGULAR_FONT);
+        label.setForeground(TEXT_COLOR);
+        return label;
+    }
+    
+    /**
+     * Erstellt ein Panel für Reports mit blauem Hintergrund
+     * 
+     * @return Ein gestyltes JPanel
+     */
+    public static JPanel createReportPanel() {
+        JPanel panel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2d = (Graphics2D) g;
+                
+                int w = getWidth();
+                int h = getHeight();
+                
+                // Hellerer Farbverlauf für das Report-Panel
+                GradientPaint gradient = new GradientPaint(
+                    0, 0, new Color(80, 120, 200), 
+                    0, h, new Color(110, 150, 220)
+                );
+                
+                g2d.setPaint(gradient);
+                g2d.fillRect(0, 0, w, h);
+            }
+        };
+        
+        panel.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(SECONDARY_COLOR, 1),
+            BorderFactory.createEmptyBorder(5, 5, 5, 5)
         ));
-        return button;
+        
+        return panel;
+    }
+    
+    /**
+     * Gibt ein Border für Panels zurück
+     * 
+     * @return Ein Border für Panels
+     */
+    public static Border getPanelBorder() {
+        return BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(SECONDARY_COLOR, 1),
+            BorderFactory.createEmptyBorder(10, 10, 10, 10)
+        );
     }
 }

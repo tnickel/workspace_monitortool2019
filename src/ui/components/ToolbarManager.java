@@ -6,9 +6,6 @@ import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
-import java.awt.GradientPaint;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
@@ -44,16 +41,6 @@ import utils.HtmlDatabase;
 public class ToolbarManager {
     private static final Logger LOGGER = Logger.getLogger(ToolbarManager.class.getName());
     
-    // Farben für die UI-Komponenten
-    private static final Color BUTTON_BG_COLOR = new Color(51, 102, 204);
-    private static final Color BUTTON_BORDER_COLOR = new Color(41, 82, 164);
-    private static final Color BUTTON_TEXT_COLOR = Color.WHITE;
-    private static final Color LABEL_TEXT_COLOR = Color.BLACK;
-    private static final Color TEXT_FIELD_BG_COLOR = Color.WHITE;
-    private static final Color TEXT_FIELD_TEXT_COLOR = Color.BLACK;
-    private static final Color COMBOBOX_BG_COLOR = Color.WHITE;
-    private static final Color COMBOBOX_TEXT_COLOR = Color.BLACK;
-    
     private final JFrame parentFrame;
     private final MainTable mainTable;
     private final JTextField searchField;
@@ -78,25 +65,9 @@ public class ToolbarManager {
         this.historyService = historyService;
         this.rootPath = rootPath;
         
-        // Grundlegende UI-Einstellungen festlegen, um sicherzustellen, dass Farben korrekt angezeigt werden
-        setUIDefaults();
-        
         // UI-Komponenten erstellen
         this.toolBar = createToolBar();
         this.reportPanel = createReportPanel();
-    }
-    
-    /**
-     * Setzt Standard-UI-Einstellungen für eine konsistente Darstellung
-     */
-    private void setUIDefaults() {
-        UIManager.put("Button.background", BUTTON_BG_COLOR);
-        UIManager.put("Button.foreground", BUTTON_TEXT_COLOR);
-        UIManager.put("Label.foreground", LABEL_TEXT_COLOR);
-        UIManager.put("ComboBox.background", COMBOBOX_BG_COLOR);
-        UIManager.put("ComboBox.foreground", COMBOBOX_TEXT_COLOR);
-        UIManager.put("TextField.background", TEXT_FIELD_BG_COLOR);
-        UIManager.put("TextField.foreground", TEXT_FIELD_TEXT_COLOR);
     }
     
     /**
@@ -107,11 +78,12 @@ public class ToolbarManager {
         JToolBar toolbar = new JToolBar();
         toolbar.setFloatable(false);
         toolbar.setBorderPainted(false);
-        toolbar.setOpaque(false);
+        toolbar.setOpaque(true);
+        toolbar.setBackground(AppUIStyle.PRIMARY_COLOR);
         toolbar.setLayout(new BoxLayout(toolbar, BoxLayout.X_AXIS));
         
         // Filter-Button
-        JButton filterButton = createStyledButton("Filter");
+        JButton filterButton = AppUIStyle.createStyledButton("Filter");
         filterButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -121,7 +93,7 @@ public class ToolbarManager {
         toolbar.add(filterButton);
         
         // Reset-Filter-Button
-        JButton resetFilterButton = createStyledButton("Reset Filter");
+        JButton resetFilterButton = AppUIStyle.createStyledButton("Reset Filter");
         resetFilterButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -134,7 +106,7 @@ public class ToolbarManager {
         toolbar.add(Box.createHorizontalStrut(5));
         
         // Nur Favoriten Button
-        JButton favoritesButton = createStyledButton("Nur Favoriten");
+        JButton favoritesButton = AppUIStyle.createStyledButton("Nur Favoriten");
         favoritesButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -148,7 +120,7 @@ public class ToolbarManager {
         toolbar.add(favoritesButton);
         
         // Show Signal Providers Button
-        JButton showProvidersButton = createStyledButton("Show Signal Providers");
+        JButton showProvidersButton = AppUIStyle.createStyledButton("Show Signal Providers");
         showProvidersButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -166,8 +138,8 @@ public class ToolbarManager {
         categoryPanel.setOpaque(false);
         
         JLabel categoryLabel = new JLabel("Favoriten-Kategorie:");
-        categoryLabel.setForeground(LABEL_TEXT_COLOR);
-        categoryLabel.setFont(new Font("SansSerif", Font.BOLD, 12));
+        categoryLabel.setForeground(Color.WHITE);
+        categoryLabel.setFont(AppUIStyle.BOLD_FONT);
         categoryPanel.add(categoryLabel);
         
         // Kategorien als Array
@@ -181,14 +153,14 @@ public class ToolbarManager {
         categoryComboBox.setPreferredSize(new Dimension(150, 25));
         
         // Stil für ComboBox
-        categoryComboBox.setBackground(COMBOBOX_BG_COLOR);
-        categoryComboBox.setForeground(COMBOBOX_TEXT_COLOR);
+        categoryComboBox.setBackground(AppUIStyle.TEXT_FIELD_BG_COLOR);
+        categoryComboBox.setForeground(AppUIStyle.TEXT_COLOR);
         categoryComboBox.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(BUTTON_BORDER_COLOR, 1),
+            BorderFactory.createLineBorder(AppUIStyle.SECONDARY_COLOR, 1),
             BorderFactory.createEmptyBorder(2, 5, 2, 5)
         ));
         categoryComboBox.setOpaque(true);
-        categoryComboBox.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        categoryComboBox.setFont(AppUIStyle.REGULAR_FONT);
         
         // Sicherstellen, dass der Text gut lesbar ist
         categoryComboBox.setRenderer(new javax.swing.DefaultListCellRenderer() {
@@ -198,11 +170,11 @@ public class ToolbarManager {
                 Component c = super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
                 
                 if (isSelected) {
-                    c.setBackground(BUTTON_BG_COLOR);
-                    c.setForeground(BUTTON_TEXT_COLOR);
+                    c.setBackground(AppUIStyle.SECONDARY_COLOR);
+                    c.setForeground(Color.WHITE);
                 } else {
-                    c.setBackground(COMBOBOX_BG_COLOR);
-                    c.setForeground(COMBOBOX_TEXT_COLOR);
+                    c.setBackground(AppUIStyle.TEXT_FIELD_BG_COLOR);
+                    c.setForeground(AppUIStyle.TEXT_COLOR);
                 }
                 return c;
             }
@@ -228,22 +200,22 @@ public class ToolbarManager {
         searchPanel.setOpaque(false);
         
         JLabel searchLabel = new JLabel("Suche:");
-        searchLabel.setForeground(LABEL_TEXT_COLOR);
-        searchLabel.setFont(new Font("SansSerif", Font.BOLD, 12));
+        searchLabel.setForeground(Color.WHITE);
+        searchLabel.setFont(AppUIStyle.BOLD_FONT);
         searchPanel.add(searchLabel);
         
         // Suchfeld Stil
-        searchField.setBackground(TEXT_FIELD_BG_COLOR);
-        searchField.setForeground(TEXT_FIELD_TEXT_COLOR);
+        searchField.setBackground(AppUIStyle.TEXT_FIELD_BG_COLOR);
+        searchField.setForeground(AppUIStyle.TEXT_COLOR);
         searchField.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(BUTTON_BORDER_COLOR, 1),
+            BorderFactory.createLineBorder(AppUIStyle.SECONDARY_COLOR, 1),
             BorderFactory.createEmptyBorder(2, 5, 2, 5)
         ));
         searchField.setOpaque(true);
-        searchField.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        searchField.setFont(AppUIStyle.REGULAR_FONT);
         searchPanel.add(searchField);
         
-        JButton searchButton = createStyledButton("Suchen");
+        JButton searchButton = AppUIStyle.createStyledButton("Suchen");
         searchButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -252,7 +224,7 @@ public class ToolbarManager {
         });
         searchPanel.add(searchButton);
         
-        JButton clearButton = createStyledButton("Löschen");
+        JButton clearButton = AppUIStyle.createStyledButton("Löschen");
         clearButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -280,42 +252,26 @@ public class ToolbarManager {
      * Erstellt das Panel für die Report-Buttons
      */
     private JPanel createReportPanel() {
-        // Panel für den Report-Button mit gelber Hervorhebung
-        JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 5)) {
-            @Override
-            protected void paintComponent(Graphics g) {
-                super.paintComponent(g);
-                Graphics2D g2d = (Graphics2D) g;
-                GradientPaint gp = new GradientPaint(
-                    0, 0, new Color(255, 255, 200), 
-                    0, getHeight(), new Color(255, 245, 150)
-                );
-                g2d.setPaint(gp);
-                g2d.fillRect(0, 0, getWidth(), getHeight());
-            }
-        };
-        
-        panel.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createMatteBorder(1, 0, 0, 0, BUTTON_BORDER_COLOR),
-            BorderFactory.createEmptyBorder(5, 10, 5, 10)
-        ));
+        // Panel für den Report-Button mit blauer Hervorhebung statt gelb
+        JPanel panel = AppUIStyle.createReportPanel();
+        panel.setLayout(new FlowLayout(FlowLayout.CENTER, 20, 5));
         
         // Favoriten-Report-Button
         JButton favoritesReportButton = mainTable.createReportButton();
         // Stil anpassen
-        favoritesReportButton.setBackground(BUTTON_BG_COLOR);
-        favoritesReportButton.setForeground(BUTTON_TEXT_COLOR);
+        favoritesReportButton.setBackground(AppUIStyle.SECONDARY_COLOR);
+        favoritesReportButton.setForeground(Color.WHITE);
         favoritesReportButton.setText("Favoriten-Report erstellen");
         favoritesReportButton.setPreferredSize(new Dimension(200, 30));
         favoritesReportButton.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(BUTTON_BORDER_COLOR),
+                BorderFactory.createLineBorder(AppUIStyle.PRIMARY_COLOR),
                 BorderFactory.createEmptyBorder(4, 8, 4, 8)));
         favoritesReportButton.setOpaque(true);
         favoritesReportButton.setFocusPainted(false);
         panel.add(favoritesReportButton);
         
         // Kategorie-Report-Button
-        JButton categoryReportButton = createStyledButton("Kategorie-Report erstellen");
+        JButton categoryReportButton = AppUIStyle.createStyledButton("Kategorie-Report erstellen");
         categoryReportButton.setPreferredSize(new Dimension(200, 30));
         categoryReportButton.addActionListener(new ActionListener() {
             @Override
@@ -326,7 +282,7 @@ public class ToolbarManager {
         panel.add(categoryReportButton);
         
         // Report für alle angezeigten Provider
-        JButton customReportButton = createStyledButton("Report für angezeigte Provider");
+        JButton customReportButton = AppUIStyle.createStyledButton("Report für angezeigte Provider");
         customReportButton.setPreferredSize(new Dimension(200, 30));
         customReportButton.addActionListener(new ActionListener() {
             @Override
@@ -527,23 +483,6 @@ public class ToolbarManager {
                 JOptionPane.ERROR_MESSAGE
             );
         }
-    }
-    
-    /**
-     * Erstellt einen gestylten Button
-     */
-    private JButton createStyledButton(String text) {
-        JButton button = new JButton(text);
-        button.setBackground(BUTTON_BG_COLOR);
-        button.setForeground(BUTTON_TEXT_COLOR);
-        button.setFocusPainted(false);
-        button.setBorderPainted(true);
-        button.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(BUTTON_BORDER_COLOR),
-                BorderFactory.createEmptyBorder(4, 8, 4, 8)));
-        button.setFont(new Font("SansSerif", Font.BOLD, 12));
-        button.setOpaque(true);
-        return button;
     }
     
     /**

@@ -14,15 +14,12 @@ import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.swing.SwingConstants;
 
+import ui.components.AppUIStyle;
+
 public class SplashScreen extends JFrame {
     private JProgressBar progressBar;
     private JLabel statusLabel;
     private JLabel titleLabel;
-    
-    // Definierte Farben
-    private static final Color PRIMARY_COLOR = new Color(26, 45, 90); // #1A2D5A - Dunkelblau
-    private static final Color SECONDARY_COLOR = new Color(62, 125, 204); // #3E7DCC - Helleres Blau
-    private static final Color ACCENT_COLOR = new Color(255, 209, 102); // #FFD166 - Gold/Gelb
     
     public SplashScreen() {
         setUndecorated(true); // Keine Fensterrahmen
@@ -34,7 +31,7 @@ public class SplashScreen extends JFrame {
         GradientPanel panel = new GradientPanel();
         panel.setLayout(new BorderLayout(15, 15));
         panel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(SECONDARY_COLOR, 2),
+                BorderFactory.createLineBorder(AppUIStyle.SECONDARY_COLOR, 2),
                 BorderFactory.createEmptyBorder(25, 25, 25, 25)));
         
         // Titel mit besserem Styling
@@ -49,7 +46,7 @@ public class SplashScreen extends JFrame {
         progressBar.setStringPainted(true);
         progressBar.setPreferredSize(new Dimension(450, 25));
         progressBar.setBackground(new Color(230, 230, 230));
-        progressBar.setForeground(ACCENT_COLOR);
+        progressBar.setForeground(AppUIStyle.ACCENT_COLOR);
         progressBar.setBorder(BorderFactory.createEmptyBorder());
         progressBar.setFont(new Font("Dialog", Font.BOLD, 12));
         panel.add(progressBar, BorderLayout.CENTER);
@@ -72,8 +69,8 @@ public class SplashScreen extends JFrame {
             Graphics2D g2d = (Graphics2D) g;
             
             GradientPaint gradient = new GradientPaint(
-                0, 0, PRIMARY_COLOR, 
-                0, getHeight(), SECONDARY_COLOR
+                0, 0, AppUIStyle.PRIMARY_COLOR, 
+                0, getHeight(), AppUIStyle.SECONDARY_COLOR
             );
             g2d.setPaint(gradient);
             g2d.fillRect(0, 0, getWidth(), getHeight());

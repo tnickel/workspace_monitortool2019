@@ -8,15 +8,16 @@ import java.awt.Font;
  * Zentrale Definition für UI-Konstanten, die in der gesamten Anwendung verwendet werden
  */
 public class UIConstants {
-    // Farben
-    public static final Color PRIMARY_COLOR = new Color(26, 45, 90);      // #1A2D5A - Dunkelblau
-    public static final Color SECONDARY_COLOR = new Color(62, 125, 204);  // #3E7DCC - Helleres Blau
-    public static final Color ACCENT_COLOR = new Color(255, 209, 102);    // #FFD166 - Gold/Gelb
-    public static final Color BG_COLOR = new Color(245, 247, 250);        // #F5F7FA - Sehr helles Grau
-    public static final Color TEXT_COLOR = new Color(51, 51, 51);         // #333333 - Dunkelgrau
-    public static final Color TEXT_SECONDARY_COLOR = new Color(85, 85, 85);// #555555 - Helleres Grau
-    public static final Color POSITIVE_COLOR = new Color(46, 139, 87);    // #2E8B57 - Grün
-    public static final Color NEGATIVE_COLOR = new Color(204, 59, 59);    // #CC3B3B - Rot
+    // Farben - an AppUIStyle angeglichen
+    public static final Color PRIMARY_COLOR = new Color(18, 35, 75);     // #12234B - Tiefes Dunkelblau
+    public static final Color SECONDARY_COLOR = new Color(30, 55, 115);   // #1E3773 - Dunkelblau
+    public static final Color ACCENT_COLOR = new Color(65, 105, 180);     // #4169B4 - Mittleres Blau
+    public static final Color LIGHT_ACCENT_COLOR = new Color(120, 150, 210); // #7896D2 - Helleres Blau
+    public static final Color BG_COLOR = new Color(245, 247, 250);       // #F5F7FA - Sehr helles Grau-Blau
+    public static final Color TEXT_COLOR = new Color(40, 40, 40);        // #282828 - Dunkles Grau
+    public static final Color TEXT_SECONDARY_COLOR = new Color(85, 85, 95); // #55555F - Helleres Grau
+    public static final Color POSITIVE_COLOR = new Color(46, 139, 87);   // #2E8B57 - Grün
+    public static final Color NEGATIVE_COLOR = new Color(204, 59, 59);   // #CC3B3B - Rot
     
     // Schriftarten
     public static final Font TITLE_FONT = new Font("SansSerif", Font.BOLD, 18);

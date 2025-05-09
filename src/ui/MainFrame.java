@@ -27,13 +27,13 @@ import components.MainTable;
 import data.DataManager;
 import models.FilterCriteria;
 import services.ProviderHistoryService;
+import ui.components.AppUIStyle;
 import ui.components.MenuManager;
 import ui.components.SearchManager;
 import ui.components.ToolbarManager;
 import utils.ApplicationConstants;
 import utils.HtmlDatabase;
 import utils.MqlAnalyserConf;
-import utils.UIStyle;
 
 public class MainFrame extends JFrame {
     private static final Logger LOGGER = Logger.getLogger(MainFrame.class.getName());
@@ -61,12 +61,12 @@ public class MainFrame extends JFrame {
         this.config = config;
         this.rootPath = rootPathStr;
         
-        // UI-Manager initialisieren
-        UIStyle.setUpUIDefaults();
+        // UI-Manager initialisieren - verwende AppUIStyle statt UIStyle
+        AppUIStyle.setUpUIDefaults();
         
         // Status-Label und Such-Feld erstellen
-        this.statusLabel = UIStyle.createStyledLabel("");
-        this.searchField = UIStyle.createStyledTextField(20);
+        this.statusLabel = AppUIStyle.createStyledLabel("");
+        this.searchField = AppUIStyle.createStyledTextField(20);
         
         // Provider History Service initialisieren
         this.historyService = ProviderHistoryService.getInstance();
@@ -119,12 +119,12 @@ public class MainFrame extends JFrame {
         // Tabelle mit schönem Rahmen
         JScrollPane scrollPane = new JScrollPane(mainTable);
         scrollPane.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(UIStyle.SECONDARY_COLOR, 1),
+            BorderFactory.createLineBorder(AppUIStyle.SECONDARY_COLOR, 1),
             BorderFactory.createEmptyBorder(0, 0, 0, 0)
         ));
         centerPanel.add(scrollPane, BorderLayout.CENTER);
         
-        // Gelb markiertes Panel mit Report-Button unter der Tabelle
+        // Blau markiertes Panel mit Report-Button unter der Tabelle (statt gelb)
         centerPanel.add(toolbarManager.getReportPanel(), BorderLayout.SOUTH);
         
         // Mittleren Bereich zum Hauptpanel hinzufügen
@@ -141,10 +141,10 @@ public class MainFrame extends JFrame {
             super.paintComponent(g);
             Graphics2D g2d = (Graphics2D) g;
             
-            // Heller Farbverlauf als Hintergrund
+            // Helleres Blau-Weiß als Hintergrund
             GradientPaint gradient = new GradientPaint(
-                0, 0, new Color(245, 247, 250), 
-                0, getHeight(), new Color(230, 238, 245)
+                0, 0, new Color(240, 245, 250), 
+                0, getHeight(), new Color(225, 235, 245)
             );
             g2d.setPaint(gradient);
             g2d.fillRect(0, 0, getWidth(), getHeight());
@@ -153,7 +153,7 @@ public class MainFrame extends JFrame {
     
     private void setupStatusBar() {
         JPanel statusBar = new JPanel(new BorderLayout());
-        statusBar.setBackground(UIStyle.SECONDARY_COLOR);
+        statusBar.setBackground(AppUIStyle.PRIMARY_COLOR);
         statusBar.setBorder(BorderFactory.createEmptyBorder(4, 5, 4, 5));
         
         statusLabel.setForeground(Color.WHITE);
