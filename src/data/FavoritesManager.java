@@ -23,10 +23,10 @@ public class FavoritesManager {
     private final Path favoritesFile;
     private final Path badProvidersFile;
     
-    // Caching-Mechanismus für bessere Performance
+    // Singleton-Instanz
     private static FavoritesManager instance;
     private static boolean dataLoaded = false;
-    private static boolean outputDebugMessages = false;
+    private static boolean outputDebugMessages = true; // Debug-Ausgaben aktivieren
     
     /**
      * Gibt die Singleton-Instanz des FavoritesManager zurück
@@ -128,6 +128,19 @@ public class FavoritesManager {
         return result;
     }
     
+    /**
+     * Synchronisiert den Cache mit der Datei (neu laden)
+     * Diese Methode sollte aufgerufen werden, wenn Favoriten in einer anderen Komponente geändert wurden
+     */
+    public void synchronizeWithFile() {
+        LOGGER.info("Synchronisiere Favoriten mit Datei...");
+        if (outputDebugMessages) {
+            System.out.println("Synchronisiere Favoriten mit Datei...");
+        }
+        
+        loadFavorites();
+    }
+    
     public void toggleFavorite(String providerId, int category) {
         if (favorites.containsKey(providerId) && favorites.get(providerId) == category) {
             // Wenn der Provider bereits in dieser Kategorie ist, entferne ihn
@@ -166,6 +179,18 @@ public class FavoritesManager {
             }
         }
         saveFavorites();
+        
+        // Informiere andere Instanzen, dass sich die Favoriten geändert haben
+        notifyFavoritesChanged();
+    }
+    
+    /**
+     * Informiert alle Komponenten, dass sich die Favoriten geändert haben
+     * Diese Methode kann überschrieben werden, um z.B. Events auszulösen
+     */
+    protected void notifyFavoritesChanged() {
+        // In dieser Basisimplementierung tun wir nichts
+        // In einer erweiterten Implementierung könnte hier ein Event ausgelöst werden
     }
     
     public void toggleBadProvider(String providerId) {
@@ -184,6 +209,31 @@ public class FavoritesManager {
     }
     
     private void loadFavorites() {
+        // Wenn die Favoritendatei nicht existiert, versuchen wir die Backup-Datei zu laden
+        if (!favoritesFile.toFile().exists()) {
+            File parentDir = favoritesFile.getParent().toFile();
+            File backupFile = new File(parentDir, "favorites_old.txt");
+            
+            if (backupFile.exists()) {
+                if (outputDebugMessages) {
+                    System.out.println("favorites.txt existiert nicht, versuche favorites_old.txt zu laden.");
+                }
+                
+                try {
+                    // Kopiere die Backup-Datei zur Hauptdatei
+                    java.nio.file.Files.copy(backupFile.toPath(), favoritesFile.toFile().toPath());
+                    if (outputDebugMessages) {
+                        System.out.println("Backup-Datei wurde als favorites.txt wiederhergestellt.");
+                    }
+                } catch (IOException e) {
+                    LOGGER.warning("Konnte Backup-Datei nicht wiederherstellen: " + e.getMessage());
+                    if (outputDebugMessages) {
+                        System.out.println("Fehler beim Wiederherstellen des Backups: " + e.getMessage());
+                    }
+                }
+            }
+        }
+        
         if (!favoritesFile.toFile().exists()) {
             if (outputDebugMessages) {
                 System.out.println("favorites.txt existiert nicht: " + favoritesFile);
@@ -227,12 +277,51 @@ public class FavoritesManager {
             if (outputDebugMessages) {
                 System.out.println("Anzahl geladener Favoriten: " + favorites.size());
             }
+            
+            // Erstelle gleich beim Laden ein Backup
+            if (favorites.size() > 0) {
+                createBackup();
+            }
         } catch (IOException e) {
             LOGGER.warning("Error loading favorites: " + e.getMessage());
             if (outputDebugMessages) {
                 System.out.println("Fehler beim Laden der Favoriten: " + e.getMessage());
             }
             e.printStackTrace();
+            
+            // Versuche aus dem Backup zu laden, falls vorhanden
+            tryRestoreFromBackup();
+        }
+    }
+    
+    /**
+     * Erstellt ein Backup der aktuellen Favoriten-Datei
+     */
+    private void createBackup() {
+        if (!favoritesFile.toFile().exists()) {
+            return; // Keine Datei, kein Backup
+        }
+        
+        try {
+            File parentDir = favoritesFile.getParent().toFile();
+            File backupFile = new File(parentDir, "favorites_old.txt");
+            
+            // Falls ein altes Backup existiert, löschen wir es
+            if (backupFile.exists()) {
+                backupFile.delete();
+            }
+            
+            // Kopiere die aktuelle Datei als Backup
+            java.nio.file.Files.copy(favoritesFile.toFile().toPath(), backupFile.toPath());
+            
+            if (outputDebugMessages) {
+                System.out.println("Backup der Favoriten-Datei erstellt: " + backupFile.getAbsolutePath());
+            }
+        } catch (IOException e) {
+            LOGGER.warning("Fehler beim Erstellen des Backups: " + e.getMessage());
+            if (outputDebugMessages) {
+                System.out.println("Fehler beim Erstellen des Backups: " + e.getMessage());
+            }
         }
     }
     
@@ -286,6 +375,26 @@ public class FavoritesManager {
                 }
             }
             
+            // Prüfen, ob die Favoriten-Datei existiert
+            File favFile = favoritesFile.toFile();
+            if (favFile.exists()) {
+                // Sicherungskopie erstellen (Backup)
+                File oldFavFile = new File(parentDir, "favorites_old.txt");
+                
+                // Falls ein altes Backup existiert, löschen wir es
+                if (oldFavFile.exists()) {
+                    oldFavFile.delete();
+                }
+                
+                // Aktuelle Favoriten-Datei in Backup-Datei kopieren
+                java.nio.file.Files.copy(favFile.toPath(), oldFavFile.toPath());
+                
+                if (outputDebugMessages) {
+                    System.out.println("Sicherungskopie der Favoriten erstellt: " + oldFavFile.getAbsolutePath());
+                }
+            }
+            
+            // Speichern der aktuellen Favoriten
             try (PrintWriter writer = new PrintWriter(new FileWriter(favoritesFile.toFile()))) {
                 for (Map.Entry<String, Integer> entry : favorites.entrySet()) {
                     // Speichern im neuen Format: ID:Kategorie
@@ -302,6 +411,66 @@ public class FavoritesManager {
                 System.out.println("Fehler beim Speichern der Favoriten: " + e.getMessage());
             }
             e.printStackTrace();
+            
+            // Versuche aus der Backup-Datei wiederherzustellen, falls ein Fehler auftritt
+            tryRestoreFromBackup();
+        }
+    }
+    
+    /**
+     * Versucht, die Favoriten aus der Backup-Datei wiederherzustellen
+     */
+    private void tryRestoreFromBackup() {
+        File parentDir = favoritesFile.getParent().toFile();
+        File oldFavFile = new File(parentDir, "favorites_old.txt");
+        
+        if (oldFavFile.exists() && oldFavFile.length() > 0) {
+            try {
+                // Erst laden wir die Backup-Daten
+                Map<String, Integer> backupFavorites = new HashMap<>();
+                try (BufferedReader reader = new BufferedReader(new FileReader(oldFavFile))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        line = line.trim();
+                        if (!line.isEmpty()) {
+                            if (line.contains(":")) {
+                                String[] parts = line.split(":");
+                                if (parts.length >= 2) {
+                                    String providerId = parts[0].trim();
+                                    try {
+                                        int category = Integer.parseInt(parts[1].trim());
+                                        if (category > 0 && category <= 10) {
+                                            backupFavorites.put(providerId, category);
+                                        }
+                                    } catch (NumberFormatException e) {
+                                        LOGGER.warning("Ungültiges Kategorieformat für Provider " + parts[0] + ": " + parts[1]);
+                                    }
+                                }
+                            } else {
+                                // Altes Format ohne Kategorie - setze auf Kategorie 1
+                                backupFavorites.put(line, 1);
+                            }
+                        }
+                    }
+                }
+                
+                // Wenn wir Daten haben, aktualisieren wir die Favoriten
+                if (!backupFavorites.isEmpty()) {
+                    favorites.clear();
+                    favorites.putAll(backupFavorites);
+                    
+                    LOGGER.info("Favoriten aus Backup wiederhergestellt. Anzahl: " + favorites.size());
+                    if (outputDebugMessages) {
+                        System.out.println("Favoriten aus Backup wiederhergestellt. Anzahl: " + favorites.size());
+                    }
+                }
+            } catch (Exception e) {
+                LOGGER.severe("Fehler bei der Wiederherstellung aus dem Backup: " + e.getMessage());
+                if (outputDebugMessages) {
+                    System.out.println("Fehler bei der Wiederherstellung aus dem Backup: " + e.getMessage());
+                }
+                e.printStackTrace();
+            }
         }
     }
     
