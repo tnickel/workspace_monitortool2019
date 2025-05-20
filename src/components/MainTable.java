@@ -44,6 +44,7 @@ import java.awt.Desktop;
 import java.util.Map;
 import java.util.HashMap;
 import data.FavoritesManager;
+import renderers.NumberFormatRenderer;
 
 public class MainTable extends JTable {
     private static final Logger LOGGER = Logger.getLogger(MainTable.class.getName());
@@ -82,7 +83,7 @@ public class MainTable extends JTable {
         this.historyService = ProviderHistoryService.getInstance();
         this.historyService.initialize(rootPath);
         
-        // Manager initialisieren
+        // Manager initialisieren - Verwenden der Singleton-Instanz vom FavoritesManager
         this.filterManager = new TableFilterManager(this, model, dataManager);
         this.columnManager = new TableColumnManager(this);
         this.favoritesManager = new FavoritesFilterManager(this, model, dataManager.getStats(), rootPath);
@@ -250,6 +251,11 @@ public class MainTable extends JTable {
                 stats.remove(provider);
             }
             
+            // Cache im Renderer leeren
+            if (renderer != null) {
+                renderer.clearCache();
+            }
+            
             // Tabelle vollständig neu laden
             SwingUtilities.invokeLater(() -> {
                 // Das Model komplett neu befüllen
@@ -331,13 +337,22 @@ public class MainTable extends JTable {
         ToolTipManager.sharedInstance().setDismissDelay(8000);
         ToolTipManager.sharedInstance().registerComponent(this);
         
+        // Erstelle einen NumberFormatRenderer, der den HighlightRenderer verwendet
+        NumberFormatRenderer numberRenderer = new NumberFormatRenderer(renderer);
+        
         // Setze die Renderer für die Spalten
         for (int i = 0; i < getColumnCount(); i++) {
-            // Finde die Risk Score Spalte basierend auf dem Index
-            if (i == 20) { // Risk Score ist tatsächlich an Position 20 im COLUMN_NAMES Array
+            // Risk Score Spalte (Spalte 20) verwendet den speziellen RiskScoreRenderer
+            if (i == 20) {
                 getColumnModel().getColumn(i).setCellRenderer(riskRenderer);
-            } else {
+            }
+            // Spalte 0 (No) und 1 (Signal Provider) verwenden den Standard-Renderer
+            else if (i == 0 || i == 1) {
                 getColumnModel().getColumn(i).setCellRenderer(renderer);
+            }
+            // Alle anderen Spalten sind numerisch und verwenden den NumberFormatRenderer
+            else {
+                getColumnModel().getColumn(i).setCellRenderer(numberRenderer);
             }
         }
         
@@ -554,6 +569,11 @@ public class MainTable extends JTable {
     }
     
     public void refreshTableData() {
+        // Cache im Renderer leeren, damit Favoriten und Bad Provider korrekt angezeigt werden
+        if (renderer != null) {
+            renderer.clearCache();
+        }
+        
         filterManager.refreshFilteredData();
         
         // Prüfen, ob wöchentliche Speicherung erforderlich ist

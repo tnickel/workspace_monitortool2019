@@ -23,6 +23,23 @@ public class FavoritesManager {
     private final Path favoritesFile;
     private final Path badProvidersFile;
     
+    // Caching-Mechanismus für bessere Performance
+    private static FavoritesManager instance;
+    private static boolean dataLoaded = false;
+    private static boolean outputDebugMessages = false;
+    
+    /**
+     * Gibt die Singleton-Instanz des FavoritesManager zurück
+     * @param rootPath Pfad zum Root-Verzeichnis
+     * @return FavoritesManager-Instanz
+     */
+    public static synchronized FavoritesManager getInstance(String rootPath) {
+        if (instance == null) {
+            instance = new FavoritesManager(rootPath);
+        }
+        return instance;
+    }
+    
     public FavoritesManager(String rootPath) {
         // Validiere den Pfad und korrigiere ihn, falls nötig
         rootPath = ApplicationConstants.validateRootPath(rootPath, "FavoritesManager.constructor");
@@ -30,7 +47,9 @@ public class FavoritesManager {
         this.favorites = new HashMap<>(); // Geändert zu HashMap für die Kategorien
         this.badProviders = new HashSet<>();
         
-        System.out.println("FavoritesManager initialisiert mit rootPath: " + rootPath);
+        if (outputDebugMessages) {
+            System.out.println("FavoritesManager initialisiert mit rootPath: " + rootPath);
+        }
         
         // Stellen Sie sicher, dass der Config-Ordner existiert
         File configDir = new File(rootPath, "config");
@@ -38,34 +57,50 @@ public class FavoritesManager {
             boolean created = configDir.mkdirs();
             if (!created) {
                 LOGGER.warning("Konnte Config-Verzeichnis nicht erstellen: " + configDir.getAbsolutePath());
-                System.out.println("Warnung: Config-Verzeichnis konnte nicht erstellt werden: " + configDir.getAbsolutePath());
-            } else {
+                if (outputDebugMessages) {
+                    System.out.println("Warnung: Config-Verzeichnis konnte nicht erstellt werden: " + configDir.getAbsolutePath());
+                }
+            } else if (outputDebugMessages) {
                 System.out.println("Config-Verzeichnis erfolgreich erstellt: " + configDir.getAbsolutePath());
             }
-        } else {
+        } else if (outputDebugMessages) {
             System.out.println("Config-Verzeichnis existiert bereits: " + configDir.getAbsolutePath());
         }
         
         this.favoritesFile = Paths.get(rootPath, "config", "favorites.txt");
         this.badProvidersFile = Paths.get(rootPath, "config", "badproviders.txt");
         
-        System.out.println("Favoriten werden gespeichert in: " + favoritesFile.toAbsolutePath());
-        System.out.println("Bad Provider werden gespeichert in: " + badProvidersFile.toAbsolutePath());
+        if (outputDebugMessages) {
+            System.out.println("Favoriten werden gespeichert in: " + favoritesFile.toAbsolutePath());
+            System.out.println("Bad Provider werden gespeichert in: " + badProvidersFile.toAbsolutePath());
+        }
         
-        loadFavorites();
-        loadBadProviders();
+        // Lade die Daten nur, wenn sie noch nicht geladen wurden
+        if (!dataLoaded) {
+            loadFavorites();
+            loadBadProviders();
+            dataLoaded = true;
+        }
     }
     
     // NEU: Reload-Methode
     public void reloadFavorites() {
         loadFavorites();
-        System.out.println("Favoriten wurden neu geladen.");
+        if (outputDebugMessages) {
+            System.out.println("Favoriten wurden neu geladen.");
+        }
+        dataLoaded = true;
     }
     
     public boolean isFavorite(String providerId) {
-        // Debug für jede Prüfung
+        // Debug-Ausgabe reduziert für bessere Performance
         boolean result = favorites.containsKey(providerId);
-        System.out.println("FavoritesManager prüft ID: " + providerId + " -> " + (result ? "ist Favorit" : "kein Favorit"));
+        
+        // Reduzierte Debug-Ausgabe
+        if (outputDebugMessages) {
+            System.out.println("FavoritesManager prüft ID: " + providerId + " -> " + (result ? "ist Favorit" : "kein Favorit"));
+        }
+        
         return result;
     }
     
@@ -73,8 +108,13 @@ public class FavoritesManager {
         // Prüft, ob der Provider ein Favorit in der angegebenen Kategorie ist
         Integer providerCategory = favorites.get(providerId);
         boolean result = (providerCategory != null && providerCategory == category);
-        System.out.println("FavoritesManager prüft ID: " + providerId + " für Kategorie " + category + 
+        
+        // Reduzierte Debug-Ausgabe
+        if (outputDebugMessages) {
+            System.out.println("FavoritesManager prüft ID: " + providerId + " für Kategorie " + category + 
                           " -> " + (result ? "ist in dieser Kategorie" : "nicht in dieser Kategorie"));
+        }
+        
         return result;
     }
     
@@ -92,11 +132,15 @@ public class FavoritesManager {
         if (favorites.containsKey(providerId) && favorites.get(providerId) == category) {
             // Wenn der Provider bereits in dieser Kategorie ist, entferne ihn
             favorites.remove(providerId);
-            System.out.println("Favorit entfernt: " + providerId);
+            if (outputDebugMessages) {
+                System.out.println("Favorit entfernt: " + providerId);
+            }
         } else {
             // Füge den Provider zur angegebenen Kategorie hinzu
             favorites.put(providerId, category);
-            System.out.println("Favorit hinzugefügt: " + providerId + " in Kategorie " + category);
+            if (outputDebugMessages) {
+                System.out.println("Favorit hinzugefügt: " + providerId + " in Kategorie " + category);
+            }
         }
         saveFavorites();
     }
@@ -111,11 +155,15 @@ public class FavoritesManager {
         if (category == 0 && favorites.containsKey(providerId)) {
             // Kategorie 0 bedeutet "kein Favorit", daher entfernen
             favorites.remove(providerId);
-            System.out.println("Favorit entfernt: " + providerId);
+            if (outputDebugMessages) {
+                System.out.println("Favorit entfernt: " + providerId);
+            }
         } else if (category > 0) {
             // Kategorie setzen
             favorites.put(providerId, category);
-            System.out.println("Kategorie für Provider " + providerId + " auf " + category + " gesetzt");
+            if (outputDebugMessages) {
+                System.out.println("Kategorie für Provider " + providerId + " auf " + category + " gesetzt");
+            }
         }
         saveFavorites();
     }
@@ -123,21 +171,29 @@ public class FavoritesManager {
     public void toggleBadProvider(String providerId) {
         if (badProviders.contains(providerId)) {
             badProviders.remove(providerId);
-            System.out.println("Bad Provider entfernt: " + providerId);
+            if (outputDebugMessages) {
+                System.out.println("Bad Provider entfernt: " + providerId);
+            }
         } else {
             badProviders.add(providerId);
-            System.out.println("Bad Provider hinzugefügt: " + providerId);
+            if (outputDebugMessages) {
+                System.out.println("Bad Provider hinzugefügt: " + providerId);
+            }
         }
         saveBadProviders();
     }
     
     private void loadFavorites() {
         if (!favoritesFile.toFile().exists()) {
-            System.out.println("favorites.txt existiert nicht: " + favoritesFile);
+            if (outputDebugMessages) {
+                System.out.println("favorites.txt existiert nicht: " + favoritesFile);
+            }
             return;
         }
         
         try (BufferedReader reader = new BufferedReader(new FileReader(favoritesFile.toFile()))) {
+            favorites.clear(); // Cache leeren
+            
             String line;
             while ((line = reader.readLine()) != null) {
                 line = line.trim();
@@ -151,7 +207,9 @@ public class FavoritesManager {
                                 int category = Integer.parseInt(parts[1].trim());
                                 if (category > 0 && category <= 10) {
                                     favorites.put(providerId, category);
-                                    System.out.println("Favorit geladen: " + providerId + " mit Kategorie " + category);
+                                    if (outputDebugMessages) {
+                                        System.out.println("Favorit geladen: " + providerId + " mit Kategorie " + category);
+                                    }
                                 }
                             } catch (NumberFormatException e) {
                                 LOGGER.warning("Ungültiges Kategorieformat für Provider " + parts[0] + ": " + parts[1]);
@@ -160,37 +218,53 @@ public class FavoritesManager {
                     } else {
                         // Altes Format ohne Kategorie - setze auf Kategorie 1
                         favorites.put(line, 1);
-                        System.out.println("Favorit im alten Format geladen: " + line + " mit Standard-Kategorie 1");
+                        if (outputDebugMessages) {
+                            System.out.println("Favorit im alten Format geladen: " + line + " mit Standard-Kategorie 1");
+                        }
                     }
                 }
             }
-            System.out.println("Anzahl geladener Favoriten: " + favorites.size());
+            if (outputDebugMessages) {
+                System.out.println("Anzahl geladener Favoriten: " + favorites.size());
+            }
         } catch (IOException e) {
             LOGGER.warning("Error loading favorites: " + e.getMessage());
-            System.out.println("Fehler beim Laden der Favoriten: " + e.getMessage());
+            if (outputDebugMessages) {
+                System.out.println("Fehler beim Laden der Favoriten: " + e.getMessage());
+            }
             e.printStackTrace();
         }
     }
     
     private void loadBadProviders() {
         if (!badProvidersFile.toFile().exists()) {
-            System.out.println("badproviders.txt existiert nicht: " + badProvidersFile);
+            if (outputDebugMessages) {
+                System.out.println("badproviders.txt existiert nicht: " + badProvidersFile);
+            }
             return;
         }
         
         try (BufferedReader reader = new BufferedReader(new FileReader(badProvidersFile.toFile()))) {
+            badProviders.clear(); // Cache leeren
+            
             String line;
             while ((line = reader.readLine()) != null) {
                 line = line.trim();
                 if (!line.isEmpty()) {
                     badProviders.add(line);
-                    System.out.println("Bad Provider geladen: " + line);
+                    if (outputDebugMessages) {
+                        System.out.println("Bad Provider geladen: " + line);
+                    }
                 }
             }
-            System.out.println("Anzahl geladener Bad Provider: " + badProviders.size());
+            if (outputDebugMessages) {
+                System.out.println("Anzahl geladener Bad Provider: " + badProviders.size());
+            }
         } catch (IOException e) {
             LOGGER.warning("Error loading bad providers: " + e.getMessage());
-            System.out.println("Fehler beim Laden der Bad Provider: " + e.getMessage());
+            if (outputDebugMessages) {
+                System.out.println("Fehler beim Laden der Bad Provider: " + e.getMessage());
+            }
             e.printStackTrace();
         }
     }
@@ -203,9 +277,11 @@ public class FavoritesManager {
                 boolean created = parentDir.mkdirs();
                 if (!created) {
                     LOGGER.warning("Konnte Verzeichnis nicht erstellen: " + parentDir.getAbsolutePath());
-                    System.out.println("Fehler: Verzeichnis konnte nicht erstellt werden: " + parentDir.getAbsolutePath());
+                    if (outputDebugMessages) {
+                        System.out.println("Fehler: Verzeichnis konnte nicht erstellt werden: " + parentDir.getAbsolutePath());
+                    }
                     return; // Nicht weitermachen, wenn das Verzeichnis nicht erstellt werden kann
-                } else {
+                } else if (outputDebugMessages) {
                     System.out.println("Verzeichnis erfolgreich erstellt: " + parentDir.getAbsolutePath());
                 }
             }
@@ -215,12 +291,16 @@ public class FavoritesManager {
                     // Speichern im neuen Format: ID:Kategorie
                     writer.println(entry.getKey() + ":" + entry.getValue());
                 }
-                System.out.println("Favoriten erfolgreich gespeichert. Anzahl: " + favorites.size());
-                System.out.println("Speicherort: " + favoritesFile.toAbsolutePath());
+                if (outputDebugMessages) {
+                    System.out.println("Favoriten erfolgreich gespeichert. Anzahl: " + favorites.size());
+                    System.out.println("Speicherort: " + favoritesFile.toAbsolutePath());
+                }
             }
         } catch (IOException e) {
             LOGGER.warning("Error saving favorites: " + e.getMessage());
-            System.out.println("Fehler beim Speichern der Favoriten: " + e.getMessage());
+            if (outputDebugMessages) {
+                System.out.println("Fehler beim Speichern der Favoriten: " + e.getMessage());
+            }
             e.printStackTrace();
         }
     }
@@ -233,9 +313,11 @@ public class FavoritesManager {
                 boolean created = parentDir.mkdirs();
                 if (!created) {
                     LOGGER.warning("Konnte Verzeichnis nicht erstellen: " + parentDir.getAbsolutePath());
-                    System.out.println("Fehler: Verzeichnis konnte nicht erstellt werden: " + parentDir.getAbsolutePath());
+                    if (outputDebugMessages) {
+                        System.out.println("Fehler: Verzeichnis konnte nicht erstellt werden: " + parentDir.getAbsolutePath());
+                    }
                     return; // Nicht weitermachen, wenn das Verzeichnis nicht erstellt werden kann
-                } else {
+                } else if (outputDebugMessages) {
                     System.out.println("Verzeichnis erfolgreich erstellt: " + parentDir.getAbsolutePath());
                 }
             }
@@ -244,12 +326,16 @@ public class FavoritesManager {
                 for (String providerId : badProviders) {
                     writer.println(providerId);
                 }
-                System.out.println("Bad Provider erfolgreich gespeichert. Anzahl: " + badProviders.size());
-                System.out.println("Speicherort: " + badProvidersFile.toAbsolutePath());
+                if (outputDebugMessages) {
+                    System.out.println("Bad Provider erfolgreich gespeichert. Anzahl: " + badProviders.size());
+                    System.out.println("Speicherort: " + badProvidersFile.toAbsolutePath());
+                }
             }
         } catch (IOException e) {
             LOGGER.warning("Error saving bad providers: " + e.getMessage());
-            System.out.println("Fehler beim Speichern der Bad Provider: " + e.getMessage());
+            if (outputDebugMessages) {
+                System.out.println("Fehler beim Speichern der Bad Provider: " + e.getMessage());
+            }
             e.printStackTrace();
         }
     }
