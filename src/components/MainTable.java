@@ -4,6 +4,9 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.awt.event.KeyEvent;
+import java.awt.event.ActionEvent;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -11,9 +14,13 @@ import java.util.Map;
 import java.util.function.Consumer;
 import java.util.logging.Logger;
 
+import javax.swing.AbstractAction;
 import javax.swing.JButton;
+import javax.swing.JComponent;
 import javax.swing.JFrame;
+import javax.swing.JOptionPane;
 import javax.swing.JTable;
+import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 import javax.swing.ToolTipManager;
 import javax.swing.table.TableRowSorter;
@@ -37,6 +44,7 @@ import java.awt.Desktop;
 import java.util.Map;
 import java.util.HashMap;
 import data.FavoritesManager;
+
 public class MainTable extends JTable {
     private static final Logger LOGGER = Logger.getLogger(MainTable.class.getName());
     private final HighlightTableModel model;
@@ -83,6 +91,7 @@ public class MainTable extends JTable {
         initialize();
         setupMouseListener();
         setupModelListener();
+        setupKeyBindings(); // Neue Methode für Delete-Taste
         
         // Spalten-Sichtbarkeit laden NACH der Initialisierung der Tabelle
         columnManager.loadColumnVisibilitySettings();
@@ -107,7 +116,176 @@ public class MainTable extends JTable {
         return filterManager.getCurrentFilter();
     }
     
-  
+    // Neue Methoden für die Löschfunktion
+    
+    /**
+     * Setzt Key-Bindings für Tastaturaktionen auf der Tabelle
+     */
+    private void setupKeyBindings() {
+        // Key-Binding für die Delete-Taste
+        getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(
+            KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0),
+            "deleteSelectedProviders"
+        );
+        
+        getActionMap().put("deleteSelectedProviders", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                deleteSelectedProviders();
+            }
+        });
+    }
+    
+    /**
+     * Löscht die ausgewählten Signal-Provider aus dem Downloadbereich
+     */
+    private void deleteSelectedProviders() {
+        List<String> selectedProviders = getSelectedProviders();
+        
+        if (selectedProviders.isEmpty()) {
+            return;
+        }
+        
+        // Bestätigung vom Benutzer einholen
+        int result = JOptionPane.showConfirmDialog(
+            this,
+            "Möchten Sie die ausgewählten " + selectedProviders.size() + " Signal Provider wirklich löschen?\n" +
+            "Diese Aktion kann nicht rückgängig gemacht werden.",
+            "Signal Provider löschen",
+            JOptionPane.YES_NO_OPTION,
+            JOptionPane.WARNING_MESSAGE
+        );
+        
+        if (result != JOptionPane.YES_OPTION) {
+            return;
+        }
+        
+        MqlAnalyserConf config = new MqlAnalyserConf(rootPath);
+        String downloadPath = config.getDownloadPath();
+        
+        boolean anyDeleted = false;
+        StringBuilder deletedProviders = new StringBuilder("Gelöschte Provider:\n");
+        
+        // Speichern der Namen der zu löschenden Provider, um sie später aus dem Model zu entfernen
+        List<String> providersToRemove = new ArrayList<>();
+        
+        for (String providerName : selectedProviders) {
+            boolean providerDeleted = false;
+            
+            LOGGER.info("Versuche Provider zu löschen: " + providerName);
+            
+            // Lösche die CSV-Datei
+            File csvFile = new File(downloadPath, providerName);
+            if (csvFile.exists()) {
+                if (csvFile.delete()) {
+                    providerDeleted = true;
+                    anyDeleted = true;
+                    LOGGER.info("CSV-Datei gelöscht: " + csvFile.getAbsolutePath());
+                } else {
+                    LOGGER.warning("Konnte CSV-Datei nicht löschen: " + csvFile.getAbsolutePath());
+                }
+            } else {
+                LOGGER.warning("CSV-Datei existiert nicht: " + csvFile.getAbsolutePath());
+            }
+            
+            // Lösche die TXT-Datei
+            String txtFileName = providerName.replace(".csv", "") + "_root.txt";
+            File txtFile = new File(downloadPath, txtFileName);
+            if (txtFile.exists()) {
+                if (txtFile.delete()) {
+                    providerDeleted = true;
+                    anyDeleted = true;
+                    LOGGER.info("TXT-Datei gelöscht: " + txtFile.getAbsolutePath());
+                } else {
+                    LOGGER.warning("Konnte TXT-Datei nicht löschen: " + txtFile.getAbsolutePath());
+                }
+            } else {
+                LOGGER.warning("TXT-Datei existiert nicht: " + txtFile.getAbsolutePath());
+            }
+            
+            // Lösche die HTML-Datei - mit dem korrekten "_root.html" Suffix
+            String baseProviderName = providerName.replace(".csv", "");
+            String htmlFileName = baseProviderName + "_root.html";
+            File htmlFile = new File(downloadPath, htmlFileName);
+            
+            if (htmlFile.exists()) {
+                if (htmlFile.delete()) {
+                    providerDeleted = true;
+                    anyDeleted = true;
+                    LOGGER.info("HTML-Datei gelöscht: " + htmlFile.getAbsolutePath());
+                } else {
+                    LOGGER.warning("Konnte HTML-Datei nicht löschen: " + htmlFile.getAbsolutePath());
+                }
+            } else {
+                LOGGER.warning("HTML-Datei mit _root.html existiert nicht: " + htmlFile.getAbsolutePath());
+                
+                // Alternative HTML-Dateiformate versuchen
+                String[] alternativeSuffixes = {".html", "_index.html", "_history.html"};
+                for (String suffix : alternativeSuffixes) {
+                    String altHtmlFileName = baseProviderName + suffix;
+                    File altHtmlFile = new File(downloadPath, altHtmlFileName);
+                    
+                    if (altHtmlFile.exists()) {
+                        if (altHtmlFile.delete()) {
+                            providerDeleted = true;
+                            anyDeleted = true;
+                            LOGGER.info("Alternative HTML-Datei gelöscht: " + altHtmlFile.getAbsolutePath());
+                        } else {
+                            LOGGER.warning("Konnte alternative HTML-Datei nicht löschen: " + altHtmlFile.getAbsolutePath());
+                        }
+                    }
+                }
+            }
+            
+            if (providerDeleted) {
+                deletedProviders.append("- ").append(providerName).append("\n");
+                providersToRemove.add(providerName);
+            }
+        }
+        
+        if (anyDeleted) {
+            // Entferne die Provider aus dem DataManager-Cache
+            Map<String, ProviderStats> stats = dataManager.getStats();
+            for (String provider : providersToRemove) {
+                stats.remove(provider);
+            }
+            
+            // Tabelle vollständig neu laden
+            SwingUtilities.invokeLater(() -> {
+                // Das Model komplett neu befüllen
+                model.populateData(dataManager.getStats());
+                
+                // Neu filtern, falls ein Filter aktiv ist
+                if (filterManager.getCurrentFilter() != null) {
+                    filterManager.applyFilter(filterManager.getCurrentFilter());
+                }
+                
+                // Die Tabelle aktualisieren
+                updateUI();
+                repaint();
+                
+                // Statusmeldung aktualisieren
+                if (statusUpdateCallback != null) {
+                    statusUpdateCallback.accept(getStatusText());
+                }
+            });
+            
+            // Info-Dialog mit gelöschten Providern anzeigen
+            JOptionPane.showMessageDialog(
+                this,
+                deletedProviders.toString(),
+                "Provider gelöscht",
+                JOptionPane.INFORMATION_MESSAGE
+            );
+        } else {
+            JOptionPane.showMessageDialog(
+                this,
+                "Es konnten keine Provider gelöscht werden.",
+                "Keine Änderungen",
+                JOptionPane.INFORMATION_MESSAGE
+            );
+        }
+    }
     
     private void initialize() {
         setModel(model);
