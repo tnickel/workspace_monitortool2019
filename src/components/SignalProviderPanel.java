@@ -217,6 +217,7 @@ public class SignalProviderPanel extends JPanel {
                     if (selectedCategory == 0) {
                         // Wenn "Kein Favorit" ausgewählt wurde, den Favoriten entfernen
                         favoritesManager.setFavoriteCategory(providerId, 0);
+                        favoritesManager.reloadFavorites(); // << Diese Zeile ist neu!
                         updateFavoriteUI(false);
                     } else {
                         // Sonst die Kategorie setzen
@@ -238,7 +239,10 @@ public class SignalProviderPanel extends JPanel {
                 // Wenn es kein Favorit ist, Kategorie auswählen
                 selectFavoriteCategory();
             }
-        });
+        }
+    		  		);
+       
+        
         
         // Bad Provider Button
         badProviderButton = UIStyle.createStyledButton(

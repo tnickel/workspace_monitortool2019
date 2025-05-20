@@ -11,6 +11,7 @@ import models.HighlightTableModel;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 
+
 public class FavoritesFilterManager {
     private static final Logger LOGGER = Logger.getLogger(FavoritesFilterManager.class.getName());
     
@@ -41,6 +42,9 @@ public class FavoritesFilterManager {
      * @param category Die Kategorie (0-10), wobei 0 bedeutet, keine Filterung anwenden
      */
     public void filterByCategory(int category) {
+        // NEU: Favorites neu laden, bevor gefiltert wird
+        favoritesManager.reloadFavorites();
+        
         this.currentCategory = category;
         
         if (category == 0) {
@@ -79,12 +83,6 @@ public class FavoritesFilterManager {
         mainTable.updateStatus();
         mainTable.repaint();
     }
-    
-    /**
-     * Extrahiert die Provider-ID aus dem Providernamen
-     * @param providerName Name des Providers (normalerweise ein Dateipfad)
-     * @return Die extrahierte Provider-ID
-     */
     private String extractProviderId(String providerName) {
         // Provider-ID aus dem Namen extrahieren
         String providerId = "";

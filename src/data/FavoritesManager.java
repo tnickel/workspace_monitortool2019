@@ -56,6 +56,12 @@ public class FavoritesManager {
         loadBadProviders();
     }
     
+    // NEU: Reload-Methode
+    public void reloadFavorites() {
+        loadFavorites();
+        System.out.println("Favoriten wurden neu geladen.");
+    }
+    
     public boolean isFavorite(String providerId) {
         // Debug für jede Prüfung
         boolean result = favorites.containsKey(providerId);
@@ -79,7 +85,6 @@ public class FavoritesManager {
     
     public boolean isBadProvider(String providerId) {
         boolean result = badProviders.contains(providerId);
-        System.out.println("FavoritesManager prüft Bad Provider ID: " + providerId + " -> " + (result ? "ist Bad Provider" : "kein Bad Provider"));
         return result;
     }
     
