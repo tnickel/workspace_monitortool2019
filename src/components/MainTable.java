@@ -164,7 +164,7 @@ public class MainTable extends JTable {
         String downloadPath = config.getDownloadPath();
         
         boolean anyDeleted = false;
-        StringBuilder deletedProviders = new StringBuilder("Gelöschte Provider:\n");
+        List<String> deletedProvidersList = new ArrayList<>();
         
         // Speichern der Namen der zu löschenden Provider, um sie später aus dem Model zu entfernen
         List<String> providersToRemove = new ArrayList<>();
@@ -238,7 +238,7 @@ public class MainTable extends JTable {
             }
             
             if (providerDeleted) {
-                deletedProviders.append("- ").append(providerName).append("\n");
+                deletedProvidersList.add(providerName);
                 providersToRemove.add(providerName);
             }
         }
@@ -270,10 +270,24 @@ public class MainTable extends JTable {
                 }
             });
             
+            // Erstelle die Nachricht mit Begrenzung auf 20 Provider
+            StringBuilder message = new StringBuilder("Gelöschte Provider:\n");
+            int maxProvidersToShow = Math.min(20, deletedProvidersList.size());
+            
+            for (int i = 0; i < maxProvidersToShow; i++) {
+                message.append("- ").append(deletedProvidersList.get(i)).append("\n");
+            }
+            
+            // Falls mehr als 20 Provider gelöscht wurden, zeige einen Hinweis
+            if (deletedProvidersList.size() > 20) {
+                int remaining = deletedProvidersList.size() - 20;
+                message.append("\n... und ").append(remaining).append(" weitere");
+            }
+            
             // Info-Dialog mit gelöschten Providern anzeigen
             JOptionPane.showMessageDialog(
                 this,
-                deletedProviders.toString(),
+                message.toString(),
                 "Provider gelöscht",
                 JOptionPane.INFORMATION_MESSAGE
             );
