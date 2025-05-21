@@ -128,7 +128,102 @@ public class MainTable extends JTable {
     }
     
     /**
+     * Stellt sicher, dass die Tooltip-Funktionalität aktiviert ist
+     */
+    private void ensureTooltipsEnabled() {
+        // Tooltip-Setup
+        ToolTipManager.sharedInstance().setInitialDelay(200);
+        ToolTipManager.sharedInstance().setDismissDelay(8000);
+        ToolTipManager.sharedInstance().registerComponent(this);
+        ToolTipManager.sharedInstance().setEnabled(true);
+        
+        LOGGER.info("Tooltip-Funktionalität explizit aktiviert");
+    }
+    
+    /**
+     * Überschreibt die Standard-Tooltip-Methode, um spezifische Tooltips für Zellen anzuzeigen.
+     */
+    @Override
+    public String getToolTipText(MouseEvent event) {
+        // Die originale JTable getToolTipText Methode verwenden, die spezialisierte Tooltips bereits unterstützt
+        String defaultToolTip = super.getToolTipText(event);
+        
+        // Wenn es bereits einen Tooltip gibt, diesen einfach zurückgeben
+        if (defaultToolTip != null) {
+            return defaultToolTip;
+        }
+        
+        // Ansonsten eigene Logik für Tooltips bereitstellen
+        int row = rowAtPoint(event.getPoint());
+        int column = columnAtPoint(event.getPoint());
+        
+        if (row < 0 || column < 0) {
+            return null;
+        }
+        
+        // Umwandlung in Modell-Indizes
+        int modelRow = convertRowIndexToModel(row);
+        int modelColumn = convertColumnIndexToModel(column);
+        
+        if (modelRow < 0 || modelColumn < 0 || modelRow >= model.getRowCount() || modelColumn >= model.getColumnCount()) {
+            return null;
+        }
+        
+        Object value = model.getValueAt(modelRow, modelColumn);
+        if (value == null) {
+            return null;
+        }
+        
+        // Spezielle Behandlung für bestimmte Spalten
+        String columnName = model.getColumnName(modelColumn);
+        
+        // Für Signal Provider-Spalte (normalerweise Spalte 1)
+        if (modelColumn == 1) {
+            String providerName = value.toString();
+            ProviderStats stats = dataManager.getStats().get(providerName);
+            if (stats != null) {
+                return model.buildCurrencyPairsTooltip(stats);
+            }
+        }
+        
+        // Für MPDD-Spalten (3, 4, 5, 6) spezielle Tooltips verwenden
+        if (modelColumn >= 3 && modelColumn <= 6) {
+            // Verwende die ursprüngliche Tooltip-Logik für MPDD-Werte
+            // Diese basiert auf dem Tooltip, den htmlDatabase für diese Spalte berechnet
+            String providerName = model.getValueAt(modelRow, 1).toString();
+            
+            // Monatsanzahl aus der Spalte ableiten (3, 6, 9, 12 Monate)
+            int months = 3;
+            if (modelColumn == 4) months = 6;
+            else if (modelColumn == 5) months = 9;
+            else if (modelColumn == 6) months = 12;
+            
+            // Den gespeicherten Tooltip für diesen MPDD-Wert abrufen
+            String mpddTooltip = htmlDatabase.getMPDDTooltip(providerName, months);
+            if (mpddTooltip != null && !mpddTooltip.isEmpty()) {
+                return mpddTooltip;
+            }
+        }
+        
+        // Für alle anderen numerischen Werte eine formatierte Anzeige
+        if (value instanceof Number) {
+            // Formatieren je nach Spalte
+            double numValue = ((Number) value).doubleValue();
+            if (Math.abs(numValue) < 0.01 && numValue != 0) {
+                // Für sehr kleine Werte wissenschaftliche Notation
+                return String.format("%s: %.6e", getColumnName(column), numValue);
+            } else {
+                // Für normale Werte 2 Nachkommastellen
+                return String.format("%s: %.2f", getColumnName(column), numValue);
+            }
+        }
+        
+        // Standardrückgabe für alle anderen Fälle
+        return getColumnName(column) + ": " + value.toString();
+    }
+    /**
      * NEU: Aktualisiert die Tabellenrenderer und die Ansicht nach einer Favoriten-Änderung
+     * Mit verbesserter Tooltip-Unterstützung
      */
     public void refreshTableRendering() {
         LOGGER.info("Beginne radikales TableRendering-Update nach Favoriten-Änderung");
@@ -136,6 +231,11 @@ public class MainTable extends JTable {
         // Die Implementierung dieser Methode erstellt alle Renderer komplett neu
         SwingUtilities.invokeLater(() -> {
             try {
+                // Aktuelle Tooltip-Einstellungen sichern
+                int initialDelay = ToolTipManager.sharedInstance().getInitialDelay();
+                int dismissDelay = ToolTipManager.sharedInstance().getDismissDelay();
+                boolean isToolTipEnabled = ToolTipManager.sharedInstance().isEnabled();
+                
                 // Alte Renderer merken, um ihre Properties zu kopieren
                 String oldSearchText = "";
                 if (renderer != null) {
@@ -171,6 +271,17 @@ public class MainTable extends JTable {
                 
                 LOGGER.info("Neue Renderer für alle Spalten gesetzt");
                 
+                // Tooltips wieder aktivieren
+                if (isToolTipEnabled) {
+                    ToolTipManager.sharedInstance().setEnabled(true);
+                }
+                ToolTipManager.sharedInstance().setInitialDelay(initialDelay);
+                ToolTipManager.sharedInstance().setDismissDelay(dismissDelay);
+                // Tabelle explizit bei ToolTipManager registrieren
+                ToolTipManager.sharedInstance().registerComponent(this);
+                
+                LOGGER.info("Tooltip-Funktionalität wiederhergestellt");
+                
                 // Layout und Darstellung vollständig aktualisieren
                 invalidate();
                 validate();
@@ -189,6 +300,10 @@ public class MainTable extends JTable {
                     Timer timer = new Timer(delays[i], new ActionListener() {
                         @Override
                         public void actionPerformed(ActionEvent e) {
+                            // Nach jeder Verzögerung sicherstellen, dass Tooltips aktiviert sind
+                            if (index == delays.length - 1) {
+                                ensureTooltipsEnabled();
+                            }
                             repaint();
                             LOGGER.info("Verzögertes repaint() #" + (index+1) + " ausgeführt");
                         }
@@ -206,12 +321,18 @@ public class MainTable extends JTable {
 
     /**
      * Diese zweite Methode stellt eine noch radikalere Lösung dar, falls die erste nicht funktioniert
+     * Erweitert mit verbesserter Tooltip-Unterstützung
      */
     public void forceCompleteReinitialize() {
         LOGGER.info("Beginne komplette Neuinitialisierung der Tabelle");
         
         SwingUtilities.invokeLater(() -> {
             try {
+                // Aktuelle Tooltip-Einstellungen sichern
+                int initialDelay = ToolTipManager.sharedInstance().getInitialDelay();
+                int dismissDelay = ToolTipManager.sharedInstance().getDismissDelay();
+                boolean isToolTipEnabled = ToolTipManager.sharedInstance().isEnabled();
+                
                 // Aktuelle Selektion und andere Zustände sichern
                 int[] selectedRows = getSelectedRows();
                 
@@ -244,6 +365,17 @@ public class MainTable extends JTable {
                     favoritesManager.filterByCategory(favoritesManager.getCurrentCategory());
                 }
                 
+                // Tooltips wieder aktivieren
+                if (isToolTipEnabled) {
+                    ToolTipManager.sharedInstance().setEnabled(true);
+                }
+                ToolTipManager.sharedInstance().setInitialDelay(initialDelay);
+                ToolTipManager.sharedInstance().setDismissDelay(dismissDelay);
+                // Tabelle explizit bei ToolTipManager registrieren
+                ToolTipManager.sharedInstance().registerComponent(this);
+                
+                LOGGER.info("Tooltip-Funktionalität wiederhergestellt");
+                
                 // Aggressive UI-Updates
                 updateUI();
                 revalidate();
@@ -261,7 +393,14 @@ public class MainTable extends JTable {
                 
                 // Verzögerte Updates mit zunehmendem Abstand
                 for(int delay : new int[]{100, 300, 600}) {
-                    Timer timer = new Timer(delay, e -> repaint());
+                    final int finalDelay = delay;
+                    Timer timer = new Timer(delay, e -> {
+                        if (finalDelay == 600) {
+                            // Nach der letzten Verzögerung sicherstellen, dass Tooltips aktiviert sind
+                            ensureTooltipsEnabled();
+                        }
+                        repaint();
+                    });
                     timer.setRepeats(false);
                     timer.start();
                 }
