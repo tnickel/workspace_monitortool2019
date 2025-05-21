@@ -37,4 +37,12 @@ public class NumberFormatRenderer extends DefaultTableCellRenderer {
         
         return comp;
     }
+    
+    /**
+     * Gibt den zugrundeliegenden HighlightRenderer zurück
+     * @return Der HighlightRenderer
+     */
+    public HighlightRenderer getBaseRenderer() {
+        return this.baseRenderer;
+    }
 }

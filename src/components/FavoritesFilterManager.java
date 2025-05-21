@@ -160,4 +160,46 @@ public class FavoritesFilterManager {
     public FavoritesManager getFavoritesManager() {
         return favoritesManager;
     }
+ // In der FavoritesFilterManager-Klasse, füge diese Methode hinzu oder aktualisiere sie
+
+    /**
+     * Fügt den Provider als Favorit hinzu oder entfernt ihn als Favorit, und aktualisiert die Ansicht
+     * @param providerName Der Name des Providers
+     * @param category Die Kategorie (1-10, oder 0 zum Entfernen)
+     * @param updateRenderers True, um alle Renderer zu aktualisieren
+     */
+    public void toggleFavorite(String providerName, int category, boolean updateRenderers) {
+        // Provider-ID extrahieren
+        String providerId = extractProviderId(providerName);
+        
+        if (providerId != null && !providerId.isEmpty()) {
+            // Favoriten-Status umschalten
+            getFavoritesManager().setFavoriteCategory(providerId, category);
+            
+            // Wenn die aktuelle Kategorie-Anzeige betroffen ist, aktualisiere sie
+            if (currentCategory == category || currentCategory == 0) {
+                filterByCategory(currentCategory);
+            }
+            
+            // Tabelle zum Neuzeichnen zwingen, falls gewünscht
+            if (updateRenderers && table != null) {
+                if (table instanceof MainTable) {
+                    // MainTable hat spezielle Refresh-Methode
+                    ((MainTable)table).refreshTableRendering();
+                } else {
+                    // Fallback für normale JTable
+                    table.repaint();
+                }
+            }
+        }
+    }
+
+    /**
+     * Convenience-Methode zum Umschalten des Favoriten-Status mit Aktualisierung der Renderer
+     * @param providerName Der Name des Providers
+     * @param category Die Kategorie (1-10, oder 0 zum Entfernen)
+     */
+    public void toggleFavoriteWithUpdate(String providerName, int category) {
+        toggleFavorite(providerName, category, true);
+    }
 }

@@ -4,6 +4,7 @@ import java.awt.Color;
 import java.awt.Component;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Logger;
 
 import javax.swing.JLabel;
 import javax.swing.JTable;
@@ -18,6 +19,7 @@ import utils.UIStyle;
  */
 public class HighlightRenderer extends DefaultTableCellRenderer {
     private static final long serialVersionUID = 1L;
+    private static final Logger LOGGER = Logger.getLogger(HighlightRenderer.class.getName());
     
     private static final Color FAVORITE_COLOR = new Color(230, 255, 230); // Hellgrün
     private static final Color BAD_PROVIDER_COLOR = new Color(255, 230, 230); // Hellrot
@@ -34,6 +36,14 @@ public class HighlightRenderer extends DefaultTableCellRenderer {
     public HighlightRenderer() {
         // Verwende die Singleton-Instanz vom FavoritesManager
         this.favoritesManager = FavoritesManager.getInstance(ApplicationConstants.ROOT_PATH);
+        
+        // Registriere einen Listener für Änderungen an den Favoriten
+        this.favoritesManager.addFavoritesChangeListener(() -> {
+            clearCache();
+            LOGGER.info("Cache in HighlightRenderer durch Listener-Callback geleert");
+        });
+        
+        LOGGER.info("HighlightRenderer mit FavoritesManager initialisiert");
     }
     
     @Override
@@ -131,7 +141,9 @@ public class HighlightRenderer extends DefaultTableCellRenderer {
             return favoriteCache.get(providerId);
         }
         
-        boolean isFavorite = favoritesManager.isFavorite(providerId);
+        // Hole immer die neueste Instance des FavoritesManager
+        FavoritesManager currentFavoritesManager = FavoritesManager.getInstance(ApplicationConstants.ROOT_PATH);
+        boolean isFavorite = currentFavoritesManager.isFavorite(providerId);
         favoriteCache.put(providerId, isFavorite);
         return isFavorite;
     }
@@ -144,7 +156,9 @@ public class HighlightRenderer extends DefaultTableCellRenderer {
             return badProviderCache.get(providerId);
         }
         
-        boolean isBad = favoritesManager.isBadProvider(providerId);
+        // Hole immer die neueste Instance des FavoritesManager
+        FavoritesManager currentFavoritesManager = FavoritesManager.getInstance(ApplicationConstants.ROOT_PATH);
+        boolean isBad = currentFavoritesManager.isBadProvider(providerId);
         badProviderCache.put(providerId, isBad);
         return isBad;
     }
@@ -177,6 +191,7 @@ public class HighlightRenderer extends DefaultTableCellRenderer {
         providerIdCache.clear();
         favoriteCache.clear();
         badProviderCache.clear();
+        LOGGER.info("HighlightRenderer-Caches geleert");
     }
     
     /**
@@ -184,5 +199,14 @@ public class HighlightRenderer extends DefaultTableCellRenderer {
      */
     public void setSearchText(String searchText) {
         this.searchText = searchText;
+    }
+    
+    /**
+     * Gibt den aktuellen Suchtext zurück
+     * Diese Methode wird benötigt, wenn der Renderer neu erstellt wird
+     * @return Der aktuelle Suchtext
+     */
+    public String getSearchText() {
+        return this.searchText;
     }
 }

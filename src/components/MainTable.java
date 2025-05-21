@@ -1,11 +1,13 @@
 package components;
 
+import java.awt.Desktop;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.awt.event.KeyEvent;
-import java.awt.event.ActionEvent;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -22,35 +24,31 @@ import javax.swing.JOptionPane;
 import javax.swing.JTable;
 import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 import javax.swing.ToolTipManager;
 import javax.swing.table.TableRowSorter;
 
 import data.DataManager;
+import data.FavoritesManager;
 import data.ProviderStats;
 import models.FilterCriteria;
 import models.HighlightTableModel;
 import renderers.HighlightRenderer;
+import renderers.NumberFormatRenderer;
 import renderers.RiskScoreRenderer;
+import reports.ReportGenerator;
 import services.ProviderHistoryService;
 import ui.PerformanceAnalysisDialog;
 import ui.ShowSignalProviderList;
 import utils.ApplicationConstants;
 import utils.HtmlDatabase;
 import utils.MqlAnalyserConf;
-import reports.ReportGenerator;
-import javax.swing.JOptionPane;
-import java.io.File;
-import java.awt.Desktop;
-import java.util.Map;
-import java.util.HashMap;
-import data.FavoritesManager;
-import renderers.NumberFormatRenderer;
 
 public class MainTable extends JTable {
     private static final Logger LOGGER = Logger.getLogger(MainTable.class.getName());
     private final HighlightTableModel model;
-    private final HighlightRenderer renderer;
-    private final RiskScoreRenderer riskRenderer;
+    private HighlightRenderer renderer;  // Diese Variable muss als HighlightRenderer deklariert sein
+    private RiskScoreRenderer riskRenderer;  // Diese Variable muss als RiskScoreRenderer deklariert sein
     private final DataManager dataManager;
     private final String rootPath;
     private Consumer<String> statusUpdateCallback;
@@ -97,6 +95,9 @@ public class MainTable extends JTable {
         // Spalten-Sichtbarkeit laden NACH der Initialisierung der Tabelle
         columnManager.loadColumnVisibilitySettings();
         
+        // NEU: FavoritesManager Listener hinzufügen, um die Tabelle zu aktualisieren
+        setupFavoritesListener();
+        
         // Stellen Sie sicher, dass beim Beenden der Anwendung die Ressourcen freigegeben werden
         try {
             JFrame parentFrame = (JFrame) SwingUtilities.getWindowAncestor(this);
@@ -111,6 +112,167 @@ public class MainTable extends JTable {
         } catch (Exception e) {
             LOGGER.warning("Konnte WindowListener nicht hinzufügen: " + e.getMessage());
         }
+    }
+
+    /**
+     * NEU: Richtet einen Listener für Änderungen an den Favoriten ein
+     */
+    private void setupFavoritesListener() {
+        FavoritesManager favoritesManager = FavoritesManager.getInstance(rootPath);
+        favoritesManager.addFavoritesChangeListener(() -> {
+            SwingUtilities.invokeLater(() -> {
+                refreshTableRendering();
+                LOGGER.info("Tabelle nach Favoriten-Änderung aktualisiert");
+            });
+        });
+    }
+    
+    /**
+     * NEU: Aktualisiert die Tabellenrenderer und die Ansicht nach einer Favoriten-Änderung
+     */
+    public void refreshTableRendering() {
+        LOGGER.info("Beginne radikales TableRendering-Update nach Favoriten-Änderung");
+        
+        // Die Implementierung dieser Methode erstellt alle Renderer komplett neu
+        SwingUtilities.invokeLater(() -> {
+            try {
+                // Alte Renderer merken, um ihre Properties zu kopieren
+                String oldSearchText = "";
+                if (renderer != null) {
+                    oldSearchText = renderer.getSearchText();
+                }
+                
+                // Komplett neue Renderer erstellen
+                this.renderer = new HighlightRenderer();
+                this.renderer.setSearchText(oldSearchText);
+                this.riskRenderer = new RiskScoreRenderer(this.renderer);
+                
+                LOGGER.info("Neue Renderer-Instanzen erstellt");
+                
+                // Alle Spalten auf den neuen Renderer setzen
+                for (int i = 0; i < getColumnCount(); i++) {
+                    // Risk Score Spalte (Spalte 20) verwendet den speziellen RiskScoreRenderer
+                    if (i == 20) {
+                        getColumnModel().getColumn(i).setCellRenderer(riskRenderer);
+                    }
+                    // Spalte 0 (No) und 1 (Signal Provider) verwenden den Standard-Renderer
+                    else if (i == 0 || i == 1) {
+                        getColumnModel().getColumn(i).setCellRenderer(renderer);
+                    }
+                    // Alle anderen Spalten sind numerisch und verwenden den NumberFormatRenderer
+                    else {
+                        getColumnModel().getColumn(i).setCellRenderer(new NumberFormatRenderer(renderer));
+                    }
+                }
+                
+                // Globale Default-Renderer aktualisieren
+                setDefaultRenderer(Object.class, renderer);
+                setDefaultRenderer(Number.class, new NumberFormatRenderer(renderer));
+                
+                LOGGER.info("Neue Renderer für alle Spalten gesetzt");
+                
+                // Layout und Darstellung vollständig aktualisieren
+                invalidate();
+                validate();
+                
+                // Alle Komponenten aggressiv neu zeichnen
+                updateUI();
+                revalidate();
+                repaint();
+                
+                LOGGER.info("Erstes repaint() ausgeführt");
+                
+                // Verzögertes mehrfaches Repaint, falls das erste nicht ausreicht
+                int[] delays = {100, 300, 600, 1000}; // mehrere Verzögerungen
+                for (int i = 0; i < delays.length; i++) {
+                    final int index = i;
+                    Timer timer = new Timer(delays[i], new ActionListener() {
+                        @Override
+                        public void actionPerformed(ActionEvent e) {
+                            repaint();
+                            LOGGER.info("Verzögertes repaint() #" + (index+1) + " ausgeführt");
+                        }
+                    });
+                    timer.setRepeats(false);
+                    timer.start();
+                }
+                
+            } catch (Exception e) {
+                LOGGER.severe("Fehler beim Neuinitialisieren der Renderer: " + e.getMessage());
+                e.printStackTrace();
+            }
+        });
+    }
+
+    /**
+     * Diese zweite Methode stellt eine noch radikalere Lösung dar, falls die erste nicht funktioniert
+     */
+    public void forceCompleteReinitialize() {
+        LOGGER.info("Beginne komplette Neuinitialisierung der Tabelle");
+        
+        SwingUtilities.invokeLater(() -> {
+            try {
+                // Aktuelle Selektion und andere Zustände sichern
+                int[] selectedRows = getSelectedRows();
+                
+                // Altes Model merken
+                HighlightTableModel oldModel = this.model;
+                
+                // Alle Provider neu laden
+                oldModel.populateData(dataManager.getStats());
+                
+                // Neue Renderer kreieren
+                this.renderer = new HighlightRenderer();
+                this.riskRenderer = new RiskScoreRenderer(this.renderer);
+                
+                // Renderer komplett neu zuweisen
+                setDefaultRenderer(Object.class, renderer);
+                setDefaultRenderer(Number.class, new NumberFormatRenderer(renderer));
+                
+                for (int i = 0; i < getColumnCount(); i++) {
+                    if (i == 20) {
+                        getColumnModel().getColumn(i).setCellRenderer(riskRenderer);
+                    } else if (i == 0 || i == 1) {
+                        getColumnModel().getColumn(i).setCellRenderer(renderer);
+                    } else {
+                        getColumnModel().getColumn(i).setCellRenderer(new NumberFormatRenderer(renderer));
+                    }
+                }
+                
+                // Hier können wir auch Filtereinstellungen neu anwenden, falls vorhanden
+                if (favoritesManager.getCurrentCategory() > 0) {
+                    favoritesManager.filterByCategory(favoritesManager.getCurrentCategory());
+                }
+                
+                // Aggressive UI-Updates
+                updateUI();
+                revalidate();
+                repaint();
+                
+                // Wenn wir Zeilen ausgewählt hatten, versuchen wir die Auswahl wiederherzustellen
+                if (selectedRows.length > 0) {
+                    clearSelection();
+                    for (int row : selectedRows) {
+                        if (row < getRowCount()) {
+                            addRowSelectionInterval(row, row);
+                        }
+                    }
+                }
+                
+                // Verzögerte Updates mit zunehmendem Abstand
+                for(int delay : new int[]{100, 300, 600}) {
+                    Timer timer = new Timer(delay, e -> repaint());
+                    timer.setRepeats(false);
+                    timer.start();
+                }
+                
+                LOGGER.info("Komplette Neuinitialisierung abgeschlossen");
+                
+            } catch (Exception e) {
+                LOGGER.severe("Fehler bei kompletter Neuinitialisierung: " + e.getMessage());
+                e.printStackTrace();
+            }
+        });
     }
 
     public FilterCriteria getCurrentFilter() {
@@ -385,7 +547,7 @@ public class MainTable extends JTable {
             new Thread(() -> {
                 try {
                     // Alle Favoriten ermitteln
-                    FavoritesManager favManager = new FavoritesManager(rootPath);
+                    FavoritesManager favManager = FavoritesManager.getInstance(rootPath);
                     Map<String, ProviderStats> favorites = new HashMap<>();
                     
                     // Über alle verfügbaren Provider iterieren
@@ -394,21 +556,7 @@ public class MainTable extends JTable {
                         ProviderStats stats = entry.getValue();
                         
                         // Provider-ID extrahieren
-                        String providerId = "";
-                        if (providerName.contains("_")) {
-                            providerId = providerName.substring(providerName.lastIndexOf("_") + 1).replace(".csv", "");
-                        } else {
-                            // Fallback für unerwartetes Format
-                            StringBuilder digits = new StringBuilder();
-                            for (char ch : providerName.toCharArray()) {
-                                if (Character.isDigit(ch)) {
-                                    digits.append(ch);
-                                }
-                            }
-                            if (digits.length() > 0) {
-                                providerId = digits.toString();
-                            }
-                        }
+                        String providerId = extractProviderId(providerName);
                         
                         // Prüfen, ob dieser Provider ein Favorit ist
                         if (!providerId.isEmpty() && favManager.isFavorite(providerId)) {
@@ -693,16 +841,34 @@ public class MainTable extends JTable {
         );
         
         if (selectedOption >= 0) {
-            favoritesManager.getFavoritesManager().setFavoriteCategory(providerId, selectedOption);
+            // FavoritesManager-Singleton direkt holen und verwenden
+            FavoritesManager favManager = FavoritesManager.getInstance(rootPath);
             
-            // Wenn die aktuelle Kategorie angezeigt wird, aktualisiere die Anzeige
+            // Alte Kategorie speichern für Logging
+            int oldCategory = favManager.getFavoriteCategory(providerId);
+            
+            // Kategorie direkt setzen
+            favManager.setFavoriteCategory(providerId, selectedOption);
+            
+            LOGGER.info("Favorit-Kategorie für " + providerId + " geändert von " + oldCategory + " auf " + selectedOption);
+            
+            // Aktuelle Favoriten-Anzeige aktualisieren, falls nötig
             if (favoritesManager.getCurrentCategory() > 0) {
                 favoritesManager.filterByCategory(favoritesManager.getCurrentCategory());
             }
             
-            repaint();
+            // Radikale Aktualisierung mit komplett neuen Renderer-Instanzen
+            refreshTableRendering();
+            
+            // Nach einer Verzögerung auch noch die extremere Variante ausprobieren
+            // Dies ist ein Fallback, falls die erste Methode nicht ausreicht
+            Timer timer = new Timer(500, e -> forceCompleteReinitialize());
+            timer.setRepeats(false);
+            timer.start();
         }
+    
     }
+
 
     /**
      * Gibt den FavoritesFilterManager zurück

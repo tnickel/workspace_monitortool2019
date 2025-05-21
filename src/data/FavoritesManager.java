@@ -8,8 +8,10 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.logging.Logger;
@@ -23,9 +25,11 @@ public class FavoritesManager {
     private final Path favoritesFile;
     private final Path badProvidersFile;
     
+    // Liste der Listener für Favoriten-Änderungen
+    private final List<Runnable> favoritesChangeListeners = new ArrayList<>();
+    
     // Singleton-Instanz
     private static FavoritesManager instance;
-    private static boolean dataLoaded = false;
     private static boolean outputDebugMessages = true; // Debug-Ausgaben aktivieren
     
     /**
@@ -36,8 +40,37 @@ public class FavoritesManager {
     public static synchronized FavoritesManager getInstance(String rootPath) {
         if (instance == null) {
             instance = new FavoritesManager(rootPath);
+        } else {
+            // Hier neu: Wir laden die Daten bei jedem Aufruf, um sicherzustellen, dass die Daten aktuell sind
+            instance.reloadFavorites();
         }
         return instance;
+    }
+    
+    /**
+     * Fügt einen Listener für Favoriten-Änderungen hinzu
+     * @param listener Der auszuführende Runnable, wenn sich Favoriten ändern
+     */
+    public void addFavoritesChangeListener(Runnable listener) {
+        if (listener != null && !favoritesChangeListeners.contains(listener)) {
+            favoritesChangeListeners.add(listener);
+            if (outputDebugMessages) {
+                System.out.println("Favoriten-Änderungslistener hinzugefügt. Anzahl Listener: " + favoritesChangeListeners.size());
+            }
+        }
+    }
+    
+    /**
+     * Entfernt einen Listener für Favoriten-Änderungen
+     * @param listener Der zu entfernende Listener
+     */
+    public void removeFavoritesChangeListener(Runnable listener) {
+        if (listener != null) {
+            favoritesChangeListeners.remove(listener);
+            if (outputDebugMessages) {
+                System.out.println("Favoriten-Änderungslistener entfernt. Anzahl Listener: " + favoritesChangeListeners.size());
+            }
+        }
     }
     
     public FavoritesManager(String rootPath) {
@@ -75,21 +108,18 @@ public class FavoritesManager {
             System.out.println("Bad Provider werden gespeichert in: " + badProvidersFile.toAbsolutePath());
         }
         
-        // Lade die Daten nur, wenn sie noch nicht geladen wurden
-        if (!dataLoaded) {
-            loadFavorites();
-            loadBadProviders();
-            dataLoaded = true;
-        }
+        // Immer beim Erstellen einer Instanz die Daten laden
+        loadFavorites();
+        loadBadProviders();
     }
     
     // NEU: Reload-Methode
     public void reloadFavorites() {
         loadFavorites();
+        loadBadProviders();
         if (outputDebugMessages) {
-            System.out.println("Favoriten wurden neu geladen.");
+            System.out.println("Favoriten wurden neu geladen. Anzahl: " + favorites.size());
         }
-        dataLoaded = true;
     }
     
     public boolean isFavorite(String providerId) {
@@ -139,6 +169,8 @@ public class FavoritesManager {
         }
         
         loadFavorites();
+        // Nach dem Laden die Listener benachrichtigen
+        notifyFavoritesChanged();
     }
     
     public void toggleFavorite(String providerId, int category) {
@@ -156,6 +188,9 @@ public class FavoritesManager {
             }
         }
         saveFavorites();
+        
+        // Informiere andere Instanzen, dass sich die Favoriten geändert haben
+        notifyFavoritesChanged();
     }
     
     public void setFavoriteCategory(String providerId, int category) {
@@ -186,11 +221,21 @@ public class FavoritesManager {
     
     /**
      * Informiert alle Komponenten, dass sich die Favoriten geändert haben
-     * Diese Methode kann überschrieben werden, um z.B. Events auszulösen
      */
     protected void notifyFavoritesChanged() {
-        // In dieser Basisimplementierung tun wir nichts
-        // In einer erweiterten Implementierung könnte hier ein Event ausgelöst werden
+        if (outputDebugMessages) {
+            System.out.println("Benachrichtige " + favoritesChangeListeners.size() + " Listener über Favoriten-Änderung");
+        }
+        
+        // Alle registrierten Listener benachrichtigen
+        for (Runnable listener : favoritesChangeListeners) {
+            try {
+                listener.run();
+            } catch (Exception e) {
+                LOGGER.warning("Fehler beim Benachrichtigen eines Favoriten-Listeners: " + e.getMessage());
+                e.printStackTrace();
+            }
+        }
     }
     
     public void toggleBadProvider(String providerId) {
@@ -206,6 +251,9 @@ public class FavoritesManager {
             }
         }
         saveBadProviders();
+        
+        // Auch bei Bad Provider-Änderungen die Listener benachrichtigen
+        notifyFavoritesChanged();
     }
     
     private void loadFavorites() {
