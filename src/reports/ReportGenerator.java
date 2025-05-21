@@ -3,7 +3,10 @@ package reports;
 import java.awt.Dimension;
 import java.awt.image.BufferedImage;
 import java.io.File;
-import java.io.FileWriter;
+import java.io.FileOutputStream;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -32,7 +35,7 @@ import data.Trade;
 import db.HistoryDatabaseManager;
 import utils.ApplicationConstants;
 import utils.HtmlDatabase;
-import utils.UIStyle; // Import von UIStyle hinzugefügt für den MQL-Link
+import utils.UIStyle;
 
 /**
  * Klasse zum Erstellen eines HTML-Reports für favorisierte Signal Provider
@@ -80,6 +83,48 @@ public class ReportGenerator {
             } else {
                 LOGGER.info("Report-Verzeichnis erfolgreich erstellt: " + reportDir.getAbsolutePath());
             }
+        }
+    }
+    
+    /**
+     * Hilfsmethode, um den passenden CSS-Klassenname für eine Kategorie zu erhalten
+     * 
+     * @param category Die Kategorie-Nummer
+     * @return Die CSS-Klasse für diese Kategorie
+     */
+    private String getCategoryStyleClass(int category) {
+        if (category <= 0) {
+            return "";
+        } else if (category <= 2) {
+            return "category-dark-green";
+        } else if (category == 3) {
+            return "category-light-green";
+        } else if (category == 4) {
+            return "category-orange";
+        } else {
+            return "category-default";
+        }
+    }
+    
+    /**
+     * Hilfsmethode, um formatierte Kategorieinformation mit Farbklasse zu erstellen
+     * 
+     * @param category Die Kategorie-Nummer
+     * @param isCustomReport Flag, ob es sich um einen benutzerdefinierten Report handelt
+     * @return Formatierte HTML-Ausgabe für die Kategorie
+     */
+    private String formatCategoryInfo(int category, boolean isCustomReport) {
+        if (category <= 0) {
+            return "";
+        }
+        
+        String categoryText = isCustomReport ? "(Favorit, Kategorie " + category + ")" : "(Kategorie " + category + ")";
+        String styleClass = getCategoryStyleClass(category);
+        
+        if (!styleClass.isEmpty()) {
+            return " <span class=\"" + styleClass + "\">" + categoryText + "</span>";
+        } else {
+            return " " + categoryText;
         }
     }
     
@@ -143,7 +188,7 @@ public class ReportGenerator {
             reportTitle += " - Kategorie " + category;
         }
         
-        try (FileWriter writer = new FileWriter(reportPath)) {
+        try (Writer writer = new OutputStreamWriter(new FileOutputStream(reportPath), StandardCharsets.UTF_8)) {
             // HTML-Header schreiben
             writer.write(generateHtmlHeader(reportTitle, timestamp));
             
@@ -157,9 +202,7 @@ public class ReportGenerator {
                 String categoryInfo = "";
                 if (category == 0) {
                     int providerCategory = favoritesManager.getFavoriteCategory(providerId);
-                    if (providerCategory > 0) {
-                        categoryInfo = " (Kategorie " + providerCategory + ")";
-                    }
+                    categoryInfo = formatCategoryInfo(providerCategory, false);
                 }
                 writer.write("<li><a href=\"#" + providerId + "\">" + providerName + categoryInfo + "</a></li>\n");
             }
@@ -179,7 +222,7 @@ public class ReportGenerator {
                 
                 // Kategorie-Info im Titel anzeigen
                 int providerCategory = favoritesManager.getFavoriteCategory(providerId);
-                String categoryInfo = providerCategory > 0 ? " (Kategorie " + providerCategory + ")" : "";
+                String categoryInfo = formatCategoryInfo(providerCategory, false);
                 writer.write("<h2>" + providerName + categoryInfo + "</h2>\n");
                 
                 // MQL-Link hinzufügen
@@ -197,7 +240,14 @@ public class ReportGenerator {
                 writer.write("<table class=\"stats-table\">\n");
                 writer.write("<tr><th>Kennzahl</th><th>Wert</th></tr>\n");
                 writer.write("<tr><td>Total Trades</td><td>" + stats.getTrades().size() + "</td></tr>\n");
-                writer.write("<tr><td>Win Rate</td><td>" + String.format("%.2f%%", stats.getWinRate() * 100) + "</td></tr>\n");
+                // Annahme: stats.getWinRate() gibt bereits einen Wert zwischen 0 und 1 zurück
+                double winRatePercent = stats.getWinRate() * 100;
+                // Prüfen, ob der Wert ungewöhnlich hoch ist (möglicher Fehler)
+                if (winRatePercent > 100) {
+                    // Falls getWinRate() bereits einen Prozentwert zurückgibt, nicht nochmal multiplizieren
+                    winRatePercent = stats.getWinRate();
+                }
+                writer.write("<tr><td>Win Rate</td><td>" + String.format("%.2f%%", winRatePercent) + "</td></tr>\n");
                 writer.write("<tr><td>Profit</td><td>" + String.format("%.2f", stats.getTotalProfit()) + "</td></tr>\n");
                 
                 // MPDD-Werte
@@ -303,7 +353,7 @@ public class ReportGenerator {
                 reportImagesDir.mkdirs();
             }
             
-            try (FileWriter writer = new FileWriter(outputPath)) {
+            try (Writer writer = new OutputStreamWriter(new FileOutputStream(outputPath), StandardCharsets.UTF_8)) {
                 // HTML-Header schreiben
                 writer.write(generateHtmlHeader(reportTitle, timestamp));
                 
@@ -315,11 +365,8 @@ public class ReportGenerator {
                     String providerId = extractProviderId(providerName);
                     
                     // Kategorie anzeigen, wenn es ein Favorit ist
-                    String categoryInfo = "";
                     int providerCategory = favoritesManager.getFavoriteCategory(providerId);
-                    if (providerCategory > 0) {
-                        categoryInfo = " (Favorit, Kategorie " + providerCategory + ")";
-                    }
+                    String categoryInfo = formatCategoryInfo(providerCategory, true);
                     
                     writer.write("<li><a href=\"#" + providerId + "\">" + providerName + categoryInfo + "</a></li>\n");
                 }
@@ -339,10 +386,7 @@ public class ReportGenerator {
                     
                     // Kategorie-Info im Titel anzeigen
                     int providerCategory = favoritesManager.getFavoriteCategory(providerId);
-                    String categoryInfo = "";
-                    if (providerCategory > 0) {
-                        categoryInfo = " (Favorit, Kategorie " + providerCategory + ")";
-                    }
+                    String categoryInfo = formatCategoryInfo(providerCategory, true);
                     writer.write("<h2>" + providerName + categoryInfo + "</h2>\n");
                     
                     // MQL-Link hinzufügen
@@ -360,7 +404,14 @@ public class ReportGenerator {
                     writer.write("<table class=\"stats-table\">\n");
                     writer.write("<tr><th>Kennzahl</th><th>Wert</th></tr>\n");
                     writer.write("<tr><td>Total Trades</td><td>" + stats.getTrades().size() + "</td></tr>\n");
-                    writer.write("<tr><td>Win Rate</td><td>" + String.format("%.2f%%", stats.getWinRate() * 100) + "</td></tr>\n");
+                // Annahme: stats.getWinRate() gibt bereits einen Wert zwischen 0 und 1 zurück
+                double winRatePercent = stats.getWinRate() * 100;
+                // Prüfen, ob der Wert ungewöhnlich hoch ist (möglicher Fehler)
+                if (winRatePercent > 100) {
+                    // Falls getWinRate() bereits einen Prozentwert zurückgibt, nicht nochmal multiplizieren
+                    winRatePercent = stats.getWinRate();
+                }
+                writer.write("<tr><td>Win Rate</td><td>" + String.format("%.2f%%", winRatePercent) + "</td></tr>\n");
                     writer.write("<tr><td>Profit</td><td>" + String.format("%.2f", stats.getTotalProfit()) + "</td></tr>\n");
                     
                     // MPDD-Werte
@@ -582,6 +633,35 @@ public class ReportGenerator {
                 "            height: 1px;\n" +
                 "            background-color: #ddd;\n" +
                 "            margin: 30px 0;\n" +
+                "        }\n" +
+                "        /* Kategorie-Farben */\n" +
+                "        .category-dark-green {\n" +
+                "            color: white;\n" +
+                "            background-color: #006400;\n" +
+                "            padding: 2px 6px;\n" +
+                "            border-radius: 4px;\n" +
+                "            font-weight: bold;\n" +
+                "        }\n" +
+                "        .category-light-green {\n" +
+                "            color: white;\n" +
+                "            background-color: #32CD32;\n" +
+                "            padding: 2px 6px;\n" +
+                "            border-radius: 4px;\n" +
+                "            font-weight: bold;\n" +
+                "        }\n" +
+                "        .category-orange {\n" +
+                "            color: white;\n" +
+                "            background-color: #FF8C00;\n" +
+                "            padding: 2px 6px;\n" +
+                "            border-radius: 4px;\n" +
+                "            font-weight: bold;\n" +
+                "        }\n" +
+                "        .category-default {\n" +
+                "            color: white;\n" +
+                "            background-color: #777;\n" +
+                "            padding: 2px 6px;\n" +
+                "            border-radius: 4px;\n" +
+                "            font-weight: bold;\n" +
                 "        }\n" +
                 "    </style>\n" +
                 "</head>\n" +
