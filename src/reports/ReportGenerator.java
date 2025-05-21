@@ -32,6 +32,7 @@ import data.Trade;
 import db.HistoryDatabaseManager;
 import utils.ApplicationConstants;
 import utils.HtmlDatabase;
+import utils.UIStyle; // Import von UIStyle hinzugefügt für den MQL-Link
 
 /**
  * Klasse zum Erstellen eines HTML-Reports für favorisierte Signal Provider
@@ -181,6 +182,12 @@ public class ReportGenerator {
                 String categoryInfo = providerCategory > 0 ? " (Kategorie " + providerCategory + ")" : "";
                 writer.write("<h2>" + providerName + categoryInfo + "</h2>\n");
                 
+                // MQL-Link hinzufügen
+                String mqlUrl = String.format(UIStyle.SIGNAL_PROVIDER_URL_FORMAT, providerId);
+                writer.write("<div class=\"mql-link\">\n");
+                writer.write("<a href=\"" + mqlUrl + "\" target=\"_blank\">MQL5 Webseite des Providers</a>\n");
+                writer.write("</div>\n");
+                
                 // Lade Notizen aus der Datenbank
                 String notes = historyDbManager.getProviderNotes(providerName);
                 
@@ -192,7 +199,6 @@ public class ReportGenerator {
                 writer.write("<tr><td>Total Trades</td><td>" + stats.getTrades().size() + "</td></tr>\n");
                 writer.write("<tr><td>Win Rate</td><td>" + String.format("%.2f%%", stats.getWinRate() * 100) + "</td></tr>\n");
                 writer.write("<tr><td>Profit</td><td>" + String.format("%.2f", stats.getTotalProfit()) + "</td></tr>\n");
-                //writer.write("<tr><td>Avg Profit/Trade</td><td>" + String.format("%.2f", stats.getAvgProfitPerTrade()) + "</td></tr>\n");
                 
                 // MPDD-Werte
                 double threeMonthProfit = htmlDatabase.getAverageMonthlyProfit(providerName, 3);
@@ -246,52 +252,10 @@ public class ReportGenerator {
                         writer.write("</div>\n");
                     }
                     
-                    // Duration Profit Chart (hier nur als Komponente, daher explizites Rendering)
-                    DurationProfitChart durationChart = new DurationProfitChart(stats.getTrades());
-                    // Die Größe für das Rendering anpassen
-                    durationChart.setSize(new Dimension(950, 400));
-                    BufferedImage durationImage = new BufferedImage(950, 400, BufferedImage.TYPE_INT_ARGB);
-                    durationChart.paint(durationImage.getGraphics());
-                    // Bild speichern
-                    String durationChartPath = reportImagesDir.getPath() + File.separator + 
-                            providerId + "_duration_profit.png";
-                    ImageIO.write(durationImage, "png", new File(durationChartPath));
-                    writer.write("<div class=\"chart-container\">\n");
-                    writer.write("<h4>Dauer/Profit Verhältnis</h4>\n");
-                    writer.write("<img src=\"" + imagesDir + "/" + providerId + "_duration_profit.png" + 
-                            "\" alt=\"Duration Profit Chart\" class=\"chart-image\">\n");
-                    writer.write("</div>\n");
-                    
-                    // Weitere Charts hinzufügen, wenn mehr als 20 Trades vorhanden sind
-                    if (stats.getTrades().size() > 20) {
-                        // Efficiency Chart
-                        EfficiencyChart efficiencyChart = new EfficiencyChart(stats.getTrades());
-                        efficiencyChart.setSize(new Dimension(950, 300));
-                        BufferedImage efficiencyImage = new BufferedImage(950, 300, BufferedImage.TYPE_INT_ARGB);
-                        efficiencyChart.paint(efficiencyImage.getGraphics());
-                        String efficiencyChartPath = reportImagesDir.getPath() + File.separator + 
-                                providerId + "_efficiency.png";
-                        ImageIO.write(efficiencyImage, "png", new File(efficiencyChartPath));
-                        writer.write("<div class=\"chart-container\">\n");
-                        writer.write("<h4>Effizienzwert</h4>\n");
-                        writer.write("<img src=\"" + imagesDir + "/" + providerId + "_efficiency.png" + 
-                                "\" alt=\"Efficiency Chart\" class=\"chart-image\">\n");
-                        writer.write("</div>\n");
-                        
-                        // Weekly Lotsize Chart
-                        WeeklyLotsizeChart lotsizeChart = new WeeklyLotsizeChart(stats.getTrades());
-                        lotsizeChart.setSize(new Dimension(950, 300));
-                        BufferedImage lotsizeImage = new BufferedImage(950, 300, BufferedImage.TYPE_INT_ARGB);
-                        lotsizeChart.paint(lotsizeImage.getGraphics());
-                        String lotsizeChartPath = reportImagesDir.getPath() + File.separator + 
-                                providerId + "_weekly_lotsize.png";
-                        ImageIO.write(lotsizeImage, "png", new File(lotsizeChartPath));
-                        writer.write("<div class=\"chart-container\">\n");
-                        writer.write("<h4>Wöchentliche Lot-Größe</h4>\n");
-                        writer.write("<img src=\"" + imagesDir + "/" + providerId + "_weekly_lotsize.png" + 
-                                "\" alt=\"Weekly Lotsize Chart\" class=\"chart-image\">\n");
-                        writer.write("</div>\n");
-                    }
+                    // Die folgenden Grafiken wurden entfernt, da sie nicht korrekt angezeigt werden:
+                    // - Dauer/Profit Verhältnis (DurationProfitChart)
+                    // - Effizienzwert (EfficiencyChart)
+                    // - Wöchentliche Lot-Größe (WeeklyLotsizeChart)
                 }
                 
                 writer.write("</div>\n"); // Ende charts-section
@@ -380,6 +344,12 @@ public class ReportGenerator {
                         categoryInfo = " (Favorit, Kategorie " + providerCategory + ")";
                     }
                     writer.write("<h2>" + providerName + categoryInfo + "</h2>\n");
+                    
+                    // MQL-Link hinzufügen
+                    String mqlUrl = String.format(UIStyle.SIGNAL_PROVIDER_URL_FORMAT, providerId);
+                    writer.write("<div class=\"mql-link\">\n");
+                    writer.write("<a href=\"" + mqlUrl + "\" target=\"_blank\">MQL5 Webseite des Providers</a>\n");
+                    writer.write("</div>\n");
                     
                     // Lade Notizen aus der Datenbank
                     String notes = historyDbManager.getProviderNotes(providerName);
@@ -589,6 +559,17 @@ public class ReportGenerator {
                 "            height: auto;\n" +
                 "            border: 1px solid #ddd;\n" +
                 "            border-radius: 5px;\n" +
+                "        }\n" +
+                "        .mql-link {\n" +
+                "            margin-bottom: 15px;\n" +
+                "        }\n" +
+                "        .mql-link a {\n" +
+                "            color: #3498db;\n" +
+                "            text-decoration: none;\n" +
+                "            font-weight: bold;\n" +
+                "        }\n" +
+                "        .mql-link a:hover {\n" +
+                "            text-decoration: underline;\n" +
                 "        }\n" +
                 "        footer {\n" +
                 "            margin-top: 30px;\n" +
