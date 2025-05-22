@@ -4,8 +4,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 
-import calculators.MPDDCalculator;
-
 /**
  * Refactored HtmlDatabase-Klasse die als Hauptschnittstelle fungiert
  * und an spezialisierte Analyzer-Klassen delegiert.
@@ -20,9 +18,6 @@ public class HtmlDatabase {
     private final ProfitAnalyzer profitAnalyzer;
     private final StabilityAnalyzer stabilityAnalyzer;
     
-    // MPDD Calculator (für Kompatibilität)
-    private MPDDCalculator mpddCalculator;
-    
     /**
      * Konstruktor der die verschiedenen Analyzer-Komponenten initialisiert
      * 
@@ -35,12 +30,6 @@ public class HtmlDatabase {
         this.drawdownAnalyzer = new DrawdownAnalyzer(fileDataReader);
         this.profitAnalyzer = new ProfitAnalyzer(fileDataReader, basicDataProvider);
         this.stabilityAnalyzer = new StabilityAnalyzer(fileDataReader);
-        
-        // MPDDCalculator initialisieren (nach Komponenten-Initialisierung)
-        this.mpddCalculator = new MPDDCalculator(this);
-        
-        // ProfitAnalyzer mit MPDDCalculator verknüpfen
-        this.profitAnalyzer.setMPDDCalculator(mpddCalculator);
         
         // Protokolliere den tatsächlich verwendeten Pfad
         LOGGER.info("HtmlDatabase refactored initialisiert mit Pfad: " + downloadpath);
@@ -120,24 +109,18 @@ public class HtmlDatabase {
         return fileDataReader.getRootPath();
     }
     
-    // ========== MPDD Calculator Management ==========
+    // ========== MPDD Management (jetzt über BasicDataProvider) ==========
     
     public double getMPDD(String fileName, int months) {
-        // Verwende den neuen MPDDCalculator
-        return mpddCalculator.calculateMPDD(fileName, months);
+        if (months == 3) {
+            return basicDataProvider.get3MPDD(fileName);
+        } else {
+            return basicDataProvider.getMPDD(fileName, months);
+        }
     }
     
     public String getMPDDTooltip(String fileName, int months) {
-        // Verwende den neuen MPDDCalculator für HTML-Tooltips
-        return mpddCalculator.getHTMLTooltip(fileName, months);
-    }
-    
-    /**
-     * Gibt den MPDDCalculator zurück für externe Verwendung
-     * @return Die MPDDCalculator-Instanz
-     */
-    public MPDDCalculator getMPDDCalculator() {
-        return mpddCalculator;
+        return basicDataProvider.getMPDDTooltip(fileName, months);
     }
     
     // ========== Zugriff auf Komponenten für erweiterte Verwendung ==========

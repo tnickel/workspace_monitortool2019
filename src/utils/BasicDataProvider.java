@@ -134,4 +134,80 @@ public class BasicDataProvider {
             return 0.0;
         }
     }
+    
+    /**
+     * Holt den 3MPDD-Wert direkt aus dem .txt-File
+     * 
+     * @param fileName Name der Provider-Datei
+     * @return 3MPDD-Wert als double
+     */
+    public double get3MPDD(String fileName) {
+        Map<String, String> data = fileDataReader.getFileData(fileName);
+        if (data.isEmpty()) {
+            LOGGER.warning("Keine Daten für " + fileName + " gefunden");
+            return 0.0;
+        }
+        
+        String mpddStr = data.getOrDefault("3MPDD", "0,00")
+                            .replace(",", ".")
+                            .replace(" ", "");
+        try {
+            return Double.parseDouble(mpddStr);
+        } catch (NumberFormatException e) {
+            LOGGER.warning("Could not parse 3MPDD value: " + mpddStr + " for file: " + fileName);
+            return 0.0;
+        }
+    }
+    
+    /**
+     * Holt MPDD-Werte für verschiedene Zeiträume (6, 9, 12 Monate)
+     * 
+     * @param fileName Name der Provider-Datei
+     * @param months Anzahl der Monate (6, 9, 12)
+     * @return MPDD-Wert als double
+     */
+    public double getMPDD(String fileName, int months) {
+        Map<String, String> data = fileDataReader.getFileData(fileName);
+        if (data.isEmpty()) {
+            LOGGER.warning("Keine Daten für " + fileName + " gefunden");
+            return 0.0;
+        }
+        
+        String key = months + "MPDD";
+        String mpddStr = data.getOrDefault(key, "0,00")
+                            .replace(",", ".")
+                            .replace(" ", "");
+        try {
+            return Double.parseDouble(mpddStr);
+        } catch (NumberFormatException e) {
+            LOGGER.warning("Could not parse " + key + " value: " + mpddStr + " for file: " + fileName);
+            return 0.0;
+        }
+    }
+    
+    /**
+     * Erstellt einen einfachen Tooltip für MPDD-Werte 
+     * (Da detaillierte Berechnung nicht mehr stattfindet)
+     * 
+     * @param fileName Name der Provider-Datei
+     * @param months Anzahl der Monate
+     * @return HTML-formatierter Tooltip
+     */
+    public String getMPDDTooltip(String fileName, int months) {
+        double mpddValue;
+        if (months == 3) {
+            mpddValue = get3MPDD(fileName);
+        } else {
+            mpddValue = getMPDD(fileName, months);
+        }
+        
+        StringBuilder tooltip = new StringBuilder();
+        tooltip.append("<html><div style='padding: 5px; white-space: nowrap;'>");
+        tooltip.append(String.format("<b>%d-Monats-MPDD:</b><br><br>", months));
+        tooltip.append(String.format("<b>MPDD-Wert:</b> %.4f<br>", mpddValue));
+        tooltip.append("<br><i>Wert wird direkt aus der Datei gelesen</i>");
+        tooltip.append("</div></html>");
+        
+        return tooltip.toString();
+    }
 }

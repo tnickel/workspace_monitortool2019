@@ -5,10 +5,10 @@ import java.util.logging.Logger;
 
 import javax.swing.ToolTipManager;
 
-import calculators.MPDDCalculator;
 import data.DataManager;
 import data.ProviderStats;
 import models.HighlightTableModel;
+import utils.HtmlDatabase;
 
 /**
  * Klasse für das Tooltip-Management der MainTable.
@@ -20,14 +20,14 @@ public class TableTooltipManager {
     private final MainTable mainTable;
     private final HighlightTableModel model;
     private final DataManager dataManager;
-    private final MPDDCalculator mpddCalculator;
+    private final HtmlDatabase htmlDatabase;
     
     public TableTooltipManager(MainTable mainTable, HighlightTableModel model, 
-                              DataManager dataManager, MPDDCalculator mpddCalculator) {
+                              DataManager dataManager, HtmlDatabase htmlDatabase) {
         this.mainTable = mainTable;
         this.model = model;
         this.dataManager = dataManager;
-        this.mpddCalculator = mpddCalculator;
+        this.htmlDatabase = htmlDatabase;
     }
     
     /**
@@ -125,8 +125,8 @@ public class TableTooltipManager {
         else if (modelColumn == 5) months = 9;
         else if (modelColumn == 6) months = 12;
         
-        // Den HTML-Tooltip vom MPDDCalculator abrufen
-        String mpddTooltip = mpddCalculator.getHTMLTooltip(providerName, months);
+        // Den HTML-Tooltip von der HtmlDatabase abrufen
+        String mpddTooltip = htmlDatabase.getMPDDTooltip(providerName, months);
         if (mpddTooltip != null && !mpddTooltip.isEmpty()) {
             return mpddTooltip;
         }

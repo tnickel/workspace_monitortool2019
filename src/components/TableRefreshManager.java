@@ -9,7 +9,6 @@ import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.swing.ToolTipManager;
 
-import calculators.MPDDCalculator;
 import data.DataManager;
 import data.ProviderStats;
 import models.HighlightTableModel;
@@ -17,6 +16,7 @@ import renderers.HighlightRenderer;
 import renderers.NumberFormatRenderer;
 import renderers.RiskScoreRenderer;
 import services.ProviderHistoryService;
+import utils.HtmlDatabase;
 
 /**
  * Klasse für das Refresh-Management der MainTable.
@@ -28,7 +28,7 @@ public class TableRefreshManager {
     private final MainTable mainTable;
     private final HighlightTableModel model;
     private final DataManager dataManager;
-    private final MPDDCalculator mpddCalculator;
+    private final HtmlDatabase htmlDatabase;
     private final ProviderHistoryService historyService;
     private final TableFilterManager filterManager;
     private final FavoritesFilterManager favoritesManager;
@@ -39,13 +39,13 @@ public class TableRefreshManager {
     private RiskScoreRenderer riskRenderer;
     
     public TableRefreshManager(MainTable mainTable, HighlightTableModel model, DataManager dataManager,
-                              MPDDCalculator mpddCalculator, ProviderHistoryService historyService,
+                              HtmlDatabase htmlDatabase, ProviderHistoryService historyService,
                               TableFilterManager filterManager, FavoritesFilterManager favoritesManager,
                               TableTooltipManager tooltipManager) {
         this.mainTable = mainTable;
         this.model = model;
         this.dataManager = dataManager;
-        this.mpddCalculator = mpddCalculator;
+        this.htmlDatabase = htmlDatabase;
         this.historyService = historyService;
         this.filterManager = filterManager;
         this.favoritesManager = favoritesManager;
@@ -188,12 +188,12 @@ public class TableRefreshManager {
         // Tabelle neu zeichnen nach Aktualisierung
         mainTable.repaint();
         
-        // Verwende den neuen MPDDCalculator für die 3MPDD-Berechnung
+        // 3MPDD-Werte aus den .txt-Dateien lesen und in der History speichern
         for (Map.Entry<String, ProviderStats> entry : dataManager.getStats().entrySet()) {
             String providerName = entry.getKey();
             
-            // Verwende den neuen MPDDCalculator für die 3MPDD-Berechnung
-            double mpdd3 = mpddCalculator.calculate3MPDD(providerName);
+            // 3MPDD-Wert direkt aus der .txt-Datei lesen
+            double mpdd3 = htmlDatabase.getMPDD(providerName, 3);
             
             // Speichere den Wert in der Datenbank
             historyService.store3MpddValue(providerName, mpdd3);

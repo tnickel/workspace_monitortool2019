@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 
-import calculators.MPDDCalculator;
+import utils.HtmlDatabase;
 
 /**
  * Klasse für Profit-Berechnungen und zugehörige Tooltips.
@@ -16,20 +16,10 @@ public class ProfitAnalyzer {
     
     private final FileDataReader fileDataReader;
     private final BasicDataProvider basicDataProvider;
-    private MPDDCalculator mpddCalculator;
     
     public ProfitAnalyzer(FileDataReader fileDataReader, BasicDataProvider basicDataProvider) {
         this.fileDataReader = fileDataReader;
         this.basicDataProvider = basicDataProvider;
-    }
-    
-    /**
-     * Setzt den MPDDCalculator (wird nach dessen Initialisierung aufgerufen)
-     * 
-     * @param mpddCalculator Die MPDDCalculator-Instanz
-     */
-    public void setMPDDCalculator(MPDDCalculator mpddCalculator) {
-        this.mpddCalculator = mpddCalculator;
     }
     
     /**
@@ -138,25 +128,18 @@ public class ProfitAnalyzer {
     
     /**
      * Berechnet durchschnittlichen monatlichen Profit über n Monate
-     * Delegiert an MPDDCalculator falls verfügbar
+     * Verwendet jetzt die Fallback-Implementierung direkt
      * 
      * @param fileName Name der Provider-Datei
      * @param n Anzahl der Monate
      * @return Durchschnittlicher monatlicher Profit
      */
     public double getAverageMonthlyProfit(String fileName, int n) {
-        if (mpddCalculator != null) {
-            // Verwende den neuen MPDDCalculator für konsistente Berechnung
-            return mpddCalculator.calculateAverageMonthlyProfit(fileName, n);
-        } else {
-            // Fallback-Implementierung falls MPDDCalculator nicht verfügbar
-            LOGGER.warning("MPDDCalculator nicht verfügbar - verwende Fallback-Berechnung");
-            return calculateAverageMonthlyProfitFallback(fileName, n);
-        }
+        return calculateAverageMonthlyProfitFallback(fileName, n);
     }
     
     /**
-     * Fallback-Implementierung für durchschnittlichen monatlichen Profit
+     * Berechnung für durchschnittlichen monatlichen Profit
      * 
      * @param fileName Name der Provider-Datei
      * @param n Anzahl der Monate

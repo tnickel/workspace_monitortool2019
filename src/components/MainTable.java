@@ -15,7 +15,6 @@ import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.swing.table.TableRowSorter;
 
-import calculators.MPDDCalculator;
 import data.DataManager;
 import data.FavoritesManager;
 import data.ProviderStats;
@@ -41,7 +40,6 @@ public class MainTable extends JTable {
     private final DataManager dataManager;
     private final String rootPath;
     private final HtmlDatabase htmlDatabase;
-    private final MPDDCalculator mpddCalculator;
     private final ProviderHistoryService historyService;
     
     // Renderer
@@ -78,7 +76,6 @@ public class MainTable extends JTable {
         this.renderer = new HighlightRenderer();
         this.riskRenderer = new RiskScoreRenderer();
         this.htmlDatabase = new HtmlDatabase(downloadPath);
-        this.mpddCalculator = new MPDDCalculator(htmlDatabase);
         
         // Provider History Service initialisieren
         this.historyService = ProviderHistoryService.getInstance();
@@ -89,12 +86,12 @@ public class MainTable extends JTable {
         this.columnManager = new TableColumnManager(this);
         this.favoritesManager = new FavoritesFilterManager(this, model, dataManager.getStats(), rootPath);
         
-        this.tooltipManager = new TableTooltipManager(this, model, dataManager, mpddCalculator);
+        this.tooltipManager = new TableTooltipManager(this, model, dataManager, htmlDatabase);
         this.providerManager = new TableProviderManager(this, model, dataManager, rootPath, renderer, filterManager);
         this.eventHandler = new TableEventHandler(this, model, dataManager, htmlDatabase, rootPath, providerManager);
         this.buttonFactory = new TableButtonFactory(this, dataManager, htmlDatabase, rootPath, filterManager);
         this.statusManager = new TableStatusManager(this, model, dataManager, filterManager);
-        this.refreshManager = new TableRefreshManager(this, model, dataManager, mpddCalculator, historyService, 
+        this.refreshManager = new TableRefreshManager(this, model, dataManager, htmlDatabase, historyService, 
                                                     filterManager, favoritesManager, tooltipManager);
         
         // Cross-references setzen
@@ -364,10 +361,6 @@ public class MainTable extends JTable {
     // Zugriff auf Kern-Komponenten
     public HtmlDatabase getHtmlDatabase() {
         return htmlDatabase;
-    }
-    
-    public MPDDCalculator getMPDDCalculator() {
-        return mpddCalculator;
     }
     
     // Zugriff auf Manager für erweiterte Verwendung
