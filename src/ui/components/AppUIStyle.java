@@ -26,6 +26,11 @@ public class AppUIStyle {
     // Hellere Farbe für die Filter-Buttons
     public static final Color BUTTON_COLOR = new Color(90, 130, 210); // Helleres Blau für die Buttons
     
+    // Status-Farben (NEU)
+    public static final Color SUCCESS_COLOR = new Color(0, 150, 0); // Grün für Erfolg
+    public static final Color ERROR_COLOR = new Color(180, 0, 0); // Rot für Fehler
+    public static final Color WARNING_COLOR = new Color(255, 140, 0); // Orange für Warnungen
+    
     // Weitere Farben
     public static final Color TEXT_COLOR = new Color(50, 50, 50);
     public static final Color TEXT_FIELD_BG_COLOR = new Color(250, 250, 252);
@@ -114,6 +119,42 @@ public class AppUIStyle {
     }
     
     /**
+     * Erstellt ein Status-Label mit Farbe für Erfolg (NEU)
+     * 
+     * @param text Der Text für das Label
+     * @return Ein gestyltes JLabel mit Erfolgsfarbe
+     */
+    public static JLabel createSuccessLabel(String text) {
+        JLabel label = createStyledLabel(text);
+        label.setForeground(SUCCESS_COLOR);
+        return label;
+    }
+    
+    /**
+     * Erstellt ein Status-Label mit Farbe für Fehler (NEU)
+     * 
+     * @param text Der Text für das Label
+     * @return Ein gestyltes JLabel mit Fehlerfarbe
+     */
+    public static JLabel createErrorLabel(String text) {
+        JLabel label = createStyledLabel(text);
+        label.setForeground(ERROR_COLOR);
+        return label;
+    }
+    
+    /**
+     * Erstellt ein Status-Label mit Farbe für Warnungen (NEU)
+     * 
+     * @param text Der Text für das Label
+     * @return Ein gestyltes JLabel mit Warnfarbe
+     */
+    public static JLabel createWarningLabel(String text) {
+        JLabel label = createStyledLabel(text);
+        label.setForeground(WARNING_COLOR);
+        return label;
+    }
+    
+    /**
      * Erstellt ein Panel für Reports mit blauem Hintergrund
      * 
      * @return Ein gestyltes JPanel
@@ -145,6 +186,21 @@ public class AppUIStyle {
         ));
         
         return panel;
+    }
+    
+    /**
+     * Wendet Styling auf eine ComboBox an (FEHLENDE METHODE)
+     * 
+     * @param comboBox Die zu stylende JComboBox
+     */
+    public static void applyStylesToComboBox(javax.swing.JComboBox<?> comboBox) {
+        comboBox.setBackground(TEXT_FIELD_BG_COLOR);
+        comboBox.setForeground(TEXT_COLOR);
+        comboBox.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(SECONDARY_COLOR, 1),
+            BorderFactory.createEmptyBorder(2, 4, 2, 4)
+        ));
+        comboBox.setFont(REGULAR_FONT);
     }
     
     /**

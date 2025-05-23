@@ -23,6 +23,7 @@ import ui.MainFrame;
 import ui.RiskScoreExplanationDialog;
 import ui.ShowSignalProviderList;
 import ui.TableColumnConfigDialog;
+import ui.dialogs.TextFileViewerDialog;
 import utils.HtmlDatabase;
 import utils.MqlAnalyserConf;
 import utils.UIStyle;
@@ -213,6 +214,39 @@ public class MenuManager {
         viewMenu.add(showSignalProvidersItem);
         viewMenu.add(compareOpenTradesItem);
         
+        // Debug-Menü (NEU)
+        JMenu debugMenu = new JMenu("Debug");
+        debugMenu.setForeground(Color.WHITE);
+        
+        // Menüpunkt für SignalProvider.txt anzeigen
+        JMenuItem showTextfileItem = new JMenuItem("ShowTextfile");
+        showTextfileItem.addActionListener(e -> {
+            // Hole den selektierten Provider aus der Tabelle
+            Map<String, ProviderStats> selectedProviders = mainTable.getSelectedProvidersMap();
+            
+            if (selectedProviders.isEmpty()) {
+                JOptionPane.showMessageDialog(
+                    parentFrame,
+                    "Bitte wählen Sie zuerst einen Signal Provider aus der Tabelle aus.",
+                    "Keine Auswahl",
+                    JOptionPane.WARNING_MESSAGE
+                );
+                return;
+            }
+            
+            // Nimm den ersten selektierten Provider
+            ProviderStats selectedProvider = selectedProviders.values().iterator().next();
+            String providerName = selectedProvider.getSignalProvider();
+            
+            // Verwende den aktuellen Download-Path aus der Konfiguration
+            String downloadPath = config.getDownloadPath();
+            
+            TextFileViewerDialog dialog = new TextFileViewerDialog(parentFrame, downloadPath, providerName);
+            dialog.setVisible(true);
+        });
+        
+        debugMenu.add(showTextfileItem);
+        
         // Hilfe-Menü
         JMenu helpMenu = new JMenu("Hilfe");
         helpMenu.setForeground(Color.WHITE);
@@ -243,6 +277,7 @@ public class MenuManager {
         menuBar.add(fileMenu);
         menuBar.add(dbMenu);
         menuBar.add(viewMenu);
+        menuBar.add(debugMenu); // Debug-Menü hinzugefügt
         menuBar.add(helpMenu);
     }
     
