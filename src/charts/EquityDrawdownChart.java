@@ -4,13 +4,19 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.Paint;
+import java.awt.Shape;
+import java.awt.geom.Ellipse2D;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
@@ -26,8 +32,9 @@ import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import org.jfree.chart.ui.Layer;
 import org.jfree.chart.ui.RectangleAnchor;
+import org.jfree.chart.ui.RectangleInsets;
 import org.jfree.chart.ui.TextAnchor;
-import org.jfree.data.time.Day;
+import org.jfree.data.time.Millisecond;
 import org.jfree.data.time.TimeSeries;
 import org.jfree.data.time.TimeSeriesCollection;
 
@@ -37,6 +44,7 @@ import utils.HtmlDatabase;
 
 /**
  * Chart-Komponente zur Anzeige des Equity Drawdowns
+ * Allgemeine Lösung, die sich dynamisch an alle Drawdown-Bereiche anpasst
  */
 public class EquityDrawdownChart extends JPanel {
     private final JFreeChart chart;
@@ -44,6 +52,10 @@ public class EquityDrawdownChart extends JPanel {
     private final ProviderStats stats;
     private final double maxDrawdownGraphic;
     private final HtmlDatabase htmlDatabase;
+    
+    // Liste der Zeitpunkte mit Extrempunkten für spezielle Markierung
+    private final List<Date> extremePoints = new ArrayList<>();
+    private final double extremeThreshold = 5.0; // Schwellenwert für Extrempunkte (5% oder höher)
     
     /**
      * Konstruktor für die EquityDrawdownChart-Komponente mit HtmlDatabase
@@ -58,7 +70,7 @@ public class EquityDrawdownChart extends JPanel {
         this.htmlDatabase = htmlDatabase;
         
         setLayout(new BorderLayout());
-        setBorder(new EmptyBorder(0, 0, 0, 0)); // Entferne Padding
+        setBorder(new EmptyBorder(0, 0, 0, 0));
         
         // Debug-Ausgaben für die übergebenen Parameter
         System.out.println("EquityDrawdownChart erstellt für Provider: " + (stats != null ? stats.getSignalProvider() : "null"));
@@ -80,18 +92,14 @@ public class EquityDrawdownChart extends JPanel {
         chartPanel.setPreferredSize(new Dimension(950, 300));
         chartPanel.setMinimumSize(new Dimension(400, 200));
         chartPanel.setMouseWheelEnabled(true);
-        chartPanel.setBorder(null); // Entferne Border vom ChartPanel
-        
-        // Explizit setSize aufrufen, damit das Chart garantiert eine Größe hat
+        chartPanel.setBorder(null);
         chartPanel.setSize(new Dimension(950, 300));
         
         add(chartPanel, BorderLayout.CENTER);
         
-        // Auch hier explizit Größe setzen
         setPreferredSize(new Dimension(950, 300));
         setMinimumSize(new Dimension(400, 200));
         
-        // Debug Ausgabe der Größe nach dem Setup
         System.out.println("EquityDrawdownChart Panel Größe: " + getPreferredSize());
     }
     
@@ -100,13 +108,13 @@ public class EquityDrawdownChart extends JPanel {
      */
     private JFreeChart createChart() {
         JFreeChart chart = ChartFactory.createTimeSeriesChart(
-            "Equity Drawdown",     // Titel
-            "Zeit",                // X-Achsenbeschriftung
-            "Drawdown (%)",        // Y-Achsenbeschriftung
-            dataset,               // Datensatz
-            true,                  // Legende anzeigen
-            true,                  // Tooltips anzeigen
-            false                  // URLs nicht anzeigen
+            "Equity Drawdown",
+            "Zeit",
+            "Drawdown (%)",
+            dataset,
+            true,
+            true,
+            false
         );
         
         return chart;
@@ -116,7 +124,6 @@ public class EquityDrawdownChart extends JPanel {
      * Passt das Chart-Design an
      */
     private void customizeChart() {
-        // Hintergrund anpassen
         chart.setBackgroundPaint(Color.WHITE);
         
         XYPlot plot = (XYPlot) chart.getPlot();
@@ -124,11 +131,56 @@ public class EquityDrawdownChart extends JPanel {
         plot.setDomainGridlinePaint(Color.LIGHT_GRAY);
         plot.setRangeGridlinePaint(Color.LIGHT_GRAY);
         
-        // Linienrenderer anstelle von Flächenrenderer verwenden
-        XYLineAndShapeRenderer renderer = new XYLineAndShapeRenderer();
-        renderer.setSeriesPaint(0, new Color(180, 0, 0)); // Kräftiges Rot für die Linie
-        renderer.setSeriesStroke(0, new java.awt.BasicStroke(2.0f)); // Linienstärke
-        renderer.setSeriesShapesVisible(0, false); // Keine Datenpunktmarker anzeigen
+        // Spezieller Linienrenderer für Extrempunkt-Markierungen
+        XYLineAndShapeRenderer renderer = new XYLineAndShapeRenderer() {
+            @Override
+            public java.awt.Shape getItemShape(int series, int item) {
+                // Hole den Zeitpunkt für diesen Datenpunkt
+                Date itemDate = new Date(dataset.getSeries(series).getTimePeriod(item).getFirstMillisecond());
+                
+                // Prüfe, ob dieser Zeitpunkt ein Extrempunkt ist
+                boolean isExtreme = extremePoints.stream()
+                    .anyMatch(extremeDate -> Math.abs(extremeDate.getTime() - itemDate.getTime()) < 60000); // 1 Minute Toleranz
+                
+                if (isExtreme) {
+                    // Kleinerer roter Kreis für Extrempunkte (6x6 statt 12x12)
+                    return new java.awt.geom.Ellipse2D.Double(-3, -3, 6, 6);
+                } else {
+                    // Normale kleine Punkte (meist nicht sichtbar)
+                    return new java.awt.geom.Ellipse2D.Double(-1, -1, 2, 2);
+                }
+            }
+            
+            @Override
+            public java.awt.Paint getItemPaint(int series, int item) {
+                // Hole den Zeitpunkt für diesen Datenpunkt
+                Date itemDate = new Date(dataset.getSeries(series).getTimePeriod(item).getFirstMillisecond());
+                
+                // Prüfe, ob dieser Zeitpunkt ein Extrempunkt ist
+                boolean isExtreme = extremePoints.stream()
+                    .anyMatch(extremeDate -> Math.abs(extremeDate.getTime() - itemDate.getTime()) < 60000); // 1 Minute Toleranz
+                
+                if (isExtreme) {
+                    return new Color(255, 0, 0, 200); // Leuchtend rot für Extrempunkte
+                } else {
+                    return new Color(220, 20, 60); // Normale Linienfarbe
+                }
+            }
+            
+            @Override
+            public boolean getItemShapeVisible(int series, int item) {
+                // Hole den Zeitpunkt für diesen Datenpunkt
+                Date itemDate = new Date(dataset.getSeries(series).getTimePeriod(item).getFirstMillisecond());
+                
+                // Zeige Shapes nur für Extrempunkte
+                return extremePoints.stream()
+                    .anyMatch(extremeDate -> Math.abs(extremeDate.getTime() - itemDate.getTime()) < 60000); // 1 Minute Toleranz
+            }
+        };
+        
+        renderer.setSeriesPaint(0, new Color(220, 20, 60)); // Kräftiges Rot für die Linie
+        renderer.setSeriesStroke(0, new java.awt.BasicStroke(2.0f));
+        renderer.setDefaultShapesVisible(false); // Standardmäßig keine Shapes
         plot.setRenderer(renderer);
         
         // X-Achse (Zeit) anpassen
@@ -137,93 +189,157 @@ public class EquityDrawdownChart extends JPanel {
         dateAxis.setTickLabelFont(new Font("SansSerif", Font.PLAIN, 10));
         dateAxis.setLabelFont(new Font("SansSerif", Font.BOLD, 12));
         
-        // Y-Achse (Drawdown) anpassen
+        // Y-Achse (Drawdown) anpassen - Invertieren für traditionelle Drawdown-Darstellung
         NumberAxis rangeAxis = (NumberAxis) plot.getRangeAxis();
         rangeAxis.setStandardTickUnits(NumberAxis.createStandardTickUnits());
-        rangeAxis.setInverted(true); // Y-Achse umdrehen, damit Drawdown nach unten geht
+        rangeAxis.setInverted(true); // Drawdown geht nach unten
         rangeAxis.setLabelFont(new Font("SansSerif", Font.BOLD, 12));
-        rangeAxis.setTickLabelFont(new Font("SansSerif", Font.PLAIN, 10));
-        rangeAxis.setLabelPaint(new Color(180, 0, 0)); // Rote Beschriftung
-        rangeAxis.setTickLabelPaint(new Color(180, 0, 0)); // Rote Tick-Beschriftungen
+        rangeAxis.setTickLabelFont(new Font("SansSerif", Font.BOLD, 11)); // Größere, fettere Schrift
+        rangeAxis.setLabelPaint(Color.BLACK); // Schwarze Beschriftung für bessere Lesbarkeit
+        rangeAxis.setTickLabelPaint(Color.BLACK); // Schwarze Tick-Labels für bessere Lesbarkeit
         
         // Titel anpassen
         chart.getTitle().setFont(new Font("SansSerif", Font.BOLD, 14));
     }
     
     /**
-     * Fügt horizontale Linien und farbliche Hintergrundmarkierungen zum Plot hinzu
-     * @param plot Der XYPlot, zu dem die Markierungen hinzugefügt werden sollen
-     * @param maxValue Der maximale Wert für die Skalierung
+     * Dynamische Erstellung von horizontalen Linien und Farbmarkierungen 
+     * basierend auf dem tatsächlichen Drawdown-Bereich
      */
-    private void addHorizontalLines(XYPlot plot, double maxValue) {
-        // Wir definieren die Farbzonen für verschiedene Drawdown-Bereiche
-        // von 0% bis 50% in 10% Schritten
+    private void addDynamicHorizontalLines(XYPlot plot, double maxValue) {
+        // Bestimme einen sinnvollen Skalierungsbereich
+        double effectiveMax = Math.max(maxValue, 1.0); // Mindestens 1% für sehr kleine Drawdowns
         
-        // Abgerundeter Maximalwert auf nächste 10er Einheit
-        double roundedMax = Math.ceil(maxValue / 10.0) * 10.0;
+        // Bestimme die Anzahl der Zonen basierend auf dem Maximum
+        int numberOfZones;
+        double zoneSize;
         
-        // Farben für verschiedene Drawdown-Bereiche
-        Color[] colors = {
-            new Color(220, 255, 220), // 0-10% - Sehr hell grün
-            new Color(200, 255, 200), // 10-20% - Hell grün
-            new Color(255, 255, 200), // 20-30% - Hell gelb
-            new Color(255, 220, 180), // 30-40% - Hell orange
-            new Color(255, 200, 180)  // 40-50% - Hell rot
+        if (effectiveMax <= 5.0) {
+            // Kleine Drawdowns: 5 Zonen à 1%
+            numberOfZones = 5;
+            zoneSize = 1.0;
+        } else if (effectiveMax <= 20.0) {
+            // Mittlere Drawdowns: 4 Zonen à 5%
+            numberOfZones = 4;
+            zoneSize = 5.0;
+        } else if (effectiveMax <= 50.0) {
+            // Große Drawdowns: 5 Zonen à 10%
+            numberOfZones = 5;
+            zoneSize = 10.0;
+        } else {
+            // Sehr große Drawdowns: 4 Zonen à 25%
+            numberOfZones = 4;
+            zoneSize = 25.0;
+        }
+        
+        // Berechne die obere Grenze für die Zonendarstellung
+        double upperBound = Math.ceil(effectiveMax / zoneSize) * zoneSize;
+        
+        // Farben für die Zonen (von gut zu schlecht)
+        Color[] zoneColors = {
+            new Color(144, 238, 144, 60), // Hellgrün - geringer Drawdown
+            new Color(255, 255, 0, 60),   // Gelb - mäßiger Drawdown
+            new Color(255, 165, 0, 60),   // Orange - erhöhter Drawdown
+            new Color(255, 99, 71, 60),   // Rot-Orange - hoher Drawdown
+            new Color(220, 20, 60, 60),   // Kräftiges Rot - sehr hoher Drawdown
         };
         
-        // Hintergrundmarkierungen für die Farbzonen
-        for (int i = 0; i < colors.length; i++) {
-            double lowerBound = i * 10.0;
-            double upperBound = (i + 1) * 10.0;
+        // Erstelle Farbzonen
+        for (int i = 0; i < numberOfZones && i < zoneColors.length; i++) {
+            double lowerBound = i * zoneSize;
+            double zoneBound = Math.min((i + 1) * zoneSize, upperBound);
             
-            // Nur Zonen bis zum gerundeten Maximum anzeigen
-            if (lowerBound <= roundedMax) {
-                IntervalMarker marker = new IntervalMarker(lowerBound, Math.min(upperBound, roundedMax));
-                marker.setPaint(colors[i]);
-                marker.setAlpha(0.3f); // Transparenz
+            if (lowerBound < upperBound) {
+                IntervalMarker marker = new IntervalMarker(lowerBound, zoneBound);
+                marker.setPaint(zoneColors[i]);
                 plot.addRangeMarker(marker, Layer.BACKGROUND);
             }
         }
         
-        // Horizontale Linien für jede 10%-Marke
-        for (double i = 0; i <= roundedMax; i += 10.0) {
-            ValueMarker marker = new ValueMarker(i);
+        // Erstelle horizontale Linien an sinnvollen Intervallen
+        double lineInterval = determineLineInterval(effectiveMax);
+        
+        for (double value = lineInterval; value <= upperBound; value += lineInterval) {
+            ValueMarker marker = new ValueMarker(value);
             marker.setPaint(Color.GRAY);
             marker.setStroke(new java.awt.BasicStroke(1.0f, 
                                                     java.awt.BasicStroke.CAP_BUTT, 
                                                     java.awt.BasicStroke.JOIN_MITER, 
                                                     1.0f, 
                                                     new float[] {3.0f, 3.0f}, 
-                                                    0.0f)); // Gestrichelte Linie
+                                                    0.0f));
             
-            // Beschriftung für die Linie
-            marker.setLabel(String.format("%.0f%%", i));
-            marker.setLabelAnchor(RectangleAnchor.LEFT);
-            marker.setLabelTextAnchor(TextAnchor.CENTER_LEFT);
+            // Formatiere das Label basierend auf der Größe des Wertes
+            String label = formatDrawdownLabel(value);
+            marker.setLabel(label);
+            marker.setLabelAnchor(RectangleAnchor.TOP_RIGHT);
+            marker.setLabelTextAnchor(TextAnchor.TOP_RIGHT);
             marker.setLabelFont(new Font("SansSerif", Font.PLAIN, 9));
+            marker.setLabelPaint(Color.DARK_GRAY);
             
             plot.addRangeMarker(marker);
         }
+        
+        System.out.println("Dynamische Skalierung erstellt: Max=" + effectiveMax + 
+                          "%, Zonen=" + numberOfZones + ", ZonenGröße=" + zoneSize + 
+                          "%, LinienIntervall=" + lineInterval + "%");
+    }
+    
+    /**
+     * Bestimmt das passende Intervall für horizontale Linien basierend auf dem Maximum
+     */
+    private double determineLineInterval(double maxValue) {
+        if (maxValue <= 2.0) return 0.5;      // 0.5% Intervalle für sehr kleine Drawdowns
+        else if (maxValue <= 5.0) return 1.0;  // 1% Intervalle
+        else if (maxValue <= 10.0) return 2.0; // 2% Intervalle
+        else if (maxValue <= 25.0) return 5.0; // 5% Intervalle
+        else if (maxValue <= 50.0) return 10.0; // 10% Intervalle
+        else return 20.0;                       // 20% Intervalle für sehr große Drawdowns
+    }
+    
+    /**
+     * Formatiert die Labels für Drawdown-Werte
+     */
+    private String formatDrawdownLabel(double value) {
+        if (value < 1.0) {
+            return String.format("%.1f%%", value); // Eine Dezimalstelle für kleine Werte
+        } else {
+            return String.format("%.0f%%", value); // Ganze Zahlen für größere Werte
+        }
+    }
+    
+    /**
+     * Berechnet die optimale obere Grenze für die Y-Achse
+     */
+    private double calculateOptimalUpperBound(double actualMax) {
+        if (actualMax <= 0.0) return 5.0; // Mindestbereich für leere Daten
+        
+        // Füge 10-20% Puffer hinzu, abhängig von der Größe
+        double buffer = actualMax <= 10.0 ? 1.2 : 1.1; // 20% Puffer für kleine, 10% für große Werte
+        double withBuffer = actualMax * buffer;
+        
+        // Runde auf sinnvolle Werte auf
+        if (withBuffer <= 2.0) return Math.ceil(withBuffer * 2) / 2.0;     // Auf 0.5% runden
+        else if (withBuffer <= 10.0) return Math.ceil(withBuffer);         // Auf 1% runden
+        else if (withBuffer <= 50.0) return Math.ceil(withBuffer / 5.0) * 5.0; // Auf 5% runden
+        else return Math.ceil(withBuffer / 10.0) * 10.0;                   // Auf 10% runden
     }
     
     /**
      * Berechnet die Drawdown-Daten und füllt das Chart
      */
     private void populateChart() {
-        // TimeSeries für den Drawdown erstellen
         TimeSeries drawdownSeries = new TimeSeries("Drawdown");
         
-        // Versuche, die Daten aus der HTML-Datenbank zu laden
         boolean dataFound = false;
+        double actualMaxDrawdown = 0.0;
         
         if (htmlDatabase != null && stats.getSignalProvider() != null) {
-            // Beide Varianten der Dateipfade versuchen
             String txtFileName = stats.getSignalProvider() + "_root.txt";
             String csvFileName = stats.getSignalProvider() + ".csv";
             
             System.out.println("Versuche Drawdown-Daten zu laden für: " + txtFileName);
             
-            // Verwende die getDrawdownChartData-Methode aus HtmlDatabase mit beiden möglichen Dateinamen
             String drawdownData = htmlDatabase.getDrawdownChartData(txtFileName);
             if (drawdownData == null || drawdownData.isEmpty()) {
                 drawdownData = htmlDatabase.getDrawdownChartData(csvFileName);
@@ -231,83 +347,259 @@ public class EquityDrawdownChart extends JPanel {
             
             if (drawdownData != null && !drawdownData.isEmpty()) {
                 System.out.println("Drawdown-Daten gefunden! Länge: " + drawdownData.length() + " Zeichen");
-                processDrawdownData(drawdownData, drawdownSeries);
+                actualMaxDrawdown = processDrawdownData(drawdownData, drawdownSeries);
                 dataFound = true;
             } else {
                 System.err.println("Keine Drawdown-Daten in der HTML-Datenbank gefunden für: " + txtFileName);
-                
-                // Debug-Ausgaben
-                System.err.println("DrawdownData ist leer oder null. htmlDatabase: " + (htmlDatabase != null));
-                System.err.println("Provider: " + stats.getSignalProvider());
-                System.err.println("Dateipfad: " + htmlDatabase.getRootPath() + "/" + txtFileName);
             }
-        } else {
-            System.err.println("HTML-Datenbank oder SignalProvider nicht verfügbar");
         }
         
-        // Wenn keine Daten in der DB gefunden wurden, berechne selbst
+        // Fallback: Berechne aus Trades
         if (!dataFound || drawdownSeries.isEmpty()) {
             System.out.println("Berechne Drawdown-Daten aus den Trades...");
-            calculateDrawdownFromTrades(drawdownSeries);
+            actualMaxDrawdown = calculateDrawdownFromTrades(drawdownSeries);
         }
         
-        // Stelle sicher, dass die Serie nicht leer ist
+        // Dummy-Daten falls immer noch leer
         if (drawdownSeries.isEmpty()) {
-            System.out.println("Keine Daten für das Chart gefunden. Füge Dummy-Daten hinzu...");
+            System.out.println("Keine Daten gefunden. Füge Dummy-Daten hinzu...");
             addDummyData(drawdownSeries);
+            actualMaxDrawdown = 5.0; // Konservativer Dummy-Wert
         } else {
             System.out.println("Chart enthält " + drawdownSeries.getItemCount() + " Datenpunkte");
+            System.out.println("Tatsächlicher maximaler Drawdown: " + actualMaxDrawdown + "%");
         }
         
-        // Serie zum Dataset hinzufügen
         dataset.addSeries(drawdownSeries);
         
-        // Y-Achsen-Skalierung anpassen
+        // Y-Achsen-Skalierung dynamisch basierend auf den tatsächlichen Daten setzen
         XYPlot plot = (XYPlot) chart.getPlot();
         NumberAxis rangeAxis = (NumberAxis) plot.getRangeAxis();
         
-        // Maximalwert für die Y-Achse bestimmen
-        double calculatedMax = 0.0;
-        if (!drawdownSeries.isEmpty()) {
-            for (int i = 0; i < drawdownSeries.getItemCount(); i++) {
-                calculatedMax = Math.max(calculatedMax, drawdownSeries.getDataItem(i).getValue().doubleValue());
+        // Berechne optimale obere Grenze
+        double optimalUpperBound = calculateOptimalUpperBound(actualMaxDrawdown);
+        
+        // Setze die Y-Achsen-Grenzen
+        rangeAxis.setLowerBound(0.0);
+        rangeAxis.setUpperBound(optimalUpperBound);
+        
+        // Formatierung der Y-Achse basierend auf der Größe der Werte
+        String formatPattern = optimalUpperBound <= 10.0 ? "0.0" : "0";
+        rangeAxis.setNumberFormatOverride(new java.text.DecimalFormat(formatPattern));
+        
+        // Verbesserte Lesbarkeit für Y-Achsen-Labels
+        rangeAxis.setTickLabelInsets(new org.jfree.chart.ui.RectangleInsets(5, 5, 5, 5));
+        
+        // Zusätzliche Y-Achse auf der rechten Seite für bessere Lesbarkeit
+        NumberAxis rightAxis = new NumberAxis("Drawdown (%)");
+        rightAxis.setLowerBound(0.0);
+        rightAxis.setUpperBound(optimalUpperBound);
+        rightAxis.setInverted(true); // Auch die rechte Achse invertieren
+        rightAxis.setNumberFormatOverride(new java.text.DecimalFormat(formatPattern));
+        rightAxis.setLabelFont(new Font("SansSerif", Font.BOLD, 12));
+        rightAxis.setTickLabelFont(new Font("SansSerif", Font.BOLD, 11));
+        rightAxis.setLabelPaint(Color.BLACK);
+        rightAxis.setTickLabelPaint(Color.BLACK);
+        plot.setRangeAxis(1, rightAxis);
+        
+        // Dynamische horizontale Linien und Farbmarkierungen hinzufügen
+        addDynamicHorizontalLines(plot, actualMaxDrawdown);
+        
+        // Debug-Zusammenfassung der Extrempunkte
+        System.out.println("=== EXTREMPUNKTE ZUSAMMENFASSUNG ===");
+        System.out.println("Schwellenwert: " + extremeThreshold + "%");
+        System.out.println("Gefundene Extrempunkte: " + extremePoints.size());
+        if (!extremePoints.isEmpty()) {
+            System.out.println("Extrempunkte werden mit großen roten Kreisen markiert!");
+            // Zeige die ersten paar Extrempunkte als Beispiel
+            for (int i = 0; i < Math.min(5, extremePoints.size()); i++) {
+                System.out.println("Extrempunkt " + (i+1) + ": " + extremePoints.get(i));
+            }
+            if (extremePoints.size() > 5) {
+                System.out.println("... und " + (extremePoints.size() - 5) + " weitere");
             }
         }
+        System.out.println("=====================================");
         
-        // Nehme den übergebenen maxDrawdownGraphic-Wert
-        double maxFromData = maxDrawdownGraphic;
-        
-        // Nehme den größeren der beiden Werte mit etwas Abstand nach oben
-        double maxUpperBound = Math.max(calculatedMax, maxFromData) * 1.1; // 10% mehr als das Maximum
-        
-        // Setze Grenzen, damit die Skala nicht zu groß oder zu klein wird
-        maxUpperBound = Math.max(maxUpperBound, 5.0); // Mindestens 5%
-        
-        rangeAxis.setLowerBound(0.0);
-        rangeAxis.setUpperBound(maxUpperBound);
-        
-        // Entferne das % Zeichen aus den Tick-Labels
-        rangeAxis.setNumberFormatOverride(new java.text.DecimalFormat("0"));
-        
-        // Füge horizontale Linien und farbliche Markierungen hinzu
-        addHorizontalLines(plot, maxUpperBound);
+        System.out.println("Y-Achse gesetzt: 0.0 bis " + optimalUpperBound + " (basierend auf max=" + actualMaxDrawdown + "%)");
     }
     
     /**
-     * Berechnet Drawdown-Daten aus den Trades selbst, falls keine HTML-Daten verfügbar sind
+     * Verarbeitet die Drawdown-Daten aus dem Datenfile und gibt den maximalen Drawdown zurück
+     * Pro Datum werden alle Werte aufgenommen: der maximale Wert wird 5x mit 10-Minuten-Versatz eingefügt,
+     * die restlichen Werte werden flexibel über den Tag verteilt für optimale Sichtbarkeit
      */
-    private void calculateDrawdownFromTrades(TimeSeries drawdownSeries) {
-        if (stats.getTrades().isEmpty()) {
-            System.out.println("Keine Trades zum Berechnen des Drawdowns vorhanden");
-            return;
+    private double processDrawdownData(String drawdownData, TimeSeries drawdownSeries) {
+        String[] lines = drawdownData.split("\n");
+        
+        System.out.println("Verarbeite " + lines.length + " Zeilen mit Drawdown-Daten");
+        
+        // Map um für jedes Datum alle Drawdown-Werte zu sammeln
+        Map<LocalDate, List<Double>> drawdownPerDate = new HashMap<>();
+        double overallMaxDrawdown = 0.0;
+        int processedLines = 0;
+        
+        // Erste Phase: Sammle alle Werte pro Datum
+        for (String line : lines) {
+            line = line.trim();
+            if (line.isEmpty()) continue;
+            
+            String[] parts = line.split(":");
+            if (parts.length != 2) {
+                continue;
+            }
+            
+            String dateStr = parts[0].trim();
+            String valueStr = parts[1].trim().replace("%", "").replace(",", ".");
+            
+            try {
+                LocalDate date = LocalDate.parse(dateStr);
+                double value = Double.parseDouble(valueStr);
+                
+                // Sammle alle Werte für dieses Datum
+                drawdownPerDate.computeIfAbsent(date, k -> new ArrayList<>()).add(value);
+                
+                // Verfolge den globalen maximalen Drawdown
+                overallMaxDrawdown = Math.max(overallMaxDrawdown, value);
+                
+                processedLines++;
+            } catch (Exception e) {
+                System.err.println("Fehler beim Parsen: " + line + " - " + e.getMessage());
+            }
         }
         
-        // Trades nach Schließzeit sortieren
+        System.out.println("Drawdown-Daten verarbeitet: " + processedLines + " gültige Einträge");
+        System.out.println("Eindeutige Tage gefunden: " + drawdownPerDate.size());
+        System.out.println("Maximaler Drawdown aus Daten: " + overallMaxDrawdown + "%");
+        
+        // Zweite Phase: Verteile alle Werte flexibel über den Tag
+        int totalAddedPoints = 0;
+        
+        for (Map.Entry<LocalDate, List<Double>> entry : drawdownPerDate.entrySet()) {
+            LocalDate date = entry.getKey();
+            List<Double> values = entry.getValue();
+            
+            // Entferne Duplikate und sortiere absteigend (höchste Werte zuerst)
+            List<Double> uniqueValues = values.stream()
+                .distinct()
+                .sorted((a, b) -> Double.compare(b, a)) // Absteigend sortieren
+                .collect(Collectors.toList());
+            
+            int pointsAdded = addFlexibleDailyPoints(drawdownSeries, date, uniqueValues);
+            totalAddedPoints += pointsAdded;
+            
+            // Debug: Zeige Details für Tage mit hohem Drawdown
+            if (uniqueValues.get(0) > 10.0) { // Höchster Wert (Index 0)
+                System.out.println("Hoher Drawdown Tag: " + date + 
+                                 " - Max: " + uniqueValues.get(0) + "%" +
+                                 " (" + pointsAdded + " Punkte eingefügt aus " + values.size() + " original/" + 
+                                 uniqueValues.size() + " unique)");
+            }
+        }
+        
+        System.out.println("TimeSeries befüllt mit " + totalAddedPoints + " Datenpunkten");
+        System.out.println("Durchschnittlich " + (totalAddedPoints / (double)drawdownPerDate.size()) + " Punkte pro Tag");
+        
+        return overallMaxDrawdown;
+    }
+    
+    /**
+     * Fügt alle Drawdown-Werte eines Tages flexibel über 24 Stunden verteilt hinzu
+     * Das Maximum wird 5x mit 10-Minuten-Versatz eingefügt für bessere Sichtbarkeit
+     * Extrempunkte über dem Schwellenwert werden für spezielle Markierung gespeichert
+     */
+    private int addFlexibleDailyPoints(TimeSeries drawdownSeries, LocalDate date, List<Double> sortedValues) {
+        if (sortedValues.isEmpty()) {
+            return 0;
+        }
+        
+        int pointsAdded = 0;
+        double maxValue = sortedValues.get(0); // Höchster Wert ist Index 0
+        
+        // Phase 1: Maximum 5x mit 10-Minuten-Versatz einfügen (00:00, 00:10, 00:20, 00:30, 00:40)
+        for (int i = 0; i < 5; i++) {
+            LocalDateTime maxTime = date.atTime(0, i * 10); // 0:00, 0:10, 0:20, 0:30, 0:40
+            Date javaDate = Date.from(maxTime.atZone(ZoneId.systemDefault()).toInstant());
+            drawdownSeries.addOrUpdate(new Millisecond(javaDate), maxValue);
+            pointsAdded++;
+            
+            // Prüfe, ob dies ein Extrempunkt ist und speichere ihn
+            if (maxValue >= extremeThreshold) {
+                extremePoints.add(javaDate);
+            }
+        }
+        
+        // Phase 2: Restliche Werte über den restlichen Tag verteilen (ab 01:00 bis 23:59)
+        if (sortedValues.size() > 1) {
+            List<Double> remainingValues = sortedValues.subList(1, sortedValues.size()); // Alle außer dem Maximum
+            
+            // Berechne Zeitintervalle für die restlichen Werte
+            int availableMinutes = 23 * 60 + 59; // 23:59 - 01:00 = 1379 Minuten verfügbar
+            int numberOfPoints = remainingValues.size();
+            
+            if (numberOfPoints > 0) {
+                // Gleichmäßige Verteilung über den verfügbaren Zeitraum
+                double minuteStep = availableMinutes / (double) numberOfPoints;
+                
+                for (int i = 0; i < remainingValues.size(); i++) {
+                    double value = remainingValues.get(i);
+                    
+                    // Berechne die Zeit: Start um 01:00 + i * Schritt
+                    int totalMinutesFromMidnight = 60 + (int) Math.round(i * minuteStep); // Start um 01:00 (60 Min)
+                    
+                    // Stelle sicher, dass wir nicht über 23:59 hinausgehen
+                    totalMinutesFromMidnight = Math.min(totalMinutesFromMidnight, 23 * 60 + 59);
+                    
+                    int hours = totalMinutesFromMidnight / 60;
+                    int minutes = totalMinutesFromMidnight % 60;
+                    
+                    LocalDateTime valueTime = date.atTime(hours, minutes);
+                    Date javaDate = Date.from(valueTime.atZone(ZoneId.systemDefault()).toInstant());
+                    
+                    drawdownSeries.addOrUpdate(new Millisecond(javaDate), value);
+                    pointsAdded++;
+                    
+                    // Prüfe, ob dies ein Extrempunkt ist und speichere ihn
+                    if (value >= extremeThreshold) {
+                        extremePoints.add(javaDate);
+                    }
+                }
+            }
+        }
+        
+        // Debug für Tage mit vielen Datenpunkten oder Extrempunkten
+        long extremePointsToday = sortedValues.stream()
+            .mapToLong(v -> v >= extremeThreshold ? 1 : 0)
+            .sum();
+        
+        if (extremePointsToday > 0) {
+            System.out.println("EXTREMPUNKTE für " + date + ": " + extremePointsToday + 
+                             " Werte über " + extremeThreshold + "%, Max: " + maxValue + "%");
+        }
+        
+        if (sortedValues.size() > 50) {
+            System.out.println("Viele Datenpunkte für " + date + ": " + sortedValues.size() + 
+                             " unique Werte, " + pointsAdded + " Punkte eingefügt");
+        }
+        
+        return pointsAdded;
+    }
+    
+    /**
+     * Berechnet Drawdown-Daten aus den Trades und gibt den maximalen Drawdown zurück
+     */
+    private double calculateDrawdownFromTrades(TimeSeries drawdownSeries) {
+        if (stats.getTrades().isEmpty()) {
+            System.out.println("Keine Trades zum Berechnen des Drawdowns vorhanden");
+            return 0.0;
+        }
+        
         List<Trade> sortedTrades = new ArrayList<>(stats.getTrades());
         sortedTrades.sort((t1, t2) -> t1.getCloseTime().compareTo(t2.getCloseTime()));
         
         double currentBalance = stats.getInitialBalance();
         double peak = currentBalance;
+        double maxDrawdown = 0.0;
         
         System.out.println("Berechne Drawdown aus " + sortedTrades.size() + " Trades, Startguthaben: " + currentBalance);
         
@@ -320,95 +612,32 @@ public class EquityDrawdownChart extends JPanel {
             
             if (peak > 0) {
                 double drawdownPercent = ((peak - currentBalance) / peak) * 100.0;
+                maxDrawdown = Math.max(maxDrawdown, drawdownPercent);
                 
                 Date date = Date.from(trade.getCloseTime()
                     .atZone(ZoneId.systemDefault())
                     .toInstant());
                 
-                // Verwende Day statt Millisecond für bessere Performance und weniger Datenpunkte
-                drawdownSeries.addOrUpdate(new Day(date), drawdownPercent);
-                
-                // Debug: Jede 100. Trade-Information ausgeben
-                if (sortedTrades.indexOf(trade) % 100 == 0) {
-                    System.out.println("Trade " + sortedTrades.indexOf(trade) + 
-                                       ": Balance=" + currentBalance + 
-                                       ", Peak=" + peak + 
-                                       ", Drawdown=" + drawdownPercent + "%");
-                }
+                drawdownSeries.addOrUpdate(new Millisecond(date), drawdownPercent);
             }
         }
         
         System.out.println("Drawdown-Berechnung abgeschlossen. Datenpunkte: " + drawdownSeries.getItemCount());
+        System.out.println("Maximaler berechneter Drawdown: " + maxDrawdown + "%");
+        
+        return maxDrawdown;
     }
     
     /**
-     * Fügt Dummy-Daten hinzu, wenn keine richtigen Daten gefunden wurden (nur für Debug-Zwecke)
+     * Fügt Dummy-Daten hinzu (nur für Debug-Zwecke)
      */
     private void addDummyData(TimeSeries drawdownSeries) {
         LocalDate now = LocalDate.now();
         for (int i = 0; i < 10; i++) {
-            LocalDate date = now.minusDays(i * 30);
-            Day day = new Day(Date.from(date.atStartOfDay(ZoneId.systemDefault()).toInstant()));
-            drawdownSeries.addOrUpdate(day, i * 5.0); // Dummy-Werte: 0%, 5%, 10%, ...
+            LocalDateTime dateTime = now.minusDays(i * 30).atTime(0, 0);
+            Date date = Date.from(dateTime.atZone(ZoneId.systemDefault()).toInstant());
+            drawdownSeries.addOrUpdate(new Millisecond(date), i * 0.5); // Konservative Dummy-Werte: 0%, 0.5%, 1%, etc.
         }
-    }
-    
-    /**
-     * Verarbeitet die Drawdown-Daten aus dem Datenfile
-     */
-    private void processDrawdownData(String drawdownData, TimeSeries drawdownSeries) {
-        String[] lines = drawdownData.split("\n");
-        
-        System.out.println("Verarbeite " + lines.length + " Zeilen mit Drawdown-Daten");
-        
-        int timeOffset = 0; // Für Einträge mit gleichem Datum
-        String lastDate = null;
-        int processedLines = 0;
-        
-        for (String line : lines) {
-            line = line.trim();
-            if (line.isEmpty()) continue;
-            
-            String[] parts = line.split(":");
-            if (parts.length != 2) {
-                System.out.println("Ungültiges Datenformat: " + line);
-                continue;
-            }
-            
-            String dateStr = parts[0].trim();
-            String valueStr = parts[1].trim().replace("%", "").replace(",", ".");
-            
-            try {
-                // Prüfen, ob das Datum gleich dem vorherigen ist
-                if (dateStr.equals(lastDate)) {
-                    timeOffset += 1; // Inkrementiere den Zeitoffset für doppelte Daten
-                } else {
-                    timeOffset = 0; // Zurücksetzen für neues Datum
-                    lastDate = dateStr;
-                }
-                
-                // Statt LocalDateTime.parse() verwenden wir LocalDate.parse() und konvertieren dann zu LocalDateTime
-                LocalDate date = LocalDate.parse(dateStr);
-                LocalDateTime dateTime = date.atStartOfDay().plusSeconds(timeOffset);
-                
-                double value = Double.parseDouble(valueStr);
-                
-                // Zum Dataset hinzufügen
-                Date javaDate = Date.from(dateTime.atZone(ZoneId.systemDefault()).toInstant());
-                drawdownSeries.addOrUpdate(new Day(javaDate), value); // Day statt Millisecond für bessere Performance
-                
-                processedLines++;
-                
-                // Debug: Nur alle 100 Zeilen ausgeben
-                if (processedLines % 100 == 0) {
-                    System.out.println("Verarbeitet: " + processedLines + " Datenpunkte");
-                }
-            } catch (Exception e) {
-                System.err.println("Fehler beim Parsen der Drawdown-Daten: " + e.getMessage() + " für Zeile: " + line);
-            }
-        }
-        
-        System.out.println("Drawdown-Daten verarbeitet: " + processedLines + " gültige Einträge");
     }
     
     /**
