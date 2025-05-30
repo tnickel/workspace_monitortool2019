@@ -1,0 +1,119 @@
+## Data Layer
+data.DataManager | Zentrale Klasse für das Laden und Verarbeiten von CSV-Handelsdaten. Verarbeitet sowohl MQL5- als auch Standard-MT4-Formate
+data.FavoritesManager | Verwaltung von Provider-Favoriten mit Kategorien (1-10), Backup-System und Change-Listener für UI-Updates
+data.ProviderStats | Model-Klasse für statistische Kennzahlen eines Signal-Providers (Profit, Drawdown, Win-Rate, Concurrent Trades)
+data.Trade | Datenmodell für einzelne Handelstransaktionen mit allen relevanten Parametern (Open/Close, Lots, Profit, etc.)
+data.TradeComparator | Comparator für die Sortierung von Trades nach Öffnungszeit
+
+## Database Layer
+db.HistoryDatabaseManager | H2-Datenbankmanager für historische Statistik-Werte mit Backup-System, Integritätsprüfung und Provider-Notizen
+
+## Models
+models.FilterCriteria | Modell für Filterkriterien mit Speicher-/Ladefunktionalität und Währungspaar-Filter
+models.HighlightTableModel | Spezialisiertes TableModel für die Haupttabelle mit MPDD-Berechnungen, Trend-Analysen und Tooltip-Generierung
+
+## Renderers
+renderers.HighlightRenderer | Basis-Renderer für farbliche Hervorhebung von Favoriten und Bad Providern mit Cache-System
+renderers.NumberFormatRenderer | Renderer für Zahlenformatierung mit maximal 2 Dezimalstellen
+renderers.RiskScoreRenderer | Spezieller Renderer für Risiko-Scores mit farblichen Abstufungen (grün bis rot)
+
+## Reports
+reports.ReportGenerator | Generierung von HTML-Reports für favorisierte Provider mit Charts, Statistiken und Kategorien-Anzeige
+
+## Services
+services.ProviderHistoryService | Service für automatische Speicherung historischer Statistik-Werte mit wöchentlichen Backups und Integritätsprüfung
+services.RiskAnalysisServ | Analyse-Service für Risikobewertung basierend auf Martingale-Erkennung, Concurrent Trading und Drawdown-Analyse
+
+## Utils - Configuration
+utils.ApplicationConstants | Zentrale Konstanten und Pfad-Validierung für die Anwendung
+utils.MqlAnalyserConf | Konfigurationsverwaltung für Download-Pfade, URLs und Benutzereinstellungen
+
+## Utils - Data Analysis
+utils.BasicDataProvider | Grundlegende Datenwerte für MPDD-Berechnungen ohne komplexe Analysen
+utils.DrawdownAnalyzer | Spezialisierte Drawdown-Analysen inklusive 3-Monats-Maximum-Berechnungen aus Chart-Daten
+utils.FileDataReader | Dateizugriff und Parsing von _root.txt Dateien mit Cache-Management und Backup-Funktionen
+utils.HtmlDatabase | Hauptschnittstelle für Datenanfragen, delegiert an spezialisierte Analyzer-Klassen
+utils.ProfitAnalyzer | Profit-Berechnungen und Tooltip-Generierung für verschiedene Zeiträume (3, 6, 9, 12 Monate)
+utils.StabilityAnalyzer | Stabilitäts- und Steigungsanalysen für Provider-Performance mit detaillierten Tooltips
+
+## Utils - Chart Utilities
+utils.ChartFactoryUtil | Factory-Klasse für verschiedene Chart-Typen (Equity, Profit, Weekday, Martingale-Visualisierung)
+utils.MartingaleAnalyzer | Erkennung von Martingale-Handelsmustern mit Sequence-Tracking und Score-Berechnung
+
+## Utils - Trading Utilities
+utils.TradeUtils | Utility-Funktionen für Trade-Berechnungen (concurrent trades/lots, aktive Trades zu bestimmten Zeitpunkten)
+
+## Utils - UI Styling
+utils.UIStyle | Styling-Konstanten und Factory-Methoden für einheitliche UI-Komponenten mit Farben und Schriftarten
+utils.UIStyleManager | Zentrale UI-Style-Verwaltung mit erweiterten Farben, Schriftarten und Component-Factories
+
+## Utils - Web Integration
+utils.WebsiteAnalyzer | Download und Analyse von MQL5-Webseiten mit Caching, Altersüberprüfung und Status-Callbacks
+
+Charts Layer
+charts.CurrencyPairTradesChart | Interaktive Darstellung der offenen Trades und Lots pro Währungspaar im Zeitverlauf mit Checkbox-Filterung und dynamischer Farbzuordnung
+charts.DrawdownChart | Echtzeit-Risikoanalyse mit realized Drawdown und potentiellem Risiko basierend auf offenen Positionen
+charts.DurationProfitChart | Scatter-Plot zur Analyse der Korrelation zwischen Trade-Dauer und Profitabilität mit Winner/Loser-Kategorisierung
+charts.EfficiencyChart | Wöchentliche Effizienzanalyse (Gewinn/Lotsize) zur Identifikation optimaler Handelsphasen im Martingale-System
+charts.EquityDrawdownChart | Spezialisierte Drawdown-Visualisierung mit dynamischer Skalierung, Extrempunkt-Markierung und HTML-Datenintegration
+charts.MonthlyTradeCountChart | Monatliche Trade-Aktivitätsanalyse mit farblicher Hervorhebung von Spitzenzeiten
+charts.OpenTradesChart | Zeitreihen-Darstellung für gleichzeitig offene Trades und Lots mit Multi-Provider-Unterstützung
+charts.ProviderStatHistoryChart | Historische Entwicklung von Statistikwerten (3MPDD) für einzelne Provider mit Trend-Visualisierung
+charts.ThreeMonthProfitChart | 3MPDD-Verlaufsanalyse mit monatlicher Aggregation und Drawdown-Normalisierung
+charts.TradeStackingChart | Doppelachsen-Visualisierung für simultane Trade- und Lots-Entwicklung mit vergrößerter Darstellung
+charts.WeeklyLotsizeChart | Wöchentliche Risiko-Exposition durch Lot-Größen-Analyse mit Martingale-Pattern-Erkennung
+Components Layer - Core UI
+components.MainTable | Zentrale Tabellen-Komponente mit delegierter Architektur, umfassendem Event-Handling und Multi-Manager-Integration
+components.ChartsPanel | Container-Panel für Chart-Kombinationen mit Grid-Layout-Management
+components.LoadingPanel | Animierte Fortschrittsanzeige mit konfigurierbaren Nachrichten und Timer-basierter Animation
+components.SearchPanel | Suchfunktionalität mit Live-Highlighting, Suchergebnisnavigation und Dokumentlistener-Integration
+Components Layer - Specialized Panels
+components.MonthlyReturnsTable | Jahres-/Monats-Renditetabelle mit prozentualer Gewinn-/Verlustfarbgebung und Gesamtrendite-Berechnung
+components.OpenTradesChartPanel | Split-Panel-Container für Trade-Visualisierung und Web-Integration mit konfigurierbarer Gewichtung
+components.SignalProviderPanel | Umfassende Provider-Detailansicht mit Favoriten-Management, Bad-Provider-Kennzeichnung und URL-Integration
+components.StatsPanel | Kompakte Statistik-Übersicht mit formatierter Zahlenanzeige und farblicher Profit/Loss-Kennzeichnung
+components.TradeChartPanel | Interaktive Gantt-Chart-ähnliche Trade-Visualisierung mit Tooltip-Support und Maus-Interaktion
+components.TradeListTable | Detaillierte Trade-Auflistung mit Laufzeit-Formatierung, Equity-Schätzung und mehrdimensionaler Sortierung
+components.WebViewPanel | JavaFX-WebView-Integration für Provider-Webseiten mit konfigurierbarem Zoom und URL-Handling
+Components Layer - Table Management
+components.FavoritesFilterManager | Kategorisierte Favoriten-Filterung mit Provider-ID-Extraktion, Cache-System und Auto-Update-Funktionalität
+components.TableButtonFactory | Zentrale Button-Erstellung für Tabellen-Aktionen mit Thread-sicherer Report-Generierung und Status-Callbacks
+components.TableColumnManager | Persistente Spalten-Sichtbarkeitsverwaltung mit Properties-basierter Speicherung und Standardkonfiguration
+components.TableEventHandler | Event-Delegation für Maus-/Keyboard-Interaktionen mit Doppelklick-Behandlung und Delete-Key-Support
+components.TableFilterManager | Fortschrittsbasierte Filteranwendung mit SwingWorker-Threading und dynamischer Datensatz-Evaluation
+components.TableProviderManager | Provider-Lifecycle-Management mit Multi-Format-Dateierkennung, Batch-Löschung und Cache-Invalidierung
+components.TableRefreshManager | Komplexe Refresh-Operationen mit Renderer-Neuinitialisierung, progressiven Repaints und Tooltip-Wiederherstellung
+components.TableStatusManager | Status-Text-Generierung mit Callback-System, detaillierter Statistik-Aufschlüsselung und Filter-Indikation
+components.TableTooltipManager | Kontextsensitive Tooltip-Erstellung mit Spalten-spezifischer Formatierung und HTML-Integration
+UI Layer - Main Windows
+ui.MainFrame | Hauptfenster der Anwendung mit Tabelle, Menüleiste, Toolbar und Status-Anzeige. Verwaltet DataManager und Provider-History-Service
+ui.EquityCurvesFrame | Frame zur Anzeige und Sortierung von Equity Curves aller Signal Provider nach Gesamtprofit
+ui.TradeListFrame | Frame zur detaillierten Anzeige der Trade-Liste mit Export-Funktion und gleichzeitigen Trade-Analysen
+ui.SplashScreen | Startup-Screen mit Fortschrittsanzeige und Gradient-Hintergrund während der Anwendungsinitialisierung
+UI Layer - Dialogs
+ui.CompareEquityCurvesDialog | Dialog zum Vergleichen von Equity Curves mehrerer Signal Provider in tabellarischer Form
+ui.CompareOpenTradesDialog | Dialog zum Vergleichen offener Trades mit Charts für Trades, Lots und WebView-Integration
+ui.DatabaseViewerDialog | Dialog zur Anzeige aller Provider-Historie-Einträge mit Filterung nach Statistik-Typ
+ui.DeleteProviderDialog | Dialog zum sicheren Löschen von Signal Providern mit Verschiebung in "deleted"-Ordner
+ui.EquityDrawdownDialog | Dialog für Equity Drawdown-Vergleich mit benutzerdefinierten Charts und Y-Achsen-Skalierung
+ui.FilterDialog | Dialog für Filtereinstellungen mit Validierung, Währungspaar-Filter und Clean/Reset-Funktionen
+ui.ForceDbSaveDialog | Dialog zum manuellen Erzwingen der Datenbank-Speicherung mit Backup-Erstellung und Progress-Anzeige
+ui.LoadingDialog | Modaler Dialog mit Fortschrittsbalken für langwierige Operationen ohne Fensterrahmen
+ui.PerformanceAnalysisDialog | Hauptdialog für detaillierte Provider-Analyse mit Statistiken, Charts und Notizen
+ui.RiskScoreExplanationDialog | Informationsdialog zur Erklärung der Risk Score-Berechnung und Komponenten
+ui.ShowSignalProviderList | Dialog zur Übersicht aller Provider mit Equity Charts und integriertem WebView
+ui.TableColumnConfigDialog | Dialog zur Konfiguration der sichtbaren Tabellenspalten mit Persistierung
+ui.dialogs.DatabaseInfoDialog | Dialog zur Anzeige der Datenbank-Historie für einen spezifischen Signal Provider
+UI Layer - Components
+ui.components.AppUIStyle | Zentrale UI-Styling-Klasse mit Farben, Schriftarten und einheitlichen Komponenten-Erstellern
+ui.components.ChartPanel | Dekorationsklasse für Chart-Komponenten mit einheitlichem Rahmen und Titel
+ui.components.ChartsPanelFactory | Factory zur Erstellung aller Chart-Panels für die Performance-Analyse mit Standard- und Spezial-Charts
+ui.components.FavoritesCategorySelector | UI-Komponente für die Auswahl von Favoriten-Kategorien (1-10) mit ComboBox
+ui.components.MenuManager | Manager für die Menüleiste mit Datei-, Datenbank-, Ansicht-, Debug- und Hilfe-Menüs
+ui.components.PerformanceStatisticsPanel | Panel für Provider-Statistiken mit Favoriten-Management, Bad-Provider-Markierung und Website-Status
+ui.components.ProviderNotesPanel | Panel zum Anzeigen und Bearbeiten von Provider-Notizen mit Datenbank-Persistierung
+ui.components.SearchManager | Manager für die Suchfunktionalität mit Live-Highlighting und Tastatur-Navigation
+ui.components.ToolbarManager | Manager für Toolbar und Reporting-Funktionen mit Filter-, Such- und Report-Generierung
+ui.components.UIComponentFactory | Factory-Klasse für einheitliche UI-Komponenten mit standardisierten Styles
+UI Layer - Utilities
+ui.UIConstants | Zentrale Definition für UI-Konstanten (Farben, Schriftarten, Größen) für die gesamte Anwendung
