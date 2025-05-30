@@ -24,6 +24,7 @@ public class UIStyle {
     public static final Color SECONDARY_COLOR = new Color(41, 82, 164);
     public static final Color ACCENT_COLOR = new Color(255, 220, 0);
     public static final Color BACKGROUND_COLOR = new Color(240, 245, 250);
+    public static final Color BG_COLOR = BACKGROUND_COLOR; // Alias für Kompatibilität
     public static final Color TEXT_COLOR = new Color(50, 50, 50);
     public static final Color TEXT_SECONDARY_COLOR = new Color(100, 100, 100);
     public static final Color POSITIVE_COLOR = new Color(0, 150, 50);

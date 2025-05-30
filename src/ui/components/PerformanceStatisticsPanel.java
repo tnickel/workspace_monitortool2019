@@ -9,6 +9,7 @@ import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.File;
 import java.net.URI;
 import java.text.DecimalFormat;
 import java.time.temporal.ChronoUnit;
@@ -28,6 +29,8 @@ import data.FavoritesManager;
 import data.ProviderStats;
 import ui.TradeListFrame;
 import ui.dialogs.DatabaseInfoDialog;
+import ui.dialogs.PDFViewerDialog;
+import utils.ApplicationConstants;
 import utils.HtmlDatabase;
 import utils.UIStyle;
 import utils.WebsiteAnalyzer;
@@ -53,6 +56,7 @@ public class PerformanceStatisticsPanel extends JPanel {
     // UI-Komponenten
     private JButton favoriteButton;
     private JButton badProviderButton;
+    private JButton pdfButton;
     private JLabel statusLight;
     private JComboBox<String> categoryComboBox;
     private JLabel favoriteCategoryLabel;
@@ -109,6 +113,69 @@ public class PerformanceStatisticsPanel extends JPanel {
         contentPanel.add(buttonPanel, BorderLayout.SOUTH);
         
         add(contentPanel, BorderLayout.CENTER);
+    }
+    
+    /**
+     * Prüft, ob eine PDF-Analyse-Datei für diesen Provider existiert
+     * @return File-Objekt wenn PDF existiert, sonst null
+     */
+    private File checkForPDFDocument() {
+        // Erstelle den Pfad zum analysen-Ordner
+        String analysenPath = rootPath + File.separator + "database" + File.separator + "analysen";
+        File analysenDir = new File(analysenPath);
+        
+        if (!analysenDir.exists() || !analysenDir.isDirectory()) {
+            System.out.println("Analysen-Ordner existiert nicht: " + analysenPath);
+            return null;
+        }
+        
+        System.out.println("Suche nach PDF mit Provider-ID " + providerId + " in: " + analysenPath);
+        
+        // Durchsuche alle PDF-Dateien im analysen-Ordner
+        File[] pdfFiles = analysenDir.listFiles((dir, name) -> {
+            // Datei muss .pdf Extension haben und mit der Provider-ID enden
+            return name.toLowerCase().endsWith(".pdf") && 
+                   name.substring(0, name.length() - 4).endsWith(providerId);
+        });
+        
+        if (pdfFiles != null && pdfFiles.length > 0) {
+            // Nehme die erste gefundene PDF-Datei
+            File foundPdf = pdfFiles[0];
+            System.out.println("PDF-Dokument gefunden: " + foundPdf.getName());
+            
+            // Falls mehrere PDFs gefunden wurden, logge das
+            if (pdfFiles.length > 1) {
+                System.out.println("Warnung: Mehrere PDF-Dateien für Provider " + providerId + " gefunden:");
+                for (File pdf : pdfFiles) {
+                    System.out.println("  - " + pdf.getName());
+                }
+                System.out.println("Verwende: " + foundPdf.getName());
+            }
+            
+            return foundPdf;
+        }
+        
+        System.out.println("Keine PDF-Datei für Provider-ID " + providerId + " gefunden");
+        return null;
+    }
+    
+    /**
+     * Öffnet das PDF-Dokument in einem neuen Fenster
+     * @param pdfFile Die PDF-Datei die geöffnet werden soll
+     */
+    private void openPDFDocument(File pdfFile) {
+        try {
+            PDFViewerDialog pdfViewer = new PDFViewerDialog(pdfFile, providerName + " - Analyse");
+            pdfViewer.setVisible(true);
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(
+                this,
+                "Fehler beim Öffnen des PDF-Dokuments:\n" + e.getMessage(),
+                "PDF-Fehler",
+                JOptionPane.ERROR_MESSAGE
+            );
+            e.printStackTrace();
+        }
     }
     
     /**
@@ -293,6 +360,20 @@ public class PerformanceStatisticsPanel extends JPanel {
         });
         
         favoritePanel.add(favoriteButton);
+        
+        // PDF-Button prüfen und hinzufügen (NEUE FUNKTIONALITÄT)
+        File pdfFile = checkForPDFDocument();
+        if (pdfFile != null) {
+            pdfButton = UIStyle.createStyledButton("📄 PDF");
+            pdfButton.setToolTipText("PDF-Analyse anzeigen: " + pdfFile.getName());
+            pdfButton.setFont(UIStyle.BOLD_FONT);
+            pdfButton.setBackground(new Color(255, 165, 0)); // Orange Hintergrund
+            pdfButton.setForeground(Color.WHITE);
+            
+            pdfButton.addActionListener(e -> openPDFDocument(pdfFile));
+            
+            favoritePanel.add(pdfButton);
+        }
         
         // Bad Provider Button
         badProviderButton = UIStyle.createStyledButton(
