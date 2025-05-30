@@ -1,0 +1,49 @@
+Tiefenanalyse der Handelsstrategie SmartTrading3
+Führe eine umfassende forensische Analyse durch (https://www.mql5.com/de/signals/2294111) durch. Nutze die bereitgestellten Trade-Daten für eine detaillierte Untersuchung folgender Aspekte:
+1. Risikomanagement-Analyse:
+•	Stop-Loss-Verwendung: Untersuche jeden Trade auf Hinweise für Stop-Loss-Nutzung. Analysiere: 
+o	Gibt es wiederkehrende Verlustmuster bei bestimmten Pip-Werten?
+o	Werden Trades bei konsistenten Verlustniveaus geschlossen?
+o	Falls kein Stop-Loss: Wie werden Verluste begrenzt?
+•	Drawdown-Verhalten: Analysiere das 20%-Drawdown-Limit und dessen praktische Umsetzung
+2. Handelssystem-Identifikation:
+•	Grid-Trading-Indikatoren: Prüfe auf: 
+o	Gleichmäßige Abstände zwischen Einstiegspunkten
+o	Mehrere offene Positionen in gleiche Richtung
+o	Symmetrische Kauf-/Verkaufsmuster
+•	Martingale-Merkmale: Untersuche: 
+o	Positionsgrößen-Erhöhung nach Verlusten
+o	Verdopplung oder systematische Erhöhung der Lots
+o	Recovery-Muster nach Drawdowns
+3. News-Trading-Analyse:
+•	Erstelle eine Korrelation zwischen: 
+o	Wichtigen Wirtschaftsnachrichten (NFP, FOMC, EZB-Entscheidungen)
+o	Trade-Zeitpunkten und -Verhalten
+o	Identifiziere: Pausiert das System vor wichtigen News? Gibt es erhöhte Aktivität danach?
+4. Strategische Tiefenanalyse:
+•	Handelslogik: Dekonstruiere die zugrundeliegende Strategie: 
+o	Trend-Following oder Counter-Trend?
+o	Scalping, Day-Trading oder Swing-Trading?
+o	Technische Indikatoren (aus Trade-Mustern ableitbar)?
+•	Währungspaar-Strategie: Warum diese spezifischen Paare? Korrelationsausnutzung?
+5. Risikobewertung (1-10 Skala):
+•	Quantitative Risikofaktoren: 
+o	Max Drawdown vs. durchschnittlicher Gewinn
+o	Win-Rate vs. Risk-Reward-Ratio
+o	Leverage-Nutzung und Margin-Risiko
+•	Qualitative Risikofaktoren: 
+o	Transparenz der Strategie
+o	Anpassungsfähigkeit an Marktbedingungen
+o	Schwachstellen bei extremen Marktbewegungen
+6. Performance-Forensik:
+•	Analysiere ungewöhnliche Gewinn-/Verlustspitzen
+•	Identifiziere saisonale oder zyklische Muster
+•	Bewerte die Konsistenz über verschiedene Marktphasen
+Liefere die Analyse in folgendem Format:
+1.	Executive Summary (3-5 Kernerkenntnisse)
+2.	Detaillierte Befunde pro Kategorie
+3.	Visualisierung kritischer Muster (falls möglich)
+4.	Risiko-Scoring mit Begründung
+5.	Empfehlungen für potenzielle Follower
+Verwende konkrete Trade-Beispiele zur Untermauerung jeder Schlussfolgerung.
+________________________________________

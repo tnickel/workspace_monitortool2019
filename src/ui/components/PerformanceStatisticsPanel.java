@@ -364,8 +364,14 @@ public class PerformanceStatisticsPanel extends JPanel {
         // PDF-Button prüfen und hinzufügen (NEUE FUNKTIONALITÄT)
         File pdfFile = checkForPDFDocument();
         if (pdfFile != null) {
-            pdfButton = UIStyle.createStyledButton("📄 PDF");
-            pdfButton.setToolTipText("PDF-Analyse anzeigen: " + pdfFile.getName());
+            // Button-Text ist der Dateiname ohne Extension
+            String pdfFileName = pdfFile.getName();
+            if (pdfFileName.endsWith(".pdf")) {
+                pdfFileName = pdfFileName.substring(0, pdfFileName.length() - 4);
+            }
+            
+            pdfButton = UIStyle.createStyledButton("📄 " + pdfFileName);
+            pdfButton.setToolTipText("PDF-Analyse öffnen: " + pdfFile.getName());
             pdfButton.setFont(UIStyle.BOLD_FONT);
             pdfButton.setBackground(new Color(255, 165, 0)); // Orange Hintergrund
             pdfButton.setForeground(Color.WHITE);

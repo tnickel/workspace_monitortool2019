@@ -104,6 +104,7 @@ ui.RiskScoreExplanationDialog | Informationsdialog zur Erklärung der Risk Score
 ui.ShowSignalProviderList | Dialog zur Übersicht aller Provider mit Equity Charts und integriertem WebView
 ui.TableColumnConfigDialog | Dialog zur Konfiguration der sichtbaren Tabellenspalten mit Persistierung
 ui.dialogs.DatabaseInfoDialog | Dialog zur Anzeige der Datenbank-Historie für einen spezifischen Signal Provider
+ui.dialogs.PDFViewerDialog|hier wird das pdf angezeigt
 UI Layer - Components
 ui.components.AppUIStyle | Zentrale UI-Styling-Klasse mit Farben, Schriftarten und einheitlichen Komponenten-Erstellern
 ui.components.ChartPanel | Dekorationsklasse für Chart-Komponenten mit einheitlichem Rahmen und Titel
