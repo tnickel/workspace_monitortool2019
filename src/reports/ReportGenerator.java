@@ -42,6 +42,7 @@ import utils.UIStyle;
 
 /**
  * Klasse zum Erstellen eines HTML-Reports für favorisierte Signal Provider
+ * Erweitert um PDF-Integration für zusätzliche Analysen
  */
 public class ReportGenerator {
     private static final Logger LOGGER = Logger.getLogger(ReportGenerator.class.getName());
@@ -49,6 +50,8 @@ public class ReportGenerator {
     private final HtmlDatabase htmlDatabase;
     private final HistoryDatabaseManager historyDbManager;
     private final FavoritesManager favoritesManager;
+    private final PdfManager pdfManager;
+    private final HtmlPdfIntegrator pdfIntegrator;
     
     /**
      * Konstruktor für den ReportGenerator
@@ -62,6 +65,8 @@ public class ReportGenerator {
         this.htmlDatabase = htmlDatabase;
         this.historyDbManager = HistoryDatabaseManager.getInstance(rootPath);
         this.favoritesManager = new FavoritesManager(rootPath);
+        this.pdfManager = new PdfManager(rootPath);
+        this.pdfIntegrator = new HtmlPdfIntegrator(pdfManager);
         
         // Stelle sicher, dass das Report-Verzeichnis existiert
         createReportDirectory();
@@ -168,6 +173,20 @@ public class ReportGenerator {
     }
     
     /**
+     * Sammelt alle Provider-IDs für PDF-Kopierung
+     * 
+     * @param providerStats Map mit den Providern
+     * @return Liste der Provider-IDs
+     */
+    private List<String> collectProviderIds(Map<String, ProviderStats> providerStats) {
+        List<String> providerIds = new ArrayList<>();
+        for (String providerName : providerStats.keySet()) {
+            providerIds.add(extractProviderId(providerName));
+        }
+        return providerIds;
+    }
+    
+    /**
      * Generiert einen HTML-Report für die angegebenen Signal Provider
      * 
      * @param favoriteProviders Map mit den Favoriten-Providern und ihren Statistiken
@@ -208,6 +227,10 @@ public class ReportGenerator {
             }
         }
         
+        // PDFs für alle Provider kopieren
+        List<String> providerIds = collectProviderIds(filteredProviders);
+        String pdfCopyStatus = pdfIntegrator.copyPdfsAndGenerateStatus(providerIds);
+        
         // Sortierte Provider-Liste erstellen
         List<Map.Entry<String, ProviderStats>> sortedProviders = getSortedProviderList(filteredProviders);
         
@@ -231,8 +254,11 @@ public class ReportGenerator {
         }
         
         try (Writer writer = new OutputStreamWriter(new FileOutputStream(reportPath), StandardCharsets.UTF_8)) {
-            // HTML-Header schreiben
+            // HTML-Header schreiben (jetzt mit PDF-CSS)
             writer.write(generateHtmlHeader(reportTitle, timestamp));
+            
+            // PDF-Kopier-Status als Kommentar hinzufügen
+            writer.write(pdfCopyStatus);
             
             // Inhaltsverzeichnis erstellen
             writer.write("<div class=\"toc\">\n");
@@ -247,7 +273,9 @@ public class ReportGenerator {
                     int providerCategory = favoritesManager.getFavoriteCategory(providerId);
                     categoryInfo = formatCategoryInfo(providerCategory, false);
                 }
-                writer.write("<li><a href=\"#" + providerId + "\">" + providerName + categoryInfo + "</a></li>\n");
+                // PDF-Info hinzufügen
+                String pdfInfo = pdfIntegrator.generateTocPdfInfo(providerId);
+                writer.write("<li><a href=\"#" + providerId + "\">" + providerName + categoryInfo + pdfInfo + "</a></li>\n");
             }
             writer.write("</ul>\n");
             writer.write("</div>\n");
@@ -274,34 +302,17 @@ public class ReportGenerator {
                 writer.write("<a href=\"" + mqlUrl + "\" target=\"_blank\">MQL5 Webseite des Providers</a>\n");
                 writer.write("</div>\n");
                 
+                // PDF-Links hinzufügen (NEUE FUNKTION!)
+                String pdfLinksHtml = pdfIntegrator.generatePdfLinksHtml(providerId);
+                if (!pdfLinksHtml.isEmpty()) {
+                    writer.write(pdfLinksHtml);
+                }
+                
                 // Lade Notizen aus der Datenbank
                 String notes = historyDbManager.getProviderNotes(providerName);
                 
                 // Statistische Informationen
-                writer.write("<div class=\"stats-info\">\n");
-                writer.write("<h3>Handelsinformationen</h3>\n");
-                writer.write("<table class=\"stats-table\">\n");
-                writer.write("<tr><th>Kennzahl</th><th>Wert</th></tr>\n");
-                writer.write("<tr><td>Total Trades</td><td>" + stats.getTrades().size() + "</td></tr>\n");
-                // Annahme: stats.getWinRate() gibt bereits einen Wert zwischen 0 und 1 zurück
-                double winRatePercent = stats.getWinRate() * 100;
-                // Prüfen, ob der Wert ungewöhnlich hoch ist (möglicher Fehler)
-                if (winRatePercent > 100) {
-                    // Falls getWinRate() bereits einen Prozentwert zurückgibt, nicht nochmal multiplizieren
-                    winRatePercent = stats.getWinRate();
-                }
-                writer.write("<tr><td>Win Rate</td><td>" + String.format("%.2f%%", winRatePercent) + "</td></tr>\n");
-                writer.write("<tr><td>Profit</td><td>" + String.format("%.2f", stats.getTotalProfit()) + "</td></tr>\n");
-                
-                // MPDD-Werte
-                double threeMonthProfit = htmlDatabase.getAverageMonthlyProfit(providerName, 3);
-                double equityDrawdown = htmlDatabase.getEquityDrawdown(providerName);
-                double maxDrawdownGraphic = htmlDatabase.getEquityDrawdownGraphic(providerName);
-                
-                writer.write("<tr><td>3MPDD</td><td>" + String.format("%.2f", threeMonthProfit / Math.max(0.01, equityDrawdown)) + "</td></tr>\n");
-                writer.write("<tr><td>Equity Drawdown</td><td>" + String.format("%.2f%%", equityDrawdown) + "</td></tr>\n");
-                writer.write("<tr><td>Max Drawdown</td><td>" + String.format("%.2f%%", maxDrawdownGraphic) + "</td></tr>\n");
-                writer.write("</table>\n");
+                writer.write(generateStatsSection(stats, providerName));
                 
                 // Notizen anzeigen, falls vorhanden
                 if (notes != null && !notes.trim().isEmpty()) {
@@ -313,45 +324,9 @@ public class ReportGenerator {
                     writer.write("</div>\n");
                 }
                 
-                writer.write("</div>\n"); // Ende stats-info
-                
                 // Charts erstellen und hinzufügen
-                writer.write("<div class=\"charts-section\">\n");
-                writer.write("<h3>Charts</h3>\n");
+                writer.write(generateChartsSection(stats, providerId, reportImagesDir.getPath(), imagesDir));
                 
-                // Equity Drawdown Chart
-                EquityDrawdownChart equityDrawdownChart = new EquityDrawdownChart(stats, maxDrawdownGraphic, htmlDatabase);
-                String equityDrawdownChartPath = saveChartAsImage(equityDrawdownChart.getChart(), 
-                        reportImagesDir.getPath(), providerId + "_equity_drawdown");
-                if (equityDrawdownChartPath != null) {
-                    writer.write("<div class=\"chart-container\">\n");
-                    writer.write("<h4>Equity Drawdown</h4>\n");
-                    writer.write("<img src=\"" + imagesDir + "/" + new File(equityDrawdownChartPath).getName() + 
-                            "\" alt=\"Equity Drawdown Chart\" class=\"chart-image\">\n");
-                    writer.write("</div>\n");
-                }
-                
-                // Weitere Charts hinzufügen, falls genügend Trades vorhanden sind
-                if (stats.getTrades().size() > 5) {
-                    // Symbol Distribution Chart
-                    SymbolDistributionChart symbolChart = new SymbolDistributionChart(stats.getTrades());
-                    String symbolChartPath = saveChartAsImage(symbolChart.getChart(), 
-                            reportImagesDir.getPath(), providerId + "_symbol_distribution");
-                    if (symbolChartPath != null) {
-                        writer.write("<div class=\"chart-container\">\n");
-                        writer.write("<h4>Symbol Verteilung</h4>\n");
-                        writer.write("<img src=\"" + imagesDir + "/" + new File(symbolChartPath).getName() + 
-                                "\" alt=\"Symbol Distribution Chart\" class=\"chart-image\">\n");
-                        writer.write("</div>\n");
-                    }
-                    
-                    // Die folgenden Grafiken wurden entfernt, da sie nicht korrekt angezeigt werden:
-                    // - Dauer/Profit Verhältnis (DurationProfitChart)
-                    // - Effizienzwert (EfficiencyChart)
-                    // - Wöchentliche Lot-Größe (WeeklyLotsizeChart)
-                }
-                
-                writer.write("</div>\n"); // Ende charts-section
                 writer.write("</div>\n"); // Ende provider-section
                 
                 // Horizontale Linie zwischen den Providern
@@ -372,6 +347,91 @@ public class ReportGenerator {
     }
     
     /**
+     * Generiert die Statistik-Sektion für einen Provider
+     * 
+     * @param stats Die Provider-Statistiken
+     * @param providerName Der Provider-Name
+     * @return HTML-String für die Statistik-Sektion
+     */
+    private String generateStatsSection(ProviderStats stats, String providerName) {
+        StringBuilder htmlBuilder = new StringBuilder();
+        
+        htmlBuilder.append("<div class=\"stats-info\">\n");
+        htmlBuilder.append("<h3>Handelsinformationen</h3>\n");
+        htmlBuilder.append("<table class=\"stats-table\">\n");
+        htmlBuilder.append("<tr><th>Kennzahl</th><th>Wert</th></tr>\n");
+        htmlBuilder.append("<tr><td>Total Trades</td><td>").append(stats.getTrades().size()).append("</td></tr>\n");
+        
+        // Win Rate berechnen
+        double winRatePercent = stats.getWinRate() * 100;
+        if (winRatePercent > 100) {
+            winRatePercent = stats.getWinRate();
+        }
+        htmlBuilder.append("<tr><td>Win Rate</td><td>").append(String.format("%.2f%%", winRatePercent)).append("</td></tr>\n");
+        htmlBuilder.append("<tr><td>Profit</td><td>").append(String.format("%.2f", stats.getTotalProfit())).append("</td></tr>\n");
+        
+        // MPDD-Werte
+        double threeMonthProfit = htmlDatabase.getAverageMonthlyProfit(providerName, 3);
+        double equityDrawdown = htmlDatabase.getEquityDrawdown(providerName);
+        double maxDrawdownGraphic = htmlDatabase.getEquityDrawdownGraphic(providerName);
+        
+        htmlBuilder.append("<tr><td>3MPDD</td><td>").append(String.format("%.2f", threeMonthProfit / Math.max(0.01, equityDrawdown))).append("</td></tr>\n");
+        htmlBuilder.append("<tr><td>Equity Drawdown</td><td>").append(String.format("%.2f%%", equityDrawdown)).append("</td></tr>\n");
+        htmlBuilder.append("<tr><td>Max Drawdown</td><td>").append(String.format("%.2f%%", maxDrawdownGraphic)).append("</td></tr>\n");
+        htmlBuilder.append("</table>\n");
+        htmlBuilder.append("</div>\n");
+        
+        return htmlBuilder.toString();
+    }
+    
+    /**
+     * Generiert die Charts-Sektion für einen Provider
+     * 
+     * @param stats Die Provider-Statistiken
+     * @param providerId Die Provider-ID
+     * @param reportImagesPath Pfad für die Bilder
+     * @param imagesDir Name des Bilder-Verzeichnisses
+     * @return HTML-String für die Charts-Sektion
+     */
+    private String generateChartsSection(ProviderStats stats, String providerId, String reportImagesPath, String imagesDir) {
+        StringBuilder htmlBuilder = new StringBuilder();
+        
+        htmlBuilder.append("<div class=\"charts-section\">\n");
+        htmlBuilder.append("<h3>Charts</h3>\n");
+        
+        // MPDD-Werte für Equity Drawdown Chart
+        double maxDrawdownGraphic = htmlDatabase.getEquityDrawdownGraphic(stats.getTrades().get(0).getSymbol().split("_")[0]); // Provisorisch
+        
+        // Equity Drawdown Chart
+        EquityDrawdownChart equityDrawdownChart = new EquityDrawdownChart(stats, maxDrawdownGraphic, htmlDatabase);
+        String equityDrawdownChartPath = saveChartAsImage(equityDrawdownChart.getChart(), 
+                reportImagesPath, providerId + "_equity_drawdown");
+        if (equityDrawdownChartPath != null) {
+            htmlBuilder.append("<div class=\"chart-container\">\n");
+            htmlBuilder.append("<h4>Equity Drawdown</h4>\n");
+            htmlBuilder.append("<img src=\"").append(imagesDir).append("/").append(new File(equityDrawdownChartPath).getName()).append("\" alt=\"Equity Drawdown Chart\" class=\"chart-image\">\n");
+            htmlBuilder.append("</div>\n");
+        }
+        
+        // Weitere Charts hinzufügen, falls genügend Trades vorhanden sind
+        if (stats.getTrades().size() > 5) {
+            // Symbol Distribution Chart
+            SymbolDistributionChart symbolChart = new SymbolDistributionChart(stats.getTrades());
+            String symbolChartPath = saveChartAsImage(symbolChart.getChart(), 
+                    reportImagesPath, providerId + "_symbol_distribution");
+            if (symbolChartPath != null) {
+                htmlBuilder.append("<div class=\"chart-container\">\n");
+                htmlBuilder.append("<h4>Symbol Verteilung</h4>\n");
+                htmlBuilder.append("<img src=\"").append(imagesDir).append("/").append(new File(symbolChartPath).getName()).append("\" alt=\"Symbol Distribution Chart\" class=\"chart-image\">\n");
+                htmlBuilder.append("</div>\n");
+            }
+        }
+        
+        htmlBuilder.append("</div>\n"); // Ende charts-section
+        return htmlBuilder.toString();
+    }
+    
+    /**
      * Generiert einen benutzerdefinierten Report für ausgewählte Provider
      * 
      * @param providerStats Map mit den ausgewählten Providern
@@ -387,6 +447,10 @@ public class ReportGenerator {
             return null;
         }
         
+        // PDFs für alle Provider kopieren
+        List<String> providerIds = collectProviderIds(providerStats);
+        String pdfCopyStatus = pdfIntegrator.copyPdfsAndGenerateStatus(providerIds);
+        
         // Sortierte Provider-Liste erstellen
         List<Map.Entry<String, ProviderStats>> sortedProviders = getSortedProviderList(providerStats);
         
@@ -400,8 +464,11 @@ public class ReportGenerator {
             }
             
             try (Writer writer = new OutputStreamWriter(new FileOutputStream(outputPath), StandardCharsets.UTF_8)) {
-                // HTML-Header schreiben
+                // HTML-Header schreiben (jetzt mit PDF-CSS)
                 writer.write(generateHtmlHeader(reportTitle, timestamp));
+                
+                // PDF-Kopier-Status als Kommentar hinzufügen
+                writer.write(pdfCopyStatus);
                 
                 // Inhaltsverzeichnis erstellen
                 writer.write("<div class=\"toc\">\n");
@@ -415,7 +482,10 @@ public class ReportGenerator {
                     int providerCategory = favoritesManager.getFavoriteCategory(providerId);
                     String categoryInfo = formatCategoryInfo(providerCategory, true);
                     
-                    writer.write("<li><a href=\"#" + providerId + "\">" + providerName + categoryInfo + "</a></li>\n");
+                    // PDF-Info hinzufügen
+                    String pdfInfo = pdfIntegrator.generateTocPdfInfo(providerId);
+                    
+                    writer.write("<li><a href=\"#" + providerId + "\">" + providerName + categoryInfo + pdfInfo + "</a></li>\n");
                 }
                 writer.write("</ul>\n");
                 writer.write("</div>\n");
@@ -442,34 +512,17 @@ public class ReportGenerator {
                     writer.write("<a href=\"" + mqlUrl + "\" target=\"_blank\">MQL5 Webseite des Providers</a>\n");
                     writer.write("</div>\n");
                     
+                    // PDF-Links hinzufügen (NEUE FUNKTION!)
+                    String pdfLinksHtml = pdfIntegrator.generatePdfLinksHtml(providerId);
+                    if (!pdfLinksHtml.isEmpty()) {
+                        writer.write(pdfLinksHtml);
+                    }
+                    
                     // Lade Notizen aus der Datenbank
                     String notes = historyDbManager.getProviderNotes(providerName);
                     
                     // Statistische Informationen
-                    writer.write("<div class=\"stats-info\">\n");
-                    writer.write("<h3>Handelsinformationen</h3>\n");
-                    writer.write("<table class=\"stats-table\">\n");
-                    writer.write("<tr><th>Kennzahl</th><th>Wert</th></tr>\n");
-                    writer.write("<tr><td>Total Trades</td><td>" + stats.getTrades().size() + "</td></tr>\n");
-                // Annahme: stats.getWinRate() gibt bereits einen Wert zwischen 0 und 1 zurück
-                double winRatePercent = stats.getWinRate() * 100;
-                // Prüfen, ob der Wert ungewöhnlich hoch ist (möglicher Fehler)
-                if (winRatePercent > 100) {
-                    // Falls getWinRate() bereits einen Prozentwert zurückgibt, nicht nochmal multiplizieren
-                    winRatePercent = stats.getWinRate();
-                }
-                writer.write("<tr><td>Win Rate</td><td>" + String.format("%.2f%%", winRatePercent) + "</td></tr>\n");
-                    writer.write("<tr><td>Profit</td><td>" + String.format("%.2f", stats.getTotalProfit()) + "</td></tr>\n");
-                    
-                    // MPDD-Werte
-                    double threeMonthProfit = htmlDatabase.getAverageMonthlyProfit(providerName, 3);
-                    double equityDrawdown = htmlDatabase.getEquityDrawdown(providerName);
-                    double maxDrawdownGraphic = htmlDatabase.getEquityDrawdownGraphic(providerName);
-                    
-                    writer.write("<tr><td>3MPDD</td><td>" + String.format("%.2f", threeMonthProfit / Math.max(0.01, equityDrawdown)) + "</td></tr>\n");
-                    writer.write("<tr><td>Equity Drawdown</td><td>" + String.format("%.2f%%", equityDrawdown) + "</td></tr>\n");
-                    writer.write("<tr><td>Max Drawdown</td><td>" + String.format("%.2f%%", maxDrawdownGraphic) + "</td></tr>\n");
-                    writer.write("</table>\n");
+                    writer.write(generateStatsSection(stats, providerName));
                     
                     // Notizen anzeigen, falls vorhanden
                     if (notes != null && !notes.trim().isEmpty()) {
@@ -481,25 +534,9 @@ public class ReportGenerator {
                         writer.write("</div>\n");
                     }
                     
-                    writer.write("</div>\n"); // Ende stats-info
-                    
                     // Charts erstellen und hinzufügen - hier nur die wichtigsten Charts
-                    writer.write("<div class=\"charts-section\">\n");
-                    writer.write("<h3>Charts</h3>\n");
+                    writer.write(generateChartsSection(stats, providerId, reportImagesDir.getPath(), imagesDir));
                     
-                    // Equity Drawdown Chart
-                    EquityDrawdownChart equityDrawdownChart = new EquityDrawdownChart(stats, maxDrawdownGraphic, htmlDatabase);
-                    String equityDrawdownChartPath = saveChartAsImage(equityDrawdownChart.getChart(), 
-                            reportImagesDir.getPath(), providerId + "_equity_drawdown");
-                    if (equityDrawdownChartPath != null) {
-                        writer.write("<div class=\"chart-container\">\n");
-                        writer.write("<h4>Equity Drawdown</h4>\n");
-                        writer.write("<img src=\"" + imagesDir + "/" + new File(equityDrawdownChartPath).getName() + 
-                                "\" alt=\"Equity Drawdown Chart\" class=\"chart-image\">\n");
-                        writer.write("</div>\n");
-                    }
-                    
-                    writer.write("</div>\n"); // Ende charts-section
                     writer.write("</div>\n"); // Ende provider-section
                     
                     // Horizontale Linie zwischen den Providern
@@ -567,7 +604,7 @@ public class ReportGenerator {
     }
     
     /**
-     * Generiert den HTML-Header für den Report
+     * Generiert den HTML-Header für den Report (erweitert um PDF-CSS)
      */
     private String generateHtmlHeader(String title, String timestamp) {
         return "<!DOCTYPE html>\n" +
@@ -710,6 +747,9 @@ public class ReportGenerator {
                 "            border-radius: 4px;\n" +
                 "            font-weight: bold;\n" +
                 "        }\n" +
+                // PDF-CSS hinzufügen
+                pdfIntegrator.generatePdfCss() +
+                pdfIntegrator.generateTocPdfCss() +
                 "    </style>\n" +
                 "</head>\n" +
                 "<body>\n" +
