@@ -13,6 +13,8 @@ import java.io.File;
 import java.net.URI;
 import java.text.DecimalFormat;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -56,7 +58,7 @@ public class PerformanceStatisticsPanel extends JPanel {
     // UI-Komponenten
     private JButton favoriteButton;
     private JButton badProviderButton;
-    private JButton pdfButton;
+    private List<JButton> pdfButtons;
     private JLabel statusLight;
     private JComboBox<String> categoryComboBox;
     private JLabel favoriteCategoryLabel;
@@ -78,6 +80,7 @@ public class PerformanceStatisticsPanel extends JPanel {
         this.rootPath = rootPath;
         this.websiteAnalyzer = new WebsiteAnalyzer(rootPath);
         this.favoritesManager = new FavoritesManager(rootPath);
+        this.pdfButtons = new ArrayList<>();
         
         setLayout(new BorderLayout());
         setOpaque(false);
@@ -116,47 +119,70 @@ public class PerformanceStatisticsPanel extends JPanel {
     }
     
     /**
-     * Prüft, ob eine PDF-Analyse-Datei für diesen Provider existiert
-     * @return File-Objekt wenn PDF existiert, sonst null
+     * Sucht nach allen PDF-Analyse-Dateien für diesen Provider
+     * @return Liste aller gefundenen PDF-Dateien
      */
-    private File checkForPDFDocument() {
+    private List<File> findAllPDFDocuments() {
+        List<File> foundPDFs = new ArrayList<>();
+        
         // Erstelle den Pfad zum analysen-Ordner
         String analysenPath = rootPath + File.separator + "database" + File.separator + "analysen";
         File analysenDir = new File(analysenPath);
         
         if (!analysenDir.exists() || !analysenDir.isDirectory()) {
             System.out.println("Analysen-Ordner existiert nicht: " + analysenPath);
-            return null;
+            return foundPDFs;
         }
         
-        System.out.println("Suche nach PDF mit Provider-ID " + providerId + " in: " + analysenPath);
+        System.out.println("Suche nach PDFs mit Provider-ID " + providerId + " in: " + analysenPath);
         
         // Durchsuche alle PDF-Dateien im analysen-Ordner
         File[] pdfFiles = analysenDir.listFiles((dir, name) -> {
-            // Datei muss .pdf Extension haben und mit der Provider-ID enden
+            // Datei muss .pdf Extension haben und die Provider-ID enthalten
             return name.toLowerCase().endsWith(".pdf") && 
-                   name.substring(0, name.length() - 4).endsWith(providerId);
+                   name.contains(providerId);
         });
         
         if (pdfFiles != null && pdfFiles.length > 0) {
-            // Nehme die erste gefundene PDF-Datei
-            File foundPdf = pdfFiles[0];
-            System.out.println("PDF-Dokument gefunden: " + foundPdf.getName());
-            
-            // Falls mehrere PDFs gefunden wurden, logge das
-            if (pdfFiles.length > 1) {
-                System.out.println("Warnung: Mehrere PDF-Dateien für Provider " + providerId + " gefunden:");
-                for (File pdf : pdfFiles) {
-                    System.out.println("  - " + pdf.getName());
-                }
-                System.out.println("Verwende: " + foundPdf.getName());
+            for (File pdfFile : pdfFiles) {
+                foundPDFs.add(pdfFile);
+                System.out.println("PDF-Dokument gefunden: " + pdfFile.getName());
             }
             
-            return foundPdf;
+            System.out.println("Insgesamt " + foundPDFs.size() + " PDF-Dateien für Provider " + providerId + " gefunden");
+        } else {
+            System.out.println("Keine PDF-Dateien für Provider-ID " + providerId + " gefunden");
         }
         
-        System.out.println("Keine PDF-Datei für Provider-ID " + providerId + " gefunden");
-        return null;
+        return foundPDFs;
+    }
+    
+    /**
+     * Erstellt einen PDF-Button für eine spezifische PDF-Datei
+     * @param pdfFile Die PDF-Datei für die der Button erstellt werden soll
+     * @return Der erstellte JButton
+     */
+    private JButton createPDFButton(File pdfFile) {
+        // Button-Text ist der Dateiname ohne Extension
+        String pdfFileName = pdfFile.getName();
+        if (pdfFileName.endsWith(".pdf")) {
+            pdfFileName = pdfFileName.substring(0, pdfFileName.length() - 4);
+        }
+        
+        // Kürze den Namen wenn er zu lang ist (max 25 Zeichen)
+        if (pdfFileName.length() > 25) {
+            pdfFileName = pdfFileName.substring(0, 22) + "...";
+        }
+        
+        JButton pdfButton = UIStyle.createStyledButton("📄 " + pdfFileName);
+        pdfButton.setToolTipText("PDF-Analyse öffnen: " + pdfFile.getName());
+        pdfButton.setFont(UIStyle.BOLD_FONT);
+        pdfButton.setBackground(new Color(255, 165, 0)); // Orange Hintergrund
+        pdfButton.setForeground(Color.WHITE);
+        
+        pdfButton.addActionListener(e -> openPDFDocument(pdfFile));
+        
+        return pdfButton;
     }
     
     /**
@@ -361,24 +387,20 @@ public class PerformanceStatisticsPanel extends JPanel {
         
         favoritePanel.add(favoriteButton);
         
-        // PDF-Button prüfen und hinzufügen (NEUE FUNKTIONALITÄT)
-        File pdfFile = checkForPDFDocument();
-        if (pdfFile != null) {
-            // Button-Text ist der Dateiname ohne Extension
-            String pdfFileName = pdfFile.getName();
-            if (pdfFileName.endsWith(".pdf")) {
-                pdfFileName = pdfFileName.substring(0, pdfFileName.length() - 4);
+        // PDF-Buttons für alle gefundenen PDFs erstellen (ERWEITERTE FUNKTIONALITÄT)
+        List<File> pdfFiles = findAllPDFDocuments();
+        pdfButtons.clear(); // Liste zurücksetzen
+        
+        if (!pdfFiles.isEmpty()) {
+            System.out.println("Erstelle " + pdfFiles.size() + " PDF-Button(s) für Provider " + providerId);
+            
+            for (File pdfFile : pdfFiles) {
+                JButton pdfButton = createPDFButton(pdfFile);
+                pdfButtons.add(pdfButton);
+                favoritePanel.add(pdfButton);
             }
-            
-            pdfButton = UIStyle.createStyledButton("📄 " + pdfFileName);
-            pdfButton.setToolTipText("PDF-Analyse öffnen: " + pdfFile.getName());
-            pdfButton.setFont(UIStyle.BOLD_FONT);
-            pdfButton.setBackground(new Color(255, 165, 0)); // Orange Hintergrund
-            pdfButton.setForeground(Color.WHITE);
-            
-            pdfButton.addActionListener(e -> openPDFDocument(pdfFile));
-            
-            favoritePanel.add(pdfButton);
+        } else {
+            System.out.println("Keine PDF-Buttons erstellt - keine passenden PDFs gefunden für Provider " + providerId);
         }
         
         // Bad Provider Button
