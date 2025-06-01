@@ -1,5 +1,5 @@
-Tiefenanalyse der Handelsstrategie SmartTrading3
-Führe eine umfassende forensische Analyse durch (https://www.mql5.com/de/signals/2294111) durch. Nutze die bereitgestellten Trade-Daten für eine detaillierte Untersuchung folgender Aspekte:
+Tiefenanalyse der Handelsstrategie TradebrothersID
+Führe eine umfassende forensische Analyse durch (https://www.mql5.com/de/signals/2286476?source=Site+Signals+Subscriptions#!tab=account) durch. Nutze die bereitgestellten Trade-Daten für eine detaillierte Untersuchung folgender Aspekte:
 1. Risikomanagement-Analyse:
 •	Stop-Loss-Verwendung: Untersuche jeden Trade auf Hinweise für Stop-Loss-Nutzung. Analysiere: 
 o	Gibt es wiederkehrende Verlustmuster bei bestimmten Pip-Werten?
@@ -39,6 +39,11 @@ o	Schwachstellen bei extremen Marktbewegungen
 •	Analysiere ungewöhnliche Gewinn-/Verlustspitzen
 •	Identifiziere saisonale oder zyklische Muster
 •	Bewerte die Konsistenz über verschiedene Marktphasen
+Allgemeine Hinweise:
+nimm auch die daten von der webseite. 
+Nimm alles was du bekommen kannst, wie performance, drawdown-graphik, 
+und signalanbieterprofil und auch die Strategiebeschreibung und wenn es kundenbewertungen gibt dann auch die Kundenbewertungen
+
 Liefere die Analyse in folgendem Format:
 1.	Executive Summary (3-5 Kernerkenntnisse)
 2.	Detaillierte Befunde pro Kategorie
