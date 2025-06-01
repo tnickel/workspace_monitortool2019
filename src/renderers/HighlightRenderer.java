@@ -21,16 +21,30 @@ public class HighlightRenderer extends DefaultTableCellRenderer {
     private static final long serialVersionUID = 1L;
     private static final Logger LOGGER = Logger.getLogger(HighlightRenderer.class.getName());
     
-    private static final Color FAVORITE_COLOR = new Color(230, 255, 230); // Hellgrün
+    // Farben für die verschiedenen Favoritenklassen (1-10)
+    private static final Color[] FAVORITE_COLORS = {
+        new Color(144, 238, 144), // Kategorie 1 - Grün
+        new Color(255, 255, 153), // Kategorie 2 - Gelb
+        new Color(255, 165, 0),   // Kategorie 3 - Orange
+        new Color(255, 182, 193), // Kategorie 4 - Hellrot/Rosa
+        new Color(255, 160, 122), // Kategorie 5 - Lachsrot
+        new Color(255, 127, 127), // Kategorie 6 - Mittelrot
+        new Color(255, 107, 107), // Kategorie 7 - Etwas dunkler
+        new Color(255, 85, 85),   // Kategorie 8 - Noch dunkler
+        new Color(255, 68, 68),   // Kategorie 9 - Dunkler
+        new Color(255, 51, 51)    // Kategorie 10 - Dunkelrot
+    };
+    
     private static final Color BAD_PROVIDER_COLOR = new Color(255, 230, 230); // Hellrot
     private static final Color NEUTRAL_COLOR = Color.WHITE;
     
     private String searchText = "";
     private final FavoritesManager favoritesManager;
     
-    // Cache für Provider-Status und IDs, um wiederholte Abfragen zu vermeiden
+    // Cache für Provider-Status, IDs und Kategorien, um wiederholte Abfragen zu vermeiden
     private final Map<String, String> providerIdCache = new HashMap<>();
     private final Map<String, Boolean> favoriteCache = new HashMap<>();
+    private final Map<String, Integer> favoriteCategoryCache = new HashMap<>();
     private final Map<String, Boolean> badProviderCache = new HashMap<>();
     
     public HighlightRenderer() {
@@ -108,11 +122,27 @@ public class HighlightRenderer extends DefaultTableCellRenderer {
             // Bad Provider hat Vorrang vor Favorit
             label.setBackground(BAD_PROVIDER_COLOR);
         } else if (isProviderFavorite(providerId)) {
-            // Favorit
-            label.setBackground(FAVORITE_COLOR);
+            // Favorit - hole die Kategorie und setze entsprechende Farbe
+            int category = getFavoriteCategory(providerId);
+            Color favoriteColor = getFavoriteColorForCategory(category);
+            label.setBackground(favoriteColor);
         } else {
             // Neutrale Farbe (weder Favorit noch Bad Provider)
             label.setBackground(NEUTRAL_COLOR);
+        }
+    }
+    
+    /**
+     * Gibt die Farbe für eine bestimmte Favoritenklasse zurück
+     * @param category Die Favoritenklasse (1-10)
+     * @return Die entsprechende Farbe oder Standard-Favoriten-Farbe bei ungültiger Kategorie
+     */
+    private Color getFavoriteColorForCategory(int category) {
+        if (category >= 1 && category <= 10) {
+            return FAVORITE_COLORS[category - 1]; // Array ist 0-basiert, Kategorien sind 1-basiert
+        } else {
+            // Fallback auf erste Farbe bei ungültiger Kategorie
+            return FAVORITE_COLORS[0];
         }
     }
     
@@ -146,6 +176,23 @@ public class HighlightRenderer extends DefaultTableCellRenderer {
         boolean isFavorite = currentFavoritesManager.isFavorite(providerId);
         favoriteCache.put(providerId, isFavorite);
         return isFavorite;
+    }
+    
+    /**
+     * Holt die Favoritenklasse eines Providers (mit Caching)
+     * @param providerId Die Provider-ID
+     * @return Die Favoritenklasse (1-10) oder 0 wenn kein Favorit
+     */
+    private int getFavoriteCategory(String providerId) {
+        if (favoriteCategoryCache.containsKey(providerId)) {
+            return favoriteCategoryCache.get(providerId);
+        }
+        
+        // Hole immer die neueste Instance des FavoritesManager
+        FavoritesManager currentFavoritesManager = FavoritesManager.getInstance(ApplicationConstants.ROOT_PATH);
+        int category = currentFavoritesManager.getFavoriteCategory(providerId);
+        favoriteCategoryCache.put(providerId, category);
+        return category;
     }
     
     /**
@@ -185,11 +232,12 @@ public class HighlightRenderer extends DefaultTableCellRenderer {
     }
     
     /**
-     * Leert alle Caches für Provider-Status und IDs
+     * Leert alle Caches für Provider-Status, IDs und Kategorien
      */
     public void clearCache() {
         providerIdCache.clear();
         favoriteCache.clear();
+        favoriteCategoryCache.clear();
         badProviderCache.clear();
         LOGGER.info("HighlightRenderer-Caches geleert");
     }
