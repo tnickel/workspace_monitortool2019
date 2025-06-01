@@ -12,8 +12,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 
@@ -84,6 +87,42 @@ public class ReportGenerator {
                 LOGGER.info("Report-Verzeichnis erfolgreich erstellt: " + reportDir.getAbsolutePath());
             }
         }
+    }
+    
+    /**
+     * Hilfsmethode zur Sortierung der Provider nach Kategorien und dann alphabetisch
+     * 
+     * @param providerStats Map mit den Providern und ihren Statistiken
+     * @return Sortierte Liste der Provider-Einträge
+     */
+    private List<Map.Entry<String, ProviderStats>> getSortedProviderList(Map<String, ProviderStats> providerStats) {
+        List<Map.Entry<String, ProviderStats>> sortedList = new ArrayList<>(providerStats.entrySet());
+        
+        // Sortierung: Erst nach Kategorie (1, 2, 3, ...), dann alphabetisch nach Provider-Namen
+        sortedList.sort(new Comparator<Map.Entry<String, ProviderStats>>() {
+            @Override
+            public int compare(Map.Entry<String, ProviderStats> entry1, Map.Entry<String, ProviderStats> entry2) {
+                String providerName1 = entry1.getKey();
+                String providerName2 = entry2.getKey();
+                
+                String providerId1 = extractProviderId(providerName1);
+                String providerId2 = extractProviderId(providerName2);
+                
+                int category1 = favoritesManager.getFavoriteCategory(providerId1);
+                int category2 = favoritesManager.getFavoriteCategory(providerId2);
+                
+                // Zuerst nach Kategorie sortieren
+                int categoryComparison = Integer.compare(category1, category2);
+                if (categoryComparison != 0) {
+                    return categoryComparison;
+                }
+                
+                // Wenn gleiche Kategorie, dann alphabetisch nach Provider-Namen
+                return providerName1.compareTo(providerName2);
+            }
+        });
+        
+        return sortedList;
     }
     
     /**
@@ -169,6 +208,9 @@ public class ReportGenerator {
             }
         }
         
+        // Sortierte Provider-Liste erstellen
+        List<Map.Entry<String, ProviderStats>> sortedProviders = getSortedProviderList(filteredProviders);
+        
         // Dateiname und Pfad für den Report
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd_HHmmss");
         String timestamp = dateFormat.format(new Date());
@@ -196,7 +238,8 @@ public class ReportGenerator {
             writer.write("<div class=\"toc\">\n");
             writer.write("<h2>Inhaltsverzeichnis</h2>\n");
             writer.write("<ul>\n");
-            for (String providerName : filteredProviders.keySet()) {
+            for (Map.Entry<String, ProviderStats> entry : sortedProviders) {
+                String providerName = entry.getKey();
                 String providerId = extractProviderId(providerName);
                 // Kategorie anzeigen, wenn alle Kategorien angezeigt werden
                 String categoryInfo = "";
@@ -212,8 +255,8 @@ public class ReportGenerator {
             // Hauptinhalt mit Provider-Informationen
             writer.write("<div class=\"main-content\">\n");
             
-            // Für jeden Provider im Report
-            for (Map.Entry<String, ProviderStats> entry : filteredProviders.entrySet()) {
+            // Für jeden Provider im Report (jetzt sortiert)
+            for (Map.Entry<String, ProviderStats> entry : sortedProviders) {
                 String providerName = entry.getKey();
                 ProviderStats stats = entry.getValue();
                 String providerId = extractProviderId(providerName);
@@ -344,6 +387,9 @@ public class ReportGenerator {
             return null;
         }
         
+        // Sortierte Provider-Liste erstellen
+        List<Map.Entry<String, ProviderStats>> sortedProviders = getSortedProviderList(providerStats);
+        
         try {
             // Report-Verzeichnis für Bilder
             String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
@@ -361,7 +407,8 @@ public class ReportGenerator {
                 writer.write("<div class=\"toc\">\n");
                 writer.write("<h2>Inhaltsverzeichnis</h2>\n");
                 writer.write("<ul>\n");
-                for (String providerName : providerStats.keySet()) {
+                for (Map.Entry<String, ProviderStats> entry : sortedProviders) {
+                    String providerName = entry.getKey();
                     String providerId = extractProviderId(providerName);
                     
                     // Kategorie anzeigen, wenn es ein Favorit ist
@@ -376,8 +423,8 @@ public class ReportGenerator {
                 // Hauptinhalt mit Provider-Informationen
                 writer.write("<div class=\"main-content\">\n");
                 
-                // Für jeden Provider im Report
-                for (Map.Entry<String, ProviderStats> entry : providerStats.entrySet()) {
+                // Für jeden Provider im Report (jetzt sortiert)
+                for (Map.Entry<String, ProviderStats> entry : sortedProviders) {
                     String providerName = entry.getKey();
                     ProviderStats stats = entry.getValue();
                     String providerId = extractProviderId(providerName);
