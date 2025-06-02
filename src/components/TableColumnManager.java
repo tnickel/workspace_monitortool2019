@@ -96,7 +96,7 @@ public class TableColumnManager {
 
     private void setDefaultColumnVisibility() {
         // Standardeinstellungen: Nur wichtige Spalten anzeigen, andere ausblenden
-        // Beispiel: Spalten 0, 1, 3, 4, 8, 11, 14, 19 sind sichtbar (Index-basiert)
+        // Beispiel: Spalten 0, 1, 3, 4, 8, 11, 15, 20, 21 sind sichtbar (Index-basiert)
         for (int i = 0; i < table.getColumnCount(); i++) {
             String columnName = table.getColumnName(i);
             
@@ -112,8 +112,9 @@ public class TableColumnManager {
             }
             
             // Wichtige Spalten standardmäßig sichtbar lassen
+            // Aktualisiert für die neue Spalten-Reihenfolge mit Risiko an Position 20
             boolean isStandardVisible = (i <= 1) || (i == 3) || (i == 4) || (i == 8) || 
-                                       (i == 11) || (i == 14) || (i == 19);
+                                       (i == 11) || (i == 15) || (i == 20) || (i == 21);
             
             if (!isStandardVisible) {
                 // Spalte verstecken

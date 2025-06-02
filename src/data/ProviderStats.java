@@ -19,6 +19,7 @@ public class ProviderStats {
     private boolean hasTakeProfit = false;
     private String signalProvider;
     private String signalProviderURL;
+    private int riskCategory = 0; // Neu: Risiko-Kategorie (0-10)
     
     public ProviderStats() {
         this.trades = new ArrayList<>();
@@ -38,6 +39,24 @@ public class ProviderStats {
 
     public String getSignalProviderURL() {
         return signalProviderURL;
+    }
+
+    /**
+     * Setzt die Risiko-Kategorie für diesen Provider
+     * @param riskCategory Risiko-Kategorie von 0-10 (0 = kein Risiko gesetzt)
+     */
+    public void setRiskCategory(int riskCategory) {
+        if (riskCategory >= 0 && riskCategory <= 10) {
+            this.riskCategory = riskCategory;
+        }
+    }
+
+    /**
+     * Gibt die Risiko-Kategorie zurück
+     * @return Risiko-Kategorie (0-10)
+     */
+    public int getRiskCategory() {
+        return riskCategory;
     }
 
     public void setInitialBalance(double balance) {

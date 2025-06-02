@@ -65,6 +65,16 @@ public class FilterCriteria implements Serializable
                 continue;
             }
             
+            // Spezielle Behandlung für Risiko-Spalte (Index 20)
+            if (column == 20) {
+                // Risiko-Wert aus ProviderStats holen, da in der Tabelle als String dargestellt
+                int riskValue = stats.getRiskCategory();
+                if (!range.matches(riskValue)) {
+                    return false;
+                }
+                continue;
+            }
+            
             if (!range.matches(rowData[column]))
             {
                 return false;

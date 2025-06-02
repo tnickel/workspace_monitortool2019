@@ -39,7 +39,7 @@ public class FilterDialog extends JDialog {
     	    "No.", "Signal Provider", "Balance", "3MPDD", "6MPDD", "9MPDD", "12MPDD", 
     	    "3MProfProz", "Trades", "Trade Days", "Days", "Win Rate %", "Total Profit", 
     	    "Avg Profit/Trade", "Max Drawdown %", "Equity Drawdown %", 
-    	    "Profit Factor", "MaxTrades", "MaxLots", "Max Duration (h)", 
+    	    "Profit Factor", "MaxTrades", "MaxLots", "Max Duration (h)", "Risiko",
     	    "Risk Score", "S/L", "T/P", "Start Date", "End Date", "Stabilitaet", "Steigung", "MaxDDGraphic"
     	};
 
@@ -71,7 +71,7 @@ public class FilterDialog extends JDialog {
                     String strValue = value.toString().trim();
                     
                     // Für Text-Spalten (Signal Provider, Start Date, End Date)
-                    if (row == 1 || row == 23 || row == 24) {
+                    if (row == 1 || row == 24 || row == 25) {
                         super.setValueAt(strValue, row, col);
                         return;
                     }
@@ -135,7 +135,7 @@ public class FilterDialog extends JDialog {
                         int row = filterTable.getEditingRow();
                         String rowName = (String) filterTable.getValueAt(row, 0);
                         
-                        if (!(row == 1 || row == 23 || row == 24)) {  // Nicht für Text-Spalten
+                        if (!(row == 1 || row == 24 || row == 25)) {  // Nicht für Text-Spalten
                             Double.parseDouble(value);
                         }
                     }
@@ -269,6 +269,9 @@ public class FilterDialog extends JDialog {
         // MaxEquityDrawdown % < 15%
         defaultValues.put("Equity Drawdown %", new Object[]{null, 15.0});
         
+        // Risiko <= 5 (Neue Standardeinstellung)
+        defaultValues.put("Risiko", new Object[]{null, 5.0});
+        
         // Über alle Zeilen gehen und Standardwerte setzen wo vorhanden
         for (int row = 0; row < filterTable.getRowCount(); row++) {
             String columnName = (String) filterTable.getValueAt(row, 0);
@@ -336,7 +339,7 @@ public class FilterDialog extends JDialog {
             if (columnId == -1) continue;
             
             // Textfilter für Signal Provider, Start Date und End Date
-            if (columnId == 1 || columnId == 23 || columnId == 24) {
+            if (columnId == 1 || columnId == 24 || columnId == 25) {
                 if (!minStr.isEmpty()) {
                     criteria.addFilter(columnId, new FilterRange(minStr));
                     hasAnyFilter = true;

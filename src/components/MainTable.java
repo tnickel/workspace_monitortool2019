@@ -22,6 +22,7 @@ import models.FilterCriteria;
 import models.HighlightTableModel;
 import renderers.HighlightRenderer;
 import renderers.NumberFormatRenderer;
+import renderers.RisikoRenderer;
 import renderers.RiskScoreRenderer;
 import services.ProviderHistoryService;
 import utils.ApplicationConstants;
@@ -164,18 +165,29 @@ public class MainTable extends JTable {
     /**
      * Richtet die Renderer ein
      */
+    /**
+     * Richtet die Renderer ein
+     */
     private void setupRenderers() {
         // Erstelle einen NumberFormatRenderer, der den HighlightRenderer verwendet
         NumberFormatRenderer numberRenderer = new NumberFormatRenderer(renderer);
         
-        // Setze die Renderer für die Spalten
+        // Erstelle RisikoRenderer mit HighlightRenderer als Basis
+        RisikoRenderer risikoRenderer = new RisikoRenderer(renderer);
+        
+        // Setze die Renderer für die Spalten basierend auf dem Spaltennamen
         for (int i = 0; i < getColumnCount(); i++) {
-            // Risk Score Spalte (Spalte 20) verwendet den speziellen RiskScoreRenderer
-            if (i == 20) {
+            String columnName = getColumnName(i);
+            
+            // Nach Spaltenname prüfen, nicht nach Index!
+            if ("Risiko".equals(columnName)) {
+                getColumnModel().getColumn(i).setCellRenderer(risikoRenderer);
+            }
+            else if ("Risk Score".equals(columnName)) {
                 getColumnModel().getColumn(i).setCellRenderer(riskRenderer);
             }
-            // Spalte 0 (No) und 1 (Signal Provider) verwenden den Standard-Renderer
-            else if (i == 0 || i == 1) {
+            // Spalte No und Signal Provider verwenden den Standard-Renderer
+            else if ("No.".equals(columnName) || "Signal Provider".equals(columnName)) {
                 getColumnModel().getColumn(i).setCellRenderer(renderer);
             }
             // Alle anderen Spalten sind numerisch und verwenden den NumberFormatRenderer

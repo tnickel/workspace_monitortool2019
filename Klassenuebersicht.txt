@@ -1,20 +1,21 @@
 ## Data Layer
 data.DataManager | Zentrale Klasse für das Laden und Verarbeiten von CSV-Handelsdaten. Verarbeitet sowohl MQL5- als auch Standard-MT4-Formate
 data.FavoritesManager | Verwaltung von Provider-Favoriten mit Kategorien (1-10), Backup-System und Change-Listener für UI-Updates
-data.ProviderStats | Model-Klasse für statistische Kennzahlen eines Signal-Providers (Profit, Drawdown, Win-Rate, Concurrent Trades)
+data.ProviderStats | Model-Klasse für statistische Kennzahlen eines Signal-Providers (Profit, Drawdown, Win-Rate, Concurrent Trades, Risiko-Kategorie)
 data.Trade | Datenmodell für einzelne Handelstransaktionen mit allen relevanten Parametern (Open/Close, Lots, Profit, etc.)
 data.TradeComparator | Comparator für die Sortierung von Trades nach Öffnungszeit
 
 ## Database Layer
-db.HistoryDatabaseManager | H2-Datenbankmanager für historische Statistik-Werte mit Backup-System, Integritätsprüfung und Provider-Notizen
+db.HistoryDatabaseManager | H2-Datenbankmanager für historische Statistik-Werte mit Backup-System, Integritätsprüfung, Provider-Notizen und Risiko-Kategorien
 
 ## Models
-models.FilterCriteria | Modell für Filterkriterien mit Speicher-/Ladefunktionalität und Währungspaar-Filter
-models.HighlightTableModel | Spezialisiertes TableModel für die Haupttabelle mit MPDD-Berechnungen, Trend-Analysen und Tooltip-Generierung
+models.FilterCriteria | Modell für Filterkriterien mit Speicher-/Ladefunktionalität, Währungspaar-Filter und Risiko-Filter
+models.HighlightTableModel | Spezialisiertes TableModel für die Haupttabelle mit MPDD-Berechnungen, Trend-Analysen, Risiko-Spalte und Tooltip-Generierung
 
 ## Renderers
 renderers.HighlightRenderer | Basis-Renderer für farbliche Hervorhebung von Favoriten und Bad Providern mit Cache-System
 renderers.NumberFormatRenderer | Renderer für Zahlenformatierung mit maximal 2 Dezimalstellen
+renderers.RisikoRenderer | Spezieller Renderer für Risiko-Kategorien (0-10) mit zentrierter Anzeige, Tooltips und HighlightRenderer-Integration
 renderers.RiskScoreRenderer | Spezieller Renderer für Risiko-Scores mit farblichen Abstufungen (grün bis rot)
 
 ## Reports
@@ -65,7 +66,7 @@ charts.ThreeMonthProfitChart | 3MPDD-Verlaufsanalyse mit monatlicher Aggregation
 charts.TradeStackingChart | Doppelachsen-Visualisierung für simultane Trade- und Lots-Entwicklung mit vergrößerter Darstellung
 charts.WeeklyLotsizeChart | Wöchentliche Risiko-Exposition durch Lot-Größen-Analyse mit Martingale-Pattern-Erkennung
 Components Layer - Core UI
-components.MainTable | Zentrale Tabellen-Komponente mit delegierter Architektur, umfassendem Event-Handling und Multi-Manager-Integration
+components.MainTable | Zentrale Tabellen-Komponente mit delegierter Architektur, umfassendem Event-Handling, Multi-Manager-Integration und Risiko-Renderer-Support
 components.ChartsPanel | Container-Panel für Chart-Kombinationen mit Grid-Layout-Management
 components.LoadingPanel | Animierte Fortschrittsanzeige mit konfigurierbaren Nachrichten und Timer-basierter Animation
 components.SearchPanel | Suchfunktionalität mit Live-Highlighting, Suchergebnisnavigation und Dokumentlistener-Integration
@@ -80,7 +81,7 @@ components.WebViewPanel | JavaFX-WebView-Integration für Provider-Webseiten mit
 Components Layer - Table Management
 components.FavoritesFilterManager | Kategorisierte Favoriten-Filterung mit Provider-ID-Extraktion, Cache-System und Auto-Update-Funktionalität
 components.TableButtonFactory | Zentrale Button-Erstellung für Tabellen-Aktionen mit Thread-sicherer Report-Generierung und Status-Callbacks
-components.TableColumnManager | Persistente Spalten-Sichtbarkeitsverwaltung mit Properties-basierter Speicherung und Standardkonfiguration
+components.TableColumnManager | Persistente Spalten-Sichtbarkeitsverwaltung mit Properties-basierter Speicherung, Standardkonfiguration und Risiko-Spalten-Support
 components.TableEventHandler | Event-Delegation für Maus-/Keyboard-Interaktionen mit Doppelklick-Behandlung und Delete-Key-Support
 components.TableFilterManager | Fortschrittsbasierte Filteranwendung mit SwingWorker-Threading und dynamischer Datensatz-Evaluation
 components.TableProviderManager | Provider-Lifecycle-Management mit Multi-Format-Dateierkennung, Batch-Löschung und Cache-Invalidierung
@@ -98,7 +99,7 @@ ui.CompareOpenTradesDialog | Dialog zum Vergleichen offener Trades mit Charts f�
 ui.DatabaseViewerDialog | Dialog zur Anzeige aller Provider-Historie-Einträge mit Filterung nach Statistik-Typ
 ui.DeleteProviderDialog | Dialog zum sicheren Löschen von Signal Providern mit Verschiebung in "deleted"-Ordner
 ui.EquityDrawdownDialog | Dialog für Equity Drawdown-Vergleich mit benutzerdefinierten Charts und Y-Achsen-Skalierung
-ui.FilterDialog | Dialog für Filtereinstellungen mit Validierung, Währungspaar-Filter und Clean/Reset-Funktionen
+ui.FilterDialog | Dialog für Filtereinstellungen mit Validierung, Währungspaar-Filter, Risiko-Filter und Clean/Reset-Funktionen
 ui.ForceDbSaveDialog | Dialog zum manuellen Erzwingen der Datenbank-Speicherung mit Backup-Erstellung und Progress-Anzeige
 ui.LoadingDialog | Modaler Dialog mit Fortschrittsbalken für langwierige Operationen ohne Fensterrahmen
 ui.PerformanceAnalysisDialog | Hauptdialog für detaillierte Provider-Analyse mit Statistiken, Charts und Notizen
@@ -112,7 +113,7 @@ ui.components.ChartPanel | Dekorationsklasse für Chart-Komponenten mit einheitl
 ui.components.ChartsPanelFactory | Factory zur Erstellung aller Chart-Panels für die Performance-Analyse mit Standard- und Spezial-Charts
 ui.components.FavoritesCategorySelector | UI-Komponente für die Auswahl von Favoriten-Kategorien (1-10) mit ComboBox
 ui.components.MenuManager | Manager für die Menüleiste mit Datei-, Datenbank-, Ansicht-, Debug- und Hilfe-Menüs
-ui.components.PerformanceStatisticsPanel | Panel für Provider-Statistiken mit Favoriten-Management, Bad-Provider-Markierung und Website-Status
+ui.components.PerformanceStatisticsPanel | Panel für Provider-Statistiken mit Favoriten-Management, Risiko-Kategorien-Auswahl, Bad-Provider-Markierung und Website-Status
 ui.components.ProviderNotesPanel | Panel zum Anzeigen und Bearbeiten von Provider-Notizen mit Datenbank-Persistierung
 ui.components.SearchManager | Manager für die Suchfunktionalität mit Live-Highlighting und Tastatur-Navigation
 ui.components.ToolbarManager | Manager für Toolbar und Reporting-Funktionen mit Filter-, Such- und Report-Generierung

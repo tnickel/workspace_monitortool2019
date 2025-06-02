@@ -41,11 +41,12 @@ public class HistoryDatabaseManager {
     	    "FOREIGN KEY (provider_id) REFERENCES signal_providers(provider_id), " +
     	    "UNIQUE (provider_id, stat_type, recorded_date))";
     
-    // Neue Tabelle für Provider-Notizen
+    // Erweiterte Tabelle für Provider-Notizen und Risiko-Kategorie
     private static final String CREATE_PROVIDER_NOTES_TABLE = 
             "CREATE TABLE IF NOT EXISTS provider_notes (" +
             "provider_id INT PRIMARY KEY, " +
             "notes TEXT, " +
+            "risk_category INT DEFAULT 0, " +
             "last_updated TIMESTAMP, " +
             "FOREIGN KEY (provider_id) REFERENCES signal_providers(provider_id))";
     
@@ -136,6 +137,9 @@ public class HistoryDatabaseManager {
             // Erstelle alle Tabellen
             createDatabaseSchema();
             
+            // Aktualisiere Tabellenschema falls nötig
+            updateDatabaseSchema();
+            
             LOGGER.info("Provider History Datenbank erfolgreich initialisiert: " + dbPath);
         } catch (ClassNotFoundException | SQLException e) {
             LOGGER.severe("Fehler beim Initialisieren der Datenbank: " + e.getMessage());
@@ -168,6 +172,24 @@ public class HistoryDatabaseManager {
             
             // Prüfen, ob alle Tabellen existieren
             checkTables();
+        }
+    }
+    
+    /**
+     * Aktualisiert das Datenbankschema für die Risiko-Kategorie-Funktion
+     */
+    private void updateDatabaseSchema() throws SQLException {
+        try (Statement stmt = connection.createStatement()) {
+            // Prüfe, ob die risk_category Spalte bereits existiert
+            ResultSet rs = connection.getMetaData().getColumns(null, null, "PROVIDER_NOTES", "RISK_CATEGORY");
+            boolean riskColumnExists = rs.next();
+            
+            if (!riskColumnExists) {
+                // Füge die risk_category Spalte hinzu
+                stmt.execute("ALTER TABLE provider_notes ADD COLUMN risk_category INT DEFAULT 0");
+                logDbChange("ALTER", "provider_notes", "Spalte risk_category hinzugefügt");
+                LOGGER.info("Spalte risk_category zur Tabelle provider_notes hinzugefügt");
+            }
         }
     }
     
@@ -634,7 +656,7 @@ public class HistoryDatabaseManager {
             // SQL für Insert oder Update
             String sql = exists ? 
                     "UPDATE provider_notes SET notes = ?, last_updated = ? WHERE provider_id = ?" :
-                    "INSERT INTO provider_notes (provider_id, notes, last_updated) VALUES (?, ?, ?)";
+                    "INSERT INTO provider_notes (provider_id, notes, risk_category, last_updated) VALUES (?, ?, 0, ?)";
             
             try (PreparedStatement stmt = connection.prepareStatement(sql)) {
                 if (exists) {
@@ -700,6 +722,112 @@ public class HistoryDatabaseManager {
             LOGGER.severe("Fehler beim Laden der Notizen: " + e.getMessage());
             e.printStackTrace();
             return "";
+        }
+    }
+    
+    /**
+     * Speichert die Risiko-Kategorie für einen Signal Provider
+     * 
+     * @param providerName Name des Signal Providers
+     * @param riskCategory Die Risiko-Kategorie (0-10, wobei 0 = kein Risiko gesetzt)
+     * @return true wenn die Risiko-Kategorie erfolgreich gespeichert wurde
+     */
+    public boolean saveProviderRiskCategory(String providerName, int riskCategory) {
+        if (connection == null) {
+            LOGGER.warning("Keine Datenbankverbindung verfügbar");
+            return false;
+        }
+        
+        // Validiere Risiko-Kategorie
+        if (riskCategory < 0 || riskCategory > 10) {
+            LOGGER.warning("Ungültige Risiko-Kategorie: " + riskCategory + ". Erlaubt sind Werte von 0-10.");
+            return false;
+        }
+        
+        try {
+            // Provider-ID holen oder erstellen
+            int providerId = getOrCreateProvider(providerName);
+            
+            // Prüfen, ob bereits ein Eintrag existiert
+            boolean exists = false;
+            try (PreparedStatement checkStmt = connection.prepareStatement(
+                    "SELECT COUNT(*) FROM provider_notes WHERE provider_id = ?")) {
+                checkStmt.setInt(1, providerId);
+                ResultSet rs = checkStmt.executeQuery();
+                if (rs.next()) {
+                    exists = rs.getInt(1) > 0;
+                }
+            }
+            
+            // SQL für Insert oder Update
+            String sql = exists ? 
+                    "UPDATE provider_notes SET risk_category = ?, last_updated = ? WHERE provider_id = ?" :
+                    "INSERT INTO provider_notes (provider_id, notes, risk_category, last_updated) VALUES (?, '', ?, ?)";
+            
+            try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+                if (exists) {
+                    stmt.setInt(1, riskCategory);
+                    stmt.setObject(2, LocalDateTime.now());
+                    stmt.setInt(3, providerId);
+                } else {
+                    stmt.setInt(1, providerId);
+                    stmt.setInt(2, riskCategory);
+                    stmt.setObject(3, LocalDateTime.now());
+                }
+                stmt.executeUpdate();
+                
+                // Log die Änderung
+                logDbChange(exists ? "UPDATE" : "INSERT", "provider_notes", 
+                        "Risiko-Kategorie " + riskCategory + " für Provider " + providerName + " gesetzt");
+                
+                LOGGER.info("Risiko-Kategorie " + riskCategory + " für Provider " + providerName + " erfolgreich gespeichert");
+                return true;
+            }
+        } catch (SQLException e) {
+            LOGGER.severe("Fehler beim Speichern der Risiko-Kategorie: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    /**
+     * Lädt die Risiko-Kategorie für einen Signal Provider
+     * 
+     * @param providerName Name des Signal Providers
+     * @return Die gespeicherte Risiko-Kategorie oder 0, wenn keine gesetzt ist
+     */
+    public int getProviderRiskCategory(String providerName) {
+        if (connection == null) {
+            LOGGER.warning("Keine Datenbankverbindung verfügbar");
+            return 0;
+        }
+        
+        try {
+            // Provider-ID holen
+            try (PreparedStatement stmt = connection.prepareStatement(GET_PROVIDER_ID)) {
+                stmt.setString(1, providerName);
+                ResultSet rs = stmt.executeQuery();
+                if (rs.next()) {
+                    int providerId = rs.getInt(1);
+                    
+                    // Risiko-Kategorie abfragen
+                    try (PreparedStatement riskStmt = connection.prepareStatement(
+                            "SELECT risk_category FROM provider_notes WHERE provider_id = ?")) {
+                        riskStmt.setInt(1, providerId);
+                        ResultSet riskRs = riskStmt.executeQuery();
+                        if (riskRs.next()) {
+                            return riskRs.getInt(1);
+                        }
+                    }
+                }
+            }
+            
+            // Keine Risiko-Kategorie gefunden
+            return 0;
+        } catch (SQLException e) {
+            LOGGER.severe("Fehler beim Laden der Risiko-Kategorie: " + e.getMessage());
+            e.printStackTrace();
+            return 0;
         }
     }
     

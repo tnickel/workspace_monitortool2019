@@ -29,6 +29,7 @@ import javax.swing.border.LineBorder;
 
 import data.FavoritesManager;
 import data.ProviderStats;
+import db.HistoryDatabaseManager;
 import ui.TradeListFrame;
 import ui.dialogs.DatabaseInfoDialog;
 import ui.dialogs.PDFViewerDialog;
@@ -54,6 +55,7 @@ public class PerformanceStatisticsPanel extends JPanel {
     private final HtmlDatabase htmlDatabase;
     private final WebsiteAnalyzer websiteAnalyzer;
     private final FavoritesManager favoritesManager;
+    private final HistoryDatabaseManager dbManager;
     
     // UI-Komponenten
     private JButton favoriteButton;
@@ -62,6 +64,10 @@ public class PerformanceStatisticsPanel extends JPanel {
     private JLabel statusLight;
     private JComboBox<String> categoryComboBox;
     private JLabel favoriteCategoryLabel;
+    
+    // Neue UI-Komponenten für Risiko
+    private JComboBox<String> riskCategoryComboBox;
+    private JLabel riskCategoryLabel;
     
     // Statusfarben für die Webseite
     private static final Color STATUS_GREEN = new Color(0, 180, 0);
@@ -80,6 +86,7 @@ public class PerformanceStatisticsPanel extends JPanel {
         this.rootPath = rootPath;
         this.websiteAnalyzer = new WebsiteAnalyzer(rootPath);
         this.favoritesManager = new FavoritesManager(rootPath);
+        this.dbManager = HistoryDatabaseManager.getInstance(rootPath);
         this.pdfButtons = new ArrayList<>();
         
         setLayout(new BorderLayout());
@@ -387,6 +394,29 @@ public class PerformanceStatisticsPanel extends JPanel {
         
         favoritePanel.add(favoriteButton);
         
+        // Risiko-Auswahl hinzufügen
+        int currentRiskCategory = dbManager.getProviderRiskCategory(providerName);
+        stats.setRiskCategory(currentRiskCategory);
+        
+        riskCategoryLabel = new JLabel("Risiko: ");
+        favoritePanel.add(riskCategoryLabel);
+        
+        riskCategoryComboBox = new JComboBox<>(createRiskCategoryOptions());
+        riskCategoryComboBox.setSelectedIndex(currentRiskCategory);
+        UIStyle.applyStylesToComboBox(riskCategoryComboBox);
+        
+        riskCategoryComboBox.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                int selectedRiskCategory = riskCategoryComboBox.getSelectedIndex();
+                dbManager.saveProviderRiskCategory(providerName, selectedRiskCategory);
+                stats.setRiskCategory(selectedRiskCategory);
+                System.out.println("Risiko-Kategorie " + selectedRiskCategory + " für Provider " + providerName + " gesetzt");
+            }
+        });
+        
+        favoritePanel.add(riskCategoryComboBox);
+        
         // PDF-Buttons für alle gefundenen PDFs erstellen (ERWEITERTE FUNKTIONALITÄT)
         List<File> pdfFiles = findAllPDFDocuments();
         pdfButtons.clear(); // Liste zurücksetzen
@@ -577,6 +607,19 @@ public class PerformanceStatisticsPanel extends JPanel {
     }
     
     /**
+     * Erstellt die Optionen für die Risiko-Kategorie-Auswahl
+     * @return Array mit Risiko-Kategorienamen
+     */
+    private String[] createRiskCategoryOptions() {
+        String[] options = new String[11]; // 0-10
+        options[0] = "Kein Risiko";
+        for (int i = 1; i <= 10; i++) {
+            options[i] = "Risiko " + i;
+        }
+        return options;
+    }
+    
+    /**
      * Fügt ein Statistik-Feld zum Panel hinzu
      */
     private void addStatField(JPanel panel, String label, String value) {
@@ -648,5 +691,17 @@ public class PerformanceStatisticsPanel extends JPanel {
     public void setFavoriteCategory(int category) {
         favoritesManager.setFavoriteCategory(providerId, category);
         updateFavoriteUI(category > 0);
+    }
+    
+    /**
+     * Setzt die Risiko-Kategorie für diesen Provider
+     * @param riskCategory Die Risiko-Kategorie (0-10)
+     */
+    public void setRiskCategory(int riskCategory) {
+        dbManager.saveProviderRiskCategory(providerName, riskCategory);
+        stats.setRiskCategory(riskCategory);
+        if (riskCategoryComboBox != null) {
+            riskCategoryComboBox.setSelectedIndex(riskCategory);
+        }
     }
 }

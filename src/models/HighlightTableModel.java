@@ -11,6 +11,7 @@ import javax.swing.table.DefaultTableModel;
 
 import data.ProviderStats;
 import data.Trade;
+import db.HistoryDatabaseManager;
 import services.RiskAnalysisServ;
 import utils.HtmlDatabase;
 
@@ -20,12 +21,13 @@ public class HighlightTableModel extends DefaultTableModel {
 		    "No.", "Signal Provider", "Balance", "3MPDD", "6MPDD", "9MPDD", "12MPDD", 
 		    "3MProfProz", "Trades", "Trade Days", "Days", "Win Rate %", "Total Profit", 
 		    "Avg Profit/Trade", "Max Drawdown %", "Equity Drawdown %", "Profit Factor", 
-		    "MaxTrades", "MaxLots", "Max Duration (h)", "Risk Score", "S/L", "T/P", 
+		    "MaxTrades", "MaxLots", "Max Duration (h)", "Risiko", "Risk Score", "S/L", "T/P", 
 		    "Start Date", "End Date", "Stabilitaet", "Steigung", "MaxDDGraphic", "EquityDrawdown3M%"
 		};
 
   
   private final HtmlDatabase htmlDatabase;
+  private final HistoryDatabaseManager dbManager;
   
   @Override
   public boolean isCellEditable(int row, int column) {
@@ -35,6 +37,7 @@ public class HighlightTableModel extends DefaultTableModel {
   public HighlightTableModel(String rootPath) {
       super(COLUMN_NAMES, 0);
       this.htmlDatabase = new HtmlDatabase(rootPath);
+      this.dbManager = HistoryDatabaseManager.getInstance(rootPath);
   }
 
   public HtmlDatabase getHtmlDatabase() {
@@ -50,11 +53,11 @@ public class HighlightTableModel extends DefaultTableModel {
           case 8:  // Trades
           case 9:  // Trade Days
           case 10: // Days
-          case 16: // MaxTrades
-          case 18: // Max Duration
-          case 19: // Risk Score
-          case 20: // S/L
-          case 21: // T/P
+          case 17: // MaxTrades
+          case 19: // Max Duration
+          case 21: // Risk Score
+          case 22: // S/L
+          case 23: // T/P
               return Integer.class;
           case 2:  // Balance
           case 3:  // 3MPDD
@@ -67,11 +70,12 @@ public class HighlightTableModel extends DefaultTableModel {
           case 13: // Avg Profit/Trade
           case 14: // Max Drawdown
           case 15: // Equity Drawdown
-          case 17: // MaxLots
-          case 25: // Stabilität
-          case 26: // Steigung
-          case 27: // MaxDDGraphic
-          case 28: // EquityDrawdown3M%
+          case 16: // Profit Factor
+          case 18: // MaxLots
+          case 26: // Stabilität
+          case 27: // Steigung
+          case 28: // MaxDDGraphic
+          case 29: // EquityDrawdown3M%
               return Double.class;
           default:
               return String.class;
@@ -196,6 +200,10 @@ public class HighlightTableModel extends DefaultTableModel {
 	        double mpdd9 = calculateMPDD(nineMonthProfit, equityDrawdown);
 	        double mpdd12 = calculateMPDD(twelveMonthProfit, equityDrawdown);
 	        
+	        // Risiko-Kategorie aus der Datenbank laden
+	        int riskCategory = dbManager.getProviderRiskCategory(providerName);
+	        stats.setRiskCategory(riskCategory);
+	        
 	        int riskScore = RiskAnalysisServ.calculateRiskScore(stats);
 	        double stabilitaet = htmlDatabase.getStabilitaetswert(providerName);
 	        
@@ -242,6 +250,7 @@ public class HighlightTableModel extends DefaultTableModel {
 	            stats.getMaxConcurrentTrades(),
 	            stats.getMaxConcurrentLots(),
 	            stats.getMaxDuration(),
+	            riskCategory == 0 ? "-" : String.valueOf(riskCategory), // Risiko als String mit "-" für 0
 	            riskScore,
 	            stats.hasStopLoss() ? 1 : 0,
 	            stats.hasTakeProfit() ? 1 : 0,
@@ -272,6 +281,10 @@ public class HighlightTableModel extends DefaultTableModel {
 	    double mpdd6 = calculateMPDD(sixMonthProfit, equityDrawdown);
 	    double mpdd9 = calculateMPDD(nineMonthProfit, equityDrawdown);
 	    double mpdd12 = calculateMPDD(twelveMonthProfit, equityDrawdown);
+	    
+	    // Risiko-Kategorie aus der Datenbank laden
+	    int riskCategory = dbManager.getProviderRiskCategory(providerName);
+	    stats.setRiskCategory(riskCategory);
 	    
 	    int riskScore = RiskAnalysisServ.calculateRiskScore(stats);
 	    double stabilitaet = htmlDatabase.getStabilitaetswert(providerName);
@@ -322,6 +335,7 @@ public class HighlightTableModel extends DefaultTableModel {
 	        stats.getMaxConcurrentTrades(),
 	        stats.getMaxConcurrentLots(),
 	        stats.getMaxDuration(),
+	        riskCategory == 0 ? "-" : String.valueOf(riskCategory), // Risiko als String mit "-" für 0
 	        riskScore,
 	        stats.hasStopLoss() ? 1 : 0,
 	        stats.hasTakeProfit() ? 1 : 0,
