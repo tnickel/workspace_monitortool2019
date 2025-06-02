@@ -24,6 +24,7 @@ import ui.RiskScoreExplanationDialog;
 import ui.ShowSignalProviderList;
 import ui.TableColumnConfigDialog;
 import ui.dialogs.TextFileViewerDialog;
+import ui.dialogs.CheckSignalProviderDialog;
 import utils.HtmlDatabase;
 import utils.MqlAnalyserConf;
 import utils.UIStyle;
@@ -214,7 +215,7 @@ public class MenuManager {
         viewMenu.add(showSignalProvidersItem);
         viewMenu.add(compareOpenTradesItem);
         
-        // Debug-Menü (NEU)
+        // Debug-Menü (ERWEITERT)
         JMenu debugMenu = new JMenu("Debug");
         debugMenu.setForeground(Color.WHITE);
         
@@ -245,7 +246,17 @@ public class MenuManager {
             dialog.setVisible(true);
         });
         
+        // NEUER Menüpunkt für Check Signalprovider
+        JMenuItem checkSignalProviderItem = new JMenuItem("Check Signalprovider");
+        checkSignalProviderItem.addActionListener(e -> {
+            // Verwende rootPath + download anstatt config.getDownloadPath()
+            String downloadPath = rootPath + java.io.File.separator + "download";
+            CheckSignalProviderDialog dialog = new CheckSignalProviderDialog(parentFrame, downloadPath);
+            dialog.setVisible(true);
+        });
+        
         debugMenu.add(showTextfileItem);
+        debugMenu.add(checkSignalProviderItem); // Neuer Menüpunkt hinzugefügt
         
         // Hilfe-Menü
         JMenu helpMenu = new JMenu("Hilfe");

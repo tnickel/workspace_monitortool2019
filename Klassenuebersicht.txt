@@ -43,6 +43,9 @@ utils.StabilityAnalyzer | Stabilitäts- und Steigungsanalysen für Provider-Perf
 utils.ChartFactoryUtil | Factory-Klasse für verschiedene Chart-Typen (Equity, Profit, Weekday, Martingale-Visualisierung)
 utils.MartingaleAnalyzer | Erkennung von Martingale-Handelsmustern mit Sequence-Tracking und Score-Berechnung
 
+## Utils - File Processing
+utils.SignalProviderFileReader | Utility-Klasse zum Laden und Verarbeiten der drei wichtigen Signal Provider Dateien (conversionLog.txt, mql4download.txt, mql5download.txt) mit automatischer Pfad-Korrektur, Formatierung mit Zeilennummern und Suchfunktionalität
+
 ## Utils - Trading Utilities
 utils.TradeUtils | Utility-Funktionen für Trade-Berechnungen (concurrent trades/lots, aktive Trades zu bestimmten Zeitpunkten)
 
@@ -107,12 +110,14 @@ ui.RiskScoreExplanationDialog | Informationsdialog zur Erklärung der Risk Score
 ui.ShowSignalProviderList | Dialog zur Übersicht aller Provider mit Equity Charts und integriertem WebView
 ui.TableColumnConfigDialog | Dialog zur Konfiguration der sichtbaren Tabellenspalten mit Persistierung
 ui.dialogs.DatabaseInfoDialog | Dialog zur Anzeige der Datenbank-Historie für einen spezifischen Signal Provider
+ui.dialogs.TextFileViewerDialog | Dialog zur Anzeige von Text-Dateien mit Suchfunktionalität für einzelne Provider
+ui.dialogs.CheckSignalProviderDialog | Dialog zur Anzeige der drei wichtigen Signal Provider Dateien (conversionLog.txt, mql4download.txt, mql5download.txt) mit farblicher Hervorhebung verschiedener Dateisektionen, integrierter Suchfunktion, Navigation zwischen Treffern und direkten Sprung-Buttons zwischen den Dateisektionen
 UI Layer - Components
 ui.components.AppUIStyle | Zentrale UI-Styling-Klasse mit Farben, Schriftarten und einheitlichen Komponenten-Erstellern
 ui.components.ChartPanel | Dekorationsklasse für Chart-Komponenten mit einheitlichem Rahmen und Titel
 ui.components.ChartsPanelFactory | Factory zur Erstellung aller Chart-Panels für die Performance-Analyse mit Standard- und Spezial-Charts
 ui.components.FavoritesCategorySelector | UI-Komponente für die Auswahl von Favoriten-Kategorien (1-10) mit ComboBox
-ui.components.MenuManager | Manager für die Menüleiste mit Datei-, Datenbank-, Ansicht-, Debug- und Hilfe-Menüs
+ui.components.MenuManager | Manager für die Menüleiste mit Datei-, Datenbank-, Ansicht-, Debug- und Hilfe-Menüs. Erweitert um den neuen Debug-Menüpunkt "Check Signalprovider" zur Anzeige der drei wichtigen Signal Provider Dateien
 ui.components.PerformanceStatisticsPanel | Panel für Provider-Statistiken mit Favoriten-Management, Risiko-Kategorien-Auswahl, Bad-Provider-Markierung und Website-Status
 ui.components.ProviderNotesPanel | Panel zum Anzeigen und Bearbeiten von Provider-Notizen mit Datenbank-Persistierung
 ui.components.SearchManager | Manager für die Suchfunktionalität mit Live-Highlighting und Tastatur-Navigation
