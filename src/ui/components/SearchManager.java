@@ -32,9 +32,11 @@ public class SearchManager {
             @Override
             public void keyPressed(KeyEvent e) {
                 if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
-                    searchField.setText("");
-                    mainTable.clearHighlight();
-                    currentSearchIndex[0] = -1;
+                    clearSearch();
+                }
+                // F3 für "Find Next"
+                else if (e.getKeyCode() == KeyEvent.VK_F3) {
+                    performSearch();
                 }
             }
         });
@@ -48,38 +50,75 @@ public class SearchManager {
     }
     
     private void updateHighlight() {
-        if (searchField.getText().isEmpty()) {
+        String searchText = searchField.getText().trim();
+        if (searchText.isEmpty()) {
             mainTable.clearHighlight();
             currentSearchIndex[0] = -1;
         } else {
-            mainTable.highlightSearchText(searchField.getText().toLowerCase());
+            mainTable.highlightSearchText(searchText.toLowerCase());
         }
     }
     
+    /**
+     * KORRIGIERTE Suchmethode - Index wird nicht mehr zurückgesetzt!
+     */
     public void performSearch() {
+        System.out.println("=== SEARCHMANAGER performSearch AUFGERUFEN ===");
+        System.out.println("SearchManager Index Array Referenz: " + System.identityHashCode(currentSearchIndex));
+        System.out.println("SearchManager Index VORHER: " + currentSearchIndex[0]);
+        
         String searchText = searchField.getText().toLowerCase().trim();
         if (searchText.isEmpty()) {
             mainTable.clearHighlight();
             currentSearchIndex[0] = -1;
+            System.out.println("SearchManager: Suchtext leer, Index auf -1 gesetzt");
             return;
         }
         
         mainTable.highlightSearchText(searchText);
         
-        if (!mainTable.findAndSelectNext(searchText, currentSearchIndex)) {
-            currentSearchIndex[0] = -1;
-            if (!mainTable.findAndSelectNext(searchText, currentSearchIndex)) {
-                JOptionPane.showMessageDialog(parentFrame,
-                    "No matches found for: " + searchText,
-                    "Search Result",
-                    JOptionPane.INFORMATION_MESSAGE);
-            }
+        boolean found = mainTable.findAndSelectNext(searchText, currentSearchIndex);
+        
+        System.out.println("SearchManager Index NACH findAndSelectNext: " + currentSearchIndex[0]);
+        System.out.println("SearchManager found: " + found);
+        
+        if (!found) {
+            System.out.println("SearchManager: Kein Treffer - Index wird NICHT zurückgesetzt");
+            JOptionPane.showMessageDialog(parentFrame,
+                "Keine Treffer für: \"" + searchField.getText().trim() + "\"",
+                "Suchergebnis",
+                JOptionPane.INFORMATION_MESSAGE);
         }
+        
+        System.out.println("SearchManager Index AM ENDE: " + currentSearchIndex[0]);
+        System.out.println("=== SEARCHMANAGER performSearch ENDE ===");
     }
     
     public void clearSearch() {
         searchField.setText("");
         mainTable.clearHighlight();
         currentSearchIndex[0] = -1;
+    }
+    
+    /**
+     * Setzt die Suche zurück (z.B. bei Filteränderungen)
+     */
+    public void resetSearch() {
+        currentSearchIndex[0] = -1;
+        // Highlight bleibt bestehen, nur der Index wird zurückgesetzt
+    }
+    
+    /**
+     * Gibt den aktuellen Suchtext zurück
+     */
+    public String getCurrentSearchText() {
+        return searchField.getText().trim();
+    }
+    
+    /**
+     * Gibt zurück, ob gerade eine Suche aktiv ist
+     */
+    public boolean isSearchActive() {
+        return !searchField.getText().trim().isEmpty();
     }
 }

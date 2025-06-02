@@ -1,7 +1,5 @@
 package components;
 
-
-
 import java.awt.FlowLayout;
 import java.awt.event.ActionListener;
 
@@ -22,7 +20,7 @@ public class SearchPanel extends JPanel {
     public SearchPanel(MainTable table) {
         this.mainTable = table;
         this.searchField = new JTextField(20);
-        this.searchButton = new JButton("Search");
+        this.searchButton = new JButton("Suchen");
         
         initializeUI();
         setupSearchFunction();
@@ -30,7 +28,7 @@ public class SearchPanel extends JPanel {
     
     private void initializeUI() {
         setLayout(new FlowLayout(FlowLayout.RIGHT));
-        add(new JLabel("Search: "));
+        add(new JLabel("Suche: "));
         add(searchField);
         add(searchButton);
     }
@@ -48,27 +46,68 @@ public class SearchPanel extends JPanel {
         });
     }
     
+    /**
+     * KORRIGIERTE Suchmethode - Index wird nicht mehr zurückgesetzt!
+     */
     private void performSearch() {
-        String searchText = searchField.getText().toLowerCase();
+        System.out.println("=== SEARCHPANEL performSearch AUFGERUFEN ===");
+        System.out.println("SearchPanel Index Array Referenz: " + System.identityHashCode(currentSearchIndex));
+        System.out.println("SearchPanel Index VORHER: " + currentSearchIndex[0]);
+        
+        String searchText = searchField.getText().toLowerCase().trim();
         if (searchText.isEmpty()) {
             mainTable.clearHighlight();
+            currentSearchIndex[0] = -1;
+            System.out.println("SearchPanel: Suchtext leer, Index auf -1 gesetzt");
             return;
         }
 
         mainTable.highlightSearchText(searchText);
         boolean found = mainTable.findAndSelectNext(searchText, currentSearchIndex);
         
+        System.out.println("SearchPanel Index NACH findAndSelectNext: " + currentSearchIndex[0]);
+        System.out.println("SearchPanel found: " + found);
+        
         if (!found) {
-            currentSearchIndex[0] = -1;
+            System.out.println("SearchPanel: Kein Treffer - Index wird NICHT zurückgesetzt");
             JOptionPane.showMessageDialog(this, 
-                "Search reached end. Starting from beginning on next search.",
-                "Search", JOptionPane.INFORMATION_MESSAGE);
+                "Keine Treffer für: " + searchText,
+                "Suchergebnis", JOptionPane.INFORMATION_MESSAGE);
         }
+        
+        System.out.println("SearchPanel Index AM ENDE: " + currentSearchIndex[0]);
+        System.out.println("=== SEARCHPANEL performSearch ENDE ===");
     }
     
     private void updateHighlight() {
-        if (searchField.getText().isEmpty()) {
+        String searchText = searchField.getText().trim();
+        if (searchText.isEmpty()) {
             mainTable.clearHighlight();
+            currentSearchIndex[0] = -1;
+        } else {
+            mainTable.highlightSearchText(searchText.toLowerCase());
         }
+    }
+    
+    /**
+     * Setzt die Suche zurück (z.B. bei Filteränderungen)
+     */
+    public void resetSearch() {
+        currentSearchIndex[0] = -1;
+        mainTable.clearHighlight();
+    }
+    
+    /**
+     * Gibt das Suchfeld zurück für weitere Konfiguration
+     */
+    public JTextField getSearchField() {
+        return searchField;
+    }
+    
+    /**
+     * Gibt den aktuellen Suchtext zurück
+     */
+    public String getSearchText() {
+        return searchField.getText().trim();
     }
 }
