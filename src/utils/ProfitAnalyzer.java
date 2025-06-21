@@ -5,8 +5,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 
-import utils.HtmlDatabase;
-
 /**
  * Klasse für Profit-Berechnungen und zugehörige Tooltips.
  * Enthält Methoden für durchschnittliche Profite und deren Visualisierung.

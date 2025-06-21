@@ -1,16 +1,12 @@
 package reports;
 
-import java.awt.Dimension;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -24,17 +20,10 @@ import javax.imageio.ImageIO;
 
 import org.jfree.chart.JFreeChart;
 
-import charts.CurrencyPairTradesChart;
-import charts.DrawdownChart;
-import charts.DurationProfitChart;
-import charts.EfficiencyChart;
 import charts.EquityDrawdownChart;
 import charts.SymbolDistributionChart;
-import charts.TradeStackingChart;
-import charts.WeeklyLotsizeChart;
 import data.FavoritesManager;
 import data.ProviderStats;
-import data.Trade;
 import db.HistoryDatabaseManager;
 import utils.ApplicationConstants;
 import utils.HtmlDatabase;

@@ -8,9 +8,9 @@ import javax.swing.BoxLayout;
 import javax.swing.JPanel;
 
 import charts.CurrencyPairTradesChart;
-import charts.EquityDrawdownChart;
 import charts.DurationProfitChart;
 import charts.EfficiencyChart;
+import charts.EquityDrawdownChart;
 import charts.MonthlyTradeCountChart;
 import charts.ProviderStatHistoryChart;
 import charts.SymbolDistributionChart;

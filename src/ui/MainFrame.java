@@ -13,7 +13,6 @@ import java.util.List;
 import java.util.logging.Logger;
 
 import javax.swing.BorderFactory;
-import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -21,11 +20,9 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
-import javax.swing.SwingWorker;
 
 import components.MainTable;
 import data.DataManager;
-import models.FilterCriteria;
 import services.ProviderHistoryService;
 import ui.components.AppUIStyle;
 import ui.components.MenuManager;

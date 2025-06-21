@@ -1,7 +1,6 @@
 import java.awt.Dimension;
 import java.util.logging.Logger;
 
-import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 
 import data.DataManager;

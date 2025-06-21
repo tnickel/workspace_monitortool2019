@@ -33,11 +33,9 @@ import db.HistoryDatabaseManager;
 import ui.TradeListFrame;
 import ui.dialogs.DatabaseInfoDialog;
 import ui.dialogs.PDFViewerDialog;
-import utils.ApplicationConstants;
 import utils.HtmlDatabase;
 import utils.UIStyle;
 import utils.WebsiteAnalyzer;
-import utils.WebsiteAnalyzer.WebsiteStatus;
 
 /**
  * Panel zur Anzeige der wichtigsten Statistiken eines Signal Providers
