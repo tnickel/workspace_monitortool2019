@@ -112,6 +112,7 @@ ui.TableColumnConfigDialog | Dialog zur Konfiguration der sichtbaren Tabellenspa
 ui.dialogs.DatabaseInfoDialog | Dialog zur Anzeige der Datenbank-Historie für einen spezifischen Signal Provider
 ui.dialogs.TextFileViewerDialog | Dialog zur Anzeige von Text-Dateien mit Suchfunktionalität für einzelne Provider
 ui.dialogs.CheckSignalProviderDialog | Dialog zur Anzeige der drei wichtigen Signal Provider Dateien (conversionLog.txt, mql4download.txt, mql5download.txt) mit farblicher Hervorhebung verschiedener Dateisektionen, integrierter Suchfunktion, Navigation zwischen Treffern und direkten Sprung-Buttons zwischen den Dateisektionen
+ui.dialogs.FavoritesReportSelectionDialog | Klasse fuer ein Auswahlmenue um bestimmte klassen zu selektieren
 UI Layer - Components
 ui.components.AppUIStyle | Zentrale UI-Styling-Klasse mit Farben, Schriftarten und einheitlichen Komponenten-Erstellern
 ui.components.ChartPanel | Dekorationsklasse für Chart-Komponenten mit einheitlichem Rahmen und Titel

@@ -92,10 +92,86 @@ public class TableButtonFactory {
     }
     
     /**
-     * Generiert den Favoriten-Report
+     * Generiert den Favoriten-Report mit Kategorien-Auswahl
      */
     private void generateFavoritesReport() {
-        // Alle Favoriten ermitteln
+        try {
+            // Dialog für die Kategorien-Auswahl anzeigen (im EDT)
+            final String[] selectedOption = new String[1];
+            final boolean[] cancelled = new boolean[1];
+            
+            SwingUtilities.invokeAndWait(() -> {
+                ui.dialogs.FavoritesReportSelectionDialog dialog = 
+                    new ui.dialogs.FavoritesReportSelectionDialog(
+                        SwingUtilities.getWindowAncestor(mainTable)
+                    );
+                
+                selectedOption[0] = dialog.showDialog();
+                cancelled[0] = dialog.wasCancelled();
+            });
+            
+            // Prüfen, ob der Dialog abgebrochen wurde
+            if (selectedOption[0] == null || cancelled[0]) {
+                return; // Benutzer hat abgebrochen
+            }
+            
+            // Entsprechende Favoriten basierend auf der Auswahl sammeln
+            Map<String, ProviderStats> favorites = collectFavoritesForOption(selectedOption[0]);
+            
+            // Prüfen, ob Favoriten gefunden wurden
+            if (favorites.isEmpty()) {
+                SwingUtilities.invokeLater(() -> {
+                    String message = getNoFavoritesMessage(selectedOption[0]);
+                    JOptionPane.showMessageDialog(mainTable,
+                            message,
+                            "Keine Favoriten",
+                            JOptionPane.INFORMATION_MESSAGE);
+                });
+                return;
+            }
+            
+            // Fortschrittsanzeige während der Report-Generierung
+            final int totalProviders = favorites.size();
+            SwingUtilities.invokeLater(() -> {
+                if (statusUpdateCallback != null) {
+                    String optionText = getOptionDisplayText(selectedOption[0]);
+                    statusUpdateCallback.accept("Generiere Report für " + totalProviders + 
+                        " Favoriten (" + optionText + ")...");
+                }
+            });
+            
+            // Report-Generator initialisieren und Report erstellen
+            ReportGenerator reportGenerator = new ReportGenerator(rootPath, htmlDatabase);
+            String reportPath = generateReportForOption(reportGenerator, favorites, selectedOption[0]);
+            
+            if (reportPath != null) {
+                handleReportSuccess(reportPath);
+            } else {
+                SwingUtilities.invokeLater(() -> {
+                    JOptionPane.showMessageDialog(mainTable,
+                            "Fehler beim Erstellen des Reports. Bitte prüfen Sie die Logs.",
+                            "Fehler",
+                            JOptionPane.ERROR_MESSAGE);
+                });
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            SwingUtilities.invokeLater(() -> {
+                JOptionPane.showMessageDialog(mainTable,
+                        "Unerwarteter Fehler beim Erstellen des Reports: " + ex.getMessage(),
+                        "Fehler",
+                        JOptionPane.ERROR_MESSAGE);
+            });
+        }
+    }
+    
+    /**
+     * Sammelt Favoriten basierend auf der ausgewählten Option
+     * 
+     * @param selectedOption Die ausgewählte Option (All, 1-2, 1-3)
+     * @return Map mit den entsprechenden Favoriten
+     */
+    private Map<String, ProviderStats> collectFavoritesForOption(String selectedOption) {
         FavoritesManager favManager = FavoritesManager.getInstance(rootPath);
         Map<String, ProviderStats> favorites = new HashMap<>();
         
@@ -107,44 +183,153 @@ public class TableButtonFactory {
             // Provider-ID extrahieren
             String providerId = extractProviderId(providerName);
             
-            // Prüfen, ob dieser Provider ein Favorit ist
-            if (!providerId.isEmpty() && favManager.isFavorite(providerId)) {
+            if (providerId.isEmpty()) {
+                continue; // Überspringe Provider ohne gültige ID
+            }
+            
+            // Prüfen, ob dieser Provider in der gewählten Kategorie ist
+            if (isProviderInSelectedCategory(favManager, providerId, selectedOption)) {
                 favorites.put(providerName, stats);
             }
         }
         
-        // Prüfen, ob Favoriten gefunden wurden
-        if (favorites.isEmpty()) {
-            SwingUtilities.invokeLater(() -> {
-                JOptionPane.showMessageDialog(mainTable,
-                        "Es wurden keine Favoriten gefunden.\nBitte markieren Sie zuerst einige Signal Provider als Favoriten.",
-                        "Keine Favoriten",
-                        JOptionPane.INFORMATION_MESSAGE);
-            });
-            return;
+        return favorites;
+    }
+    
+    /**
+     * Prüft, ob ein Provider in der ausgewählten Kategorie ist
+     * 
+     * @param favManager Der FavoritesManager
+     * @param providerId Die Provider-ID
+     * @param selectedOption Die ausgewählte Option
+     * @return true wenn der Provider in der Kategorie ist
+     */
+    private boolean isProviderInSelectedCategory(FavoritesManager favManager, 
+                                               String providerId, 
+                                               String selectedOption) {
+        if (!favManager.isFavorite(providerId)) {
+            return false; // Nicht mal ein Favorit
         }
         
-        // Fortschrittsanzeige während der Report-Generierung
-        final int totalProviders = favorites.size();
-        SwingUtilities.invokeLater(() -> {
-            if (statusUpdateCallback != null) {
-                statusUpdateCallback.accept("Generiere Report für " + totalProviders + " Favoriten...");
-            }
-        });
+        int category = favManager.getFavoriteCategory(providerId);
         
-        // Report-Generator initialisieren und Report erstellen
-        ReportGenerator reportGenerator = new ReportGenerator(rootPath, htmlDatabase);
-        String reportPath = reportGenerator.generateReport(favorites);
+        switch (selectedOption) {
+            case ui.dialogs.FavoritesReportSelectionDialog.OPTION_ALL:
+                return true; // Alle Favoriten (1-10)
+                
+            case ui.dialogs.FavoritesReportSelectionDialog.OPTION_1_2:
+                return category == 1 || category == 2;
+                
+            case ui.dialogs.FavoritesReportSelectionDialog.OPTION_1_3:
+                return category >= 1 && category <= 3;
+                
+            default:
+                return false;
+        }
+    }
+    
+    /**
+     * Generiert den Report für die ausgewählte Option
+     * 
+     * @param reportGenerator Der ReportGenerator
+     * @param favorites Die Favoriten-Provider
+     * @param selectedOption Die ausgewählte Option
+     * @return Der Pfad zum generierten Report
+     */
+    private String generateReportForOption(ReportGenerator reportGenerator, 
+                                          Map<String, ProviderStats> favorites, 
+                                          String selectedOption) {
         
-        if (reportPath != null) {
-            handleReportSuccess(reportPath);
-        } else {
-            SwingUtilities.invokeLater(() -> {
-                JOptionPane.showMessageDialog(mainTable,
-                        "Fehler beim Erstellen des Reports. Bitte prüfen Sie die Logs.",
-                        "Fehler",
-                        JOptionPane.ERROR_MESSAGE);
-            });
+        // Für "All" können wir den Standard-ReportGenerator verwenden
+        if (ui.dialogs.FavoritesReportSelectionDialog.OPTION_ALL.equals(selectedOption)) {
+            return reportGenerator.generateReport(favorites);
+        }
+        
+        // Für spezifische Kategorien (1-2, 1-3) erstellen wir einen Custom-Report
+        return generateCustomFavoritesReport(reportGenerator, favorites, selectedOption);
+    }
+    
+    /**
+     * Generiert einen benutzerdefinierten Report für spezifische Kategorien
+     * 
+     * @param reportGenerator Der ReportGenerator
+     * @param favorites Die Favoriten-Provider
+     * @param selectedOption Die ausgewählte Option
+     * @return Der Pfad zum generierten Report
+     */
+    private String generateCustomFavoritesReport(ReportGenerator reportGenerator,
+                                                Map<String, ProviderStats> favorites,
+                                                String selectedOption) {
+        
+        // Benutzerdefinierten Titel und Pfad erstellen
+        String optionText = getOptionDisplayText(selectedOption);
+        String reportTitle = "Favoriten Signal Provider Report - " + optionText;
+        
+        // Dateiname mit Kategorie-Information
+        java.text.SimpleDateFormat dateFormat = new java.text.SimpleDateFormat("yyyyMMdd_HHmmss");
+        String timestamp = dateFormat.format(new java.util.Date());
+        String categoryStr = getFilenameCategory(selectedOption);
+        String reportFileName = "favorites_" + categoryStr + "_report_" + timestamp + ".html";
+        String reportPath = rootPath + File.separator + "report" + File.separator + reportFileName;
+        
+        // Custom-Report generieren
+        return reportGenerator.generateReport(favorites, reportTitle, reportPath);
+    }
+    
+    /**
+     * Gibt den Anzeige-Text für eine Option zurück
+     * 
+     * @param selectedOption Die ausgewählte Option
+     * @return Der Anzeige-Text
+     */
+    private String getOptionDisplayText(String selectedOption) {
+        switch (selectedOption) {
+            case ui.dialogs.FavoritesReportSelectionDialog.OPTION_ALL:
+                return "Alle Kategorien";
+            case ui.dialogs.FavoritesReportSelectionDialog.OPTION_1_2:
+                return "Kategorie 1-2";
+            case ui.dialogs.FavoritesReportSelectionDialog.OPTION_1_3:
+                return "Kategorie 1-3";
+            default:
+                return selectedOption;
+        }
+    }
+    
+    /**
+     * Gibt den Dateinamen-Teil für eine Option zurück
+     * 
+     * @param selectedOption Die ausgewählte Option
+     * @return Der Dateinamen-Teil
+     */
+    private String getFilenameCategory(String selectedOption) {
+        switch (selectedOption) {
+            case ui.dialogs.FavoritesReportSelectionDialog.OPTION_ALL:
+                return "all";
+            case ui.dialogs.FavoritesReportSelectionDialog.OPTION_1_2:
+                return "1-2";
+            case ui.dialogs.FavoritesReportSelectionDialog.OPTION_1_3:
+                return "1-3";
+            default:
+                return "unknown";
+        }
+    }
+    
+    /**
+     * Gibt die entsprechende Nachricht zurück, wenn keine Favoriten gefunden wurden
+     * 
+     * @param selectedOption Die ausgewählte Option
+     * @return Die Nachricht
+     */
+    private String getNoFavoritesMessage(String selectedOption) {
+        switch (selectedOption) {
+            case ui.dialogs.FavoritesReportSelectionDialog.OPTION_ALL:
+                return "Es wurden keine Favoriten gefunden.\nBitte markieren Sie zuerst einige Signal Provider als Favoriten.";
+            case ui.dialogs.FavoritesReportSelectionDialog.OPTION_1_2:
+                return "Es wurden keine Favoriten in den Kategorien 1-2 gefunden.\nBitte markieren Sie zuerst einige Signal Provider als Favoriten in diesen Kategorien.";
+            case ui.dialogs.FavoritesReportSelectionDialog.OPTION_1_3:
+                return "Es wurden keine Favoriten in den Kategorien 1-3 gefunden.\nBitte markieren Sie zuerst einige Signal Provider als Favoriten in diesen Kategorien.";
+            default:
+                return "Es wurden keine Favoriten in der ausgewählten Kategorie gefunden.";
         }
     }
     
