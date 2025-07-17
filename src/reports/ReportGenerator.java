@@ -56,6 +56,21 @@ public class ReportGenerator {
         "#FF3333"  // Kategorie 10 - Dunkelrot (255, 51, 51)
     };
     
+    // Farben für die verschiedenen Risikoklassen (0-10)
+    private static final String[] RISK_CATEGORY_COLORS = {
+        "#FFFFFF", // Kategorie 0 - Weiß (kein Risiko gesetzt)
+        "#E8F5E8", // Kategorie 1 - Sehr hell grün
+        "#D4F4D4", // Kategorie 2 - Hell grün
+        "#B8E6B8", // Kategorie 3 - Grün
+        "#FFE4B5", // Kategorie 4 - Hellorange
+        "#FFD700", // Kategorie 5 - Gold
+        "#FFA500", // Kategorie 6 - Orange
+        "#FF6347", // Kategorie 7 - Tomate
+        "#FF4500", // Kategorie 8 - Orangerot
+        "#FF0000", // Kategorie 9 - Rot
+        "#8B0000"  // Kategorie 10 - Dunkelrot
+    };
+    
     /**
      * Konstruktor für den ReportGenerator
      * 
@@ -147,6 +162,19 @@ public class ReportGenerator {
     }
     
     /**
+     * Hilfsmethode, um den passenden CSS-Klassenname für eine Risikoklasse zu erhalten
+     * 
+     * @param riskCategory Die Risikoklasse-Nummer (0-10)
+     * @return Die CSS-Klasse für diese Risikoklasse
+     */
+    private String getRiskCategoryStyleClass(int riskCategory) {
+        if (riskCategory >= 0 && riskCategory <= 10) {
+            return "risk-category-" + riskCategory;
+        }
+        return "risk-category-default";
+    }
+    
+    /**
      * Gibt die Hintergrundfarbe für eine Favoritenklasse zurück
      * 
      * @param category Die Kategorie-Nummer (1-10)
@@ -155,6 +183,19 @@ public class ReportGenerator {
     private String getCategoryBackgroundColor(int category) {
         if (category >= 1 && category <= 10) {
             return FAVORITE_CATEGORY_COLORS[category - 1]; // Array ist 0-basiert, Kategorien sind 1-basiert
+        }
+        return "#FFFFFF"; // Standard weiß
+    }
+    
+    /**
+     * Gibt die Hintergrundfarbe für eine Risikoklasse zurück
+     * 
+     * @param riskCategory Die Risikoklasse-Nummer (0-10)
+     * @return Die Hex-Farbe für diese Risikoklasse
+     */
+    private String getRiskCategoryBackgroundColor(int riskCategory) {
+        if (riskCategory >= 0 && riskCategory <= 10) {
+            return RISK_CATEGORY_COLORS[riskCategory];
         }
         return "#FFFFFF"; // Standard weiß
     }
@@ -175,6 +216,23 @@ public class ReportGenerator {
         String styleClass = getCategoryStyleClass(category);
         
         return " <span class=\"" + styleClass + "\">" + categoryText + "</span>";
+    }
+    
+    /**
+     * Hilfsmethode, um formatierte Risikoklassen-Information mit Farbklasse zu erstellen
+     * 
+     * @param riskCategory Die Risikoklasse-Nummer (0-10)
+     * @return Formatierte HTML-Ausgabe für die Risikoklasse
+     */
+    private String formatRiskCategoryInfo(int riskCategory) {
+        if (riskCategory <= 0) {
+            return "Nicht gesetzt";
+        }
+        
+        String riskText = "Risiko " + riskCategory;
+        String styleClass = getRiskCategoryStyleClass(riskCategory);
+        
+        return "<span class=\"" + styleClass + "\">" + riskText + "</span>";
     }
     
     /**
@@ -386,6 +444,12 @@ public class ReportGenerator {
         htmlBuilder.append("<tr><td>3MPDD</td><td>").append(String.format("%.2f", threeMonthProfit / Math.max(0.01, equityDrawdown))).append("</td></tr>\n");
         htmlBuilder.append("<tr><td>Equity Drawdown</td><td>").append(String.format("%.2f%%", equityDrawdown)).append("</td></tr>\n");
         htmlBuilder.append("<tr><td>Max Drawdown</td><td>").append(String.format("%.2f%%", maxDrawdownGraphic)).append("</td></tr>\n");
+        
+        // Risikoklasse aus der Datenbank laden und anzeigen
+        int riskCategory = historyDbManager.getProviderRiskCategory(providerName);
+        String riskCategoryHtml = formatRiskCategoryInfo(riskCategory);
+        htmlBuilder.append("<tr><td>Risikoklasse</td><td>").append(riskCategoryHtml).append("</td></tr>\n");
+        
         htmlBuilder.append("</table>\n");
         htmlBuilder.append("</div>\n");
         
@@ -635,6 +699,28 @@ public class ReportGenerator {
         
         // Fallback-Klasse für ungültige Kategorien
         cssBuilder.append("        .favorite-category-default {\n");
+        cssBuilder.append("            color: white;\n");
+        cssBuilder.append("            background-color: #777;\n");
+        cssBuilder.append("            padding: 3px 8px;\n");
+        cssBuilder.append("            border-radius: 4px;\n");
+        cssBuilder.append("            font-weight: bold;\n");
+        cssBuilder.append("        }\n");
+        
+        // CSS für alle 11 Risikoklassen generieren (0-10)
+        for (int i = 0; i <= 10; i++) {
+            String color = RISK_CATEGORY_COLORS[i];
+            cssBuilder.append("        .risk-category-").append(i).append(" {\n");
+            cssBuilder.append("            color: #333333;\n");
+            cssBuilder.append("            background-color: ").append(color).append(";\n");
+            cssBuilder.append("            padding: 3px 8px;\n");
+            cssBuilder.append("            border-radius: 4px;\n");
+            cssBuilder.append("            font-weight: bold;\n");
+            cssBuilder.append("            border: 1px solid ").append(getDarkerColor(color)).append(";\n");
+            cssBuilder.append("        }\n");
+        }
+        
+        // Fallback-Klasse für ungültige Risikoklassen
+        cssBuilder.append("        .risk-category-default {\n");
         cssBuilder.append("            color: white;\n");
         cssBuilder.append("            background-color: #777;\n");
         cssBuilder.append("            padding: 3px 8px;\n");
