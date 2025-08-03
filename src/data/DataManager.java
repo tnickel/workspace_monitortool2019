@@ -43,6 +43,16 @@ public class DataManager {
        }
    }
    
+   // Neue Hilfsmethode zum sicheren Parsen von numerischen Werten
+   private double parseNumericValue(String value) throws NumberFormatException {
+       if (value == null || value.trim().isEmpty()) {
+           return 0.0;
+       }
+       // Entferne alle Leerzeichen und ersetze Kommas durch Punkte
+       String cleanValue = value.trim().replace(" ", "").replace(",", ".");
+       return Double.parseDouble(cleanValue);
+   }
+   
    // Setter für Callbacks
    public void setProgressCallback(Consumer<Integer> progressCallback) {
        this.progressCallback = progressCallback;
@@ -223,7 +233,7 @@ public class DataManager {
                                    }
                                    
                                    if (balanceStr != null && !balanceStr.isEmpty()) {
-                                       initialBalance = Double.parseDouble(balanceStr);
+                                       initialBalance = parseNumericValue(balanceStr);
                                        if (initialBalance >= 0) {
                                            stats.setInitialBalance(initialBalance);
                                            foundFirstBalance = true;
@@ -260,7 +270,7 @@ public class DataManager {
                        
                        double lots;
                        try {
-                           lots = Double.parseDouble(data[2].trim().replace(",", "."));
+                           lots = parseNumericValue(data[2]);
                        } catch (NumberFormatException e) {
                            LOGGER.fine("Failed to parse lots: " + e.getMessage());
                            skippedLines.add(line);
@@ -271,7 +281,7 @@ public class DataManager {
                        
                        double openPrice;
                        try {
-                           openPrice = Double.parseDouble(data[4].trim().replace(",", "."));
+                           openPrice = parseNumericValue(data[4]);
                        } catch (NumberFormatException e) {
                            LOGGER.fine("Failed to parse open price: " + e.getMessage());
                            skippedLines.add(line);
@@ -302,7 +312,7 @@ public class DataManager {
                            }
                            
                            try {
-                               closePrice = Double.parseDouble(data[7].trim().replace(",", "."));
+                               closePrice = parseNumericValue(data[7]);
                            } catch (NumberFormatException e) {
                                LOGGER.fine("Failed to parse close price: " + e.getMessage());
                                skippedLines.add(line);
@@ -312,7 +322,7 @@ public class DataManager {
                            // Commission und Swap können leer sein
                            if (data.length > 8 && !data[8].trim().isEmpty()) {
                                try {
-                                   commission = Double.parseDouble(data[8].trim().replace(",", "."));
+                                   commission = parseNumericValue(data[8]);
                                } catch (NumberFormatException e) {
                                    LOGGER.fine("Empty or invalid commission: " + data[8]);
                                    // Nicht kritisch, setze auf 0
@@ -321,7 +331,7 @@ public class DataManager {
                            
                            if (data.length > 9 && !data[9].trim().isEmpty()) {
                                try {
-                                   swap = Double.parseDouble(data[9].trim().replace(",", "."));
+                                   swap = parseNumericValue(data[9]);
                                } catch (NumberFormatException e) {
                                    LOGGER.fine("Empty or invalid swap: " + data[9]);
                                    // Nicht kritisch, setze auf 0
@@ -332,10 +342,10 @@ public class DataManager {
                            if (data.length > 10) {
                                try {
                                    // MQL5 speichert Profit als ganze Zahl, muss skaliert werden
-                                   String profitStr = data[10].trim().replace(",", ".");
+                                   String profitStr = data[10].trim();
                                    
                                    if (!profitStr.isEmpty()) {
-                                       double rawProfit = Double.parseDouble(profitStr);
+                                       double rawProfit = parseNumericValue(profitStr);
                                        
                                        // Skalierungsfaktor basierend auf Symbol und Wert
                                        double scaleFactor = 100.0; // Standard-Skalierungsfaktor
@@ -383,7 +393,7 @@ public class DataManager {
                            if (!hasStopLossTakeProfit && data.length > 6) {
                                try {
                                    if (data[5] != null && !data[5].trim().isEmpty()) {
-                                       Double.parseDouble(data[5].trim().replace(",", "."));
+                                       parseNumericValue(data[5]);
                                        hasStopLossTakeProfit = true;
                                    }
                                } catch (NumberFormatException e) {
@@ -392,7 +402,7 @@ public class DataManager {
                                
                                try {
                                    if (data[6] != null && !data[6].trim().isEmpty()) {
-                                       Double.parseDouble(data[6].trim().replace(",", "."));
+                                       parseNumericValue(data[6]);
                                        hasStopLossTakeProfit = true;
                                    }
                                } catch (NumberFormatException e) {
@@ -416,10 +426,10 @@ public class DataManager {
                            if (hasStopLossTakeProfit) {
                                try {
                                    if (data.length > 5 && !data[5].trim().isEmpty()) {
-                                       stopLoss = Double.parseDouble(data[5].trim().replace(",", "."));
+                                       stopLoss = parseNumericValue(data[5]);
                                    }
                                    if (data.length > 6 && !data[6].trim().isEmpty()) {
-                                       takeProfit = Double.parseDouble(data[6].trim().replace(",", "."));
+                                       takeProfit = parseNumericValue(data[6]);
                                    }
                                } catch (NumberFormatException e) {
                                    LOGGER.fine("Failed to parse SL/TP: " + e.getMessage());
@@ -450,7 +460,7 @@ public class DataManager {
                            }
                            
                            try {
-                               closePrice = Double.parseDouble(data[closePriceIndex].trim().replace(",", "."));
+                               closePrice = parseNumericValue(data[closePriceIndex]);
                            } catch (NumberFormatException e) {
                                LOGGER.fine("Failed to parse close price: " + e.getMessage());
                                skippedLines.add(line);
@@ -460,7 +470,7 @@ public class DataManager {
                            // Kommission auslesen
                            if (data.length > commissionIndex && !data[commissionIndex].trim().isEmpty()) {
                                try {
-                                   commission = Double.parseDouble(data[commissionIndex].trim().replace(",", "."));
+                                   commission = parseNumericValue(data[commissionIndex]);
                                } catch (NumberFormatException e) {
                                    LOGGER.fine("Failed to parse commission: " + e.getMessage());
                                    // Nicht kritisch, weitermachen
@@ -470,7 +480,7 @@ public class DataManager {
                            // Swap auslesen
                            if (data.length > swapIndex && !data[swapIndex].trim().isEmpty()) {
                                try {
-                                   swap = Double.parseDouble(data[swapIndex].trim().replace(",", "."));
+                                   swap = parseNumericValue(data[swapIndex]);
                                } catch (NumberFormatException e) {
                                    LOGGER.fine("Failed to parse swap: " + e.getMessage());
                                    // Nicht kritisch, weitermachen
@@ -485,12 +495,12 @@ public class DataManager {
                            }
                            
                            try {
-                               String profitStr = data[profitIndex].trim().replace(",", ".");
+                               String profitStr = data[profitIndex].trim();
                                // Bereinigen von Kommentaren wie [sl], [tp]
                                if (profitStr.contains("[")) {
                                    profitStr = profitStr.split("\\[")[0].trim();
                                }
-                               profit = Double.parseDouble(profitStr);
+                               profit = parseNumericValue(profitStr);
                            } catch (NumberFormatException e) {
                                LOGGER.fine("Failed to parse profit: " + e.getMessage());
                                skippedLines.add(line);
